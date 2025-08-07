@@ -5,6 +5,7 @@ import MetricCard from './components/Dashboard/MetricCard';
 import RevenueChart from './components/Charts/RevenueChart';
 import CategoryChart from './components/Charts/CategoryChart';
 import DataTable from './components/Tables/DataTable';
+import FileUploadPage from './components/FileUpload/FileUploadPage';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 
 function App() {
@@ -60,6 +61,9 @@ function App() {
             <DataTable data={tableData} />
           </div>
         );
+      
+      case 'file-upload':
+        return <FileUploadPage />;
       
       default:
         return (

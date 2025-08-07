@@ -9,7 +9,8 @@ import {
   PieChart,
   Activity,
   Database,
-  X
+  X,
+  Upload
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Users', icon: Users, section: 'users' },
   { name: 'Orders', icon: ShoppingCart, section: 'orders' },
   { name: 'Performance', icon: TrendingUp, section: 'performance' },
+  { name: 'AI Analysis', icon: Upload, section: 'file-upload' },
   { name: 'Reports', icon: FileText, section: 'reports' },
   { name: 'Activity', icon: Activity, section: 'activity' },
   { name: 'Database', icon: Database, section: 'database' },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bell, Search, User, Menu } from 'lucide-react';
+import UserProfileModal from './UserProfileModal';
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -7,8 +8,11 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
+  const [profileModalOpen, setProfileModalOpen] = React.useState(false);
+
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-4">
+    <>
+      <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -41,7 +45,10 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
             <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
           </button>
           
-          <div className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 rounded-lg p-2 transition-colors">
+          <div 
+            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 rounded-lg p-2 transition-colors"
+            onClick={() => setProfileModalOpen(true)}
+          >
             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
               <User size={16} className="text-white" />
             </div>
@@ -53,6 +60,12 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
         </div>
       </div>
     </header>
+      
+      <UserProfileModal 
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
+    </>
   );
 };
 
