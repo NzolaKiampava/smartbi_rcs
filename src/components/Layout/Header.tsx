@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bell, Search, User, Menu } from 'lucide-react';
 import UserProfileModal from './UserProfileModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -9,6 +10,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const [profileModalOpen, setProfileModalOpen] = React.useState(false);
+  const { user } = useAuth();
 
   return (
     <>
@@ -53,8 +55,8 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
               <User size={16} className="text-white" />
             </div>
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-gray-900">Admin User</p>
-              <p className="text-xs text-gray-500">admin@smartbi.com</p>
+              <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
+              <p className="text-xs text-gray-500">{user?.email || 'user@example.com'}</p>
             </div>
           </div>
         </div>

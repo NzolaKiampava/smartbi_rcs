@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Settings, LogOut, Shield, Bell, HelpCircle, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface UserProfileModalProps {
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -26,6 +28,11 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const handleLogout = () => {
+    logout();
+    onClose();
+  };
 
   const menuItems = [
     { icon: User, label: 'Edit Profile', action: () => console.log('Edit Profile') },
@@ -51,8 +58,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                 <User size={20} className="text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Admin User</h3>
-                <p className="text-sm text-gray-500">admin@smartbi.com</p>
+                <h3 className="font-semibold text-gray-900">{user?.name || 'User'}</h3>
+                <p className="text-sm text-gray-500">{user?.email || 'user@example.com'}</p>
               </div>
             </div>
             <button
@@ -84,7 +91,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         {/* Logout */}
         <div className="border-t border-gray-100 py-2">
           <button
-            onClick={() => console.log('Logout')}
+            onClick={handleLogout}
             className="w-full flex items-center px-6 py-3 text-left hover:bg-red-50 transition-colors group"
           >
             <LogOut size={18} className="text-gray-400 group-hover:text-red-500 mr-3 transition-colors" />
