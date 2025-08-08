@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginPage from './components/Auth/LoginPage';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
 import MetricCard from './components/Dashboard/MetricCard';
@@ -8,7 +10,7 @@ import DataTable from './components/Tables/DataTable';
 import FileUploadPage from './components/FileUpload/FileUploadPage';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 
-function App() {
+const Dashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
 
@@ -107,6 +109,35 @@ function App() {
         </div>
       </div>
     </div>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <Dashboard />;
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
