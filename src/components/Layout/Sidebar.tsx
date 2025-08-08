@@ -10,7 +10,8 @@ import {
   Activity,
   Database,
   X,
-  Upload
+  Upload,
+  MessageSquare
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Orders', icon: ShoppingCart, section: 'orders' },
   { name: 'Performance', icon: TrendingUp, section: 'performance' },
   { name: 'AI Analysis', icon: Upload, section: 'file-upload' },
+  { name: 'Natural Query', icon: MessageSquare, section: 'natural-query' },
   { name: 'Reports', icon: FileText, section: 'reports' },
   { name: 'Activity', icon: Activity, section: 'activity' },
   { name: 'Database', icon: Database, section: 'database' },

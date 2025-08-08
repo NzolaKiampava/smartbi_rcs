@@ -8,6 +8,7 @@ import RevenueChart from './components/Charts/RevenueChart';
 import CategoryChart from './components/Charts/CategoryChart';
 import DataTable from './components/Tables/DataTable';
 import FileUploadPage from './components/FileUpload/FileUploadPage';
+import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLanguageQueryPage';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 
 const Dashboard: React.FC = () => {
@@ -66,6 +67,9 @@ const Dashboard: React.FC = () => {
       
       case 'file-upload':
         return <FileUploadPage />;
+      
+      case 'natural-query':
+        return <NaturalLanguageQueryPage />;
       
       default:
         return (
