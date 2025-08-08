@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, BarChart3, Shield, Zap, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import NeuralNetworkAnimation from './NeuralNetworkAnimation';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -52,6 +53,10 @@ const LoginPage: React.FC = () => {
       {/* Left Side - Features */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-purple-700 p-12 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black bg-opacity-10"></div>
+        
+        {/* Neural Network Animation */}
+        <NeuralNetworkAnimation />
+        
         <div className="relative z-10 flex flex-col justify-center max-w-lg">
           <div className="mb-12">
             <div className="flex items-center space-x-3 mb-6">
@@ -92,9 +97,9 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Decorative Elements */}
-        <div className="absolute top-20 right-20 w-32 h-32 bg-white bg-opacity-10 rounded-full blur-xl"></div>
-        <div className="absolute bottom-20 right-32 w-24 h-24 bg-purple-300 bg-opacity-20 rounded-full blur-lg"></div>
-        <div className="absolute top-1/2 right-10 w-16 h-16 bg-blue-300 bg-opacity-20 rounded-full blur-md"></div>
+        <div className="absolute top-20 right-20 w-32 h-32 bg-white bg-opacity-5 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-32 w-24 h-24 bg-purple-300 bg-opacity-10 rounded-full blur-lg animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 right-10 w-16 h-16 bg-blue-300 bg-opacity-10 rounded-full blur-md animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
       {/* Right Side - Login Form */}
