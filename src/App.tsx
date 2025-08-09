@@ -9,6 +9,7 @@ import CategoryChart from './components/Charts/CategoryChart';
 import DataTable from './components/Tables/DataTable';
 import FileUploadPage from './components/FileUpload/FileUploadPage';
 import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLanguageQueryPage';
+import ReportsPage from './components/Reports/ReportsPage';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 
 const Dashboard: React.FC = () => {
@@ -70,6 +71,9 @@ const Dashboard: React.FC = () => {
       
       case 'natural-query':
         return <NaturalLanguageQueryPage />;
+      
+      case 'reports':
+        return <ReportsPage />;
       
       default:
         return (

@@ -1,0 +1,416 @@
+import React, { useState } from 'react';
+import { 
+  FileText, 
+  File, 
+  Download, 
+  Share2, 
+  MoreVertical, 
+  Search, 
+  Filter, 
+  Grid, 
+  List, 
+  Plus,
+  Clock,
+  Star,
+  Trash2,
+  Eye,
+  Edit,
+  Copy,
+  FolderPlus,
+  Upload,
+  SortAsc,
+  Calendar
+} from 'lucide-react';
+import { format } from 'date-fns';
+
+interface Document {
+  id: string;
+  name: string;
+  type: 'pdf' | 'excel' | 'docx' | 'csv' | 'pptx';
+  size: number;
+  lastModified: string;
+  owner: string;
+  shared: boolean;
+  starred: boolean;
+  thumbnail?: string;
+}
+
+const ReportsPage: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<'name' | 'modified' | 'size'>('modified');
+
+  // Mock data for documents
+  const documents: Document[] = [
+    {
+      id: '1',
+      name: 'Q4 Sales Report 2024.pdf',
+      type: 'pdf',
+      size: 2456789,
+      lastModified: '2024-01-15T10:30:00Z',
+      owner: 'John Doe',
+      shared: true,
+      starred: true
+    },
+    {
+      id: '2',
+      name: 'Customer Analytics Dashboard.xlsx',
+      type: 'excel',
+      size: 1234567,
+      lastModified: '2024-01-14T15:45:00Z',
+      owner: 'Jane Smith',
+      shared: false,
+      starred: false
+    },
+    {
+      id: '3',
+      name: 'Business Intelligence Summary.docx',
+      type: 'docx',
+      size: 987654,
+      lastModified: '2024-01-13T09:15:00Z',
+      owner: 'Mike Johnson',
+      shared: true,
+      starred: false
+    },
+    {
+      id: '4',
+      name: 'Revenue Data Export.csv',
+      type: 'csv',
+      size: 543210,
+      lastModified: '2024-01-12T14:20:00Z',
+      owner: 'Sarah Wilson',
+      shared: false,
+      starred: true
+    },
+    {
+      id: '5',
+      name: 'Monthly Presentation.pptx',
+      type: 'pptx',
+      size: 3456789,
+      lastModified: '2024-01-11T11:00:00Z',
+      owner: 'David Brown',
+      shared: true,
+      starred: false
+    },
+    {
+      id: '6',
+      name: 'Financial Analysis Q3.pdf',
+      type: 'pdf',
+      size: 1876543,
+      lastModified: '2024-01-10T16:30:00Z',
+      owner: 'Emily Davis',
+      shared: false,
+      starred: false
+    }
+  ];
+
+  const recentDocuments = documents.slice(0, 4);
+
+  const getFileIcon = (type: string, size: number = 48) => {
+    const iconProps = { size, className: "drop-shadow-sm" };
+    
+    switch (type) {
+      case 'pdf':
+        return <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">PDF</div>;
+      case 'excel':
+        return <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">XLS</div>;
+      case 'docx':
+        return <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">DOC</div>;
+      case 'csv':
+        return <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">CSV</div>;
+      case 'pptx':
+        return <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">PPT</div>;
+      default:
+        return <File {...iconProps} className="text-gray-500" />;
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const filteredDocuments = documents.filter(doc =>
+    doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const sortedDocuments = [...filteredDocuments].sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'size':
+        return b.size - a.size;
+      case 'modified':
+      default:
+        return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
+    }
+  });
+
+  const toggleDocSelection = (docId: string) => {
+    const newSelected = new Set(selectedDocs);
+    if (newSelected.has(docId)) {
+      newSelected.delete(docId);
+    } else {
+      newSelected.add(docId);
+    }
+    setSelectedDocs(newSelected);
+  };
+
+  const DocumentCard: React.FC<{ doc: Document }> = ({ doc }) => (
+    <div className={`
+      group relative bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer
+      ${selectedDocs.has(doc.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
+    `}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-3">
+          <input
+            type="checkbox"
+            checked={selectedDocs.has(doc.id)}
+            onChange={() => toggleDocSelection(doc.id)}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          {getFileIcon(doc.type)}
+        </div>
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {doc.starred && <Star size={16} className="text-yellow-500 fill-current" />}
+          <button className="p-1 hover:bg-gray-100 rounded">
+            <MoreVertical size={16} className="text-gray-400" />
+          </button>
+        </div>
+      </div>
+      
+      <div className="space-y-2">
+        <h3 className="font-medium text-gray-900 text-sm leading-tight line-clamp-2">
+          {doc.name}
+        </h3>
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>{formatFileSize(doc.size)}</span>
+          <span>{format(new Date(doc.lastModified), 'MMM dd')}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-gray-500">{doc.owner}</span>
+          {doc.shared && (
+            <div className="flex items-center text-blue-600">
+              <Share2 size={12} className="mr-1" />
+              <span>Shared</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const DocumentRow: React.FC<{ doc: Document }> = ({ doc }) => (
+    <tr className={`
+      hover:bg-gray-50 transition-colors cursor-pointer
+      ${selectedDocs.has(doc.id) ? 'bg-blue-50' : ''}
+    `}>
+      <td className="px-6 py-4">
+        <div className="flex items-center space-x-3">
+          <input
+            type="checkbox"
+            checked={selectedDocs.has(doc.id)}
+            onChange={() => toggleDocSelection(doc.id)}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <div className="w-8 h-8">
+            {getFileIcon(doc.type, 32)}
+          </div>
+          <div>
+            <p className="font-medium text-gray-900">{doc.name}</p>
+            <p className="text-sm text-gray-500">{doc.owner}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-500">
+        {format(new Date(doc.lastModified), 'MMM dd, yyyy HH:mm')}
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-500">
+        {formatFileSize(doc.size)}
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center space-x-2">
+          {doc.starred && <Star size={16} className="text-yellow-500 fill-current" />}
+          {doc.shared && <Share2 size={16} className="text-blue-600" />}
+          <button className="p-1 hover:bg-gray-100 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            <MoreVertical size={16} className="text-gray-400" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+              <FileText size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold">Reports & Documents</h2>
+              <p className="text-blue-100">Manage your business intelligence reports and documents</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <button className="inline-flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium rounded-lg transition-colors">
+              <Upload size={20} className="mr-2" />
+              Upload
+            </button>
+            <button className="inline-flex items-center px-4 py-2 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-100 transition-colors">
+              <Plus size={20} className="mr-2" />
+              New Report
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Documents */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Clock size={20} className="mr-2 text-gray-500" />
+            Recent Documents
+          </h3>
+          <button className="text-sm text-blue-600 hover:text-blue-700 transition-colors">
+            View All
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {recentDocuments.map((doc) => (
+            <div key={doc.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+              <div className="w-10 h-10">
+                {getFileIcon(doc.type, 40)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 text-sm truncate">{doc.name}</p>
+                <p className="text-xs text-gray-500">{format(new Date(doc.lastModified), 'MMM dd')}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Documents Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        {/* Toolbar */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search documents..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                />
+              </div>
+              
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="modified">Last Modified</option>
+                <option value="name">Name</option>
+                <option value="size">Size</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              {selectedDocs.size > 0 && (
+                <div className="flex items-center space-x-2 mr-4">
+                  <span className="text-sm text-gray-600">{selectedDocs.size} selected</span>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <Download size={16} />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <Share2 size={16} />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )}
+              
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Grid size={16} />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <List size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Documents Display */}
+        <div className="p-6">
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {sortedDocuments.map((doc) => (
+                <DocumentCard key={doc.id} doc={doc} />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Last Modified
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Size
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedDocuments.map((doc) => (
+                    <DocumentRow key={doc.id} doc={doc} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {sortedDocuments.length === 0 && (
+            <div className="text-center py-12">
+              <FileText size={48} className="text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No documents found matching your search.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ReportsPage;
