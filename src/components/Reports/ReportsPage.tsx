@@ -22,6 +22,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
+import FilePreviewModal from './FilePreviewModal';
 
 interface Document {
   id: string;
@@ -40,6 +41,8 @@ const ReportsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'name' | 'modified' | 'size'>('modified');
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Mock data for documents
   const documents: Document[] = [
@@ -160,11 +163,22 @@ const ReportsPage: React.FC = () => {
     setSelectedDocs(newSelected);
   };
 
+  const handleDocumentClick = (doc: Document) => {
+    setSelectedDocument(doc);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedDocument(null);
+  };
+
   const DocumentCard: React.FC<{ doc: Document }> = ({ doc }) => (
     <div className={`
       group relative bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200 cursor-pointer
       ${selectedDocs.has(doc.id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''}
-    `}>
+    `}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center space-x-3">
           <input
@@ -173,17 +187,21 @@ const ReportsPage: React.FC = () => {
             onChange={() => toggleDocSelection(doc.id)}
             className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
           />
-          {getFileIcon(doc.type)}
+          <div onClick={() => handleDocumentClick(doc)}>
+            {getFileIcon(doc.type)}
+          </div>
         </div>
         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {doc.starred && <Star size={16} className="text-yellow-500 fill-current" />}
-          <button className="p-1 hover:bg-gray-100 rounded">
+          <button 
+            className="p-1 hover:bg-gray-100 rounded"
+          >
             <MoreVertical size={16} className="text-gray-400" />
           </button>
         </div>
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-2" onClick={() => handleDocumentClick(doc)}>
         <h3 className="font-medium text-gray-900 text-sm leading-tight line-clamp-2">
           {doc.name}
         </h3>
@@ -208,7 +226,8 @@ const ReportsPage: React.FC = () => {
     <tr className={`
       hover:bg-gray-50 transition-colors cursor-pointer
       ${selectedDocs.has(doc.id) ? 'bg-blue-50' : ''}
-    `}>
+    `}
+    >
       <td className="px-6 py-4">
         <div className="flex items-center space-x-3">
           <input
@@ -220,23 +239,25 @@ const ReportsPage: React.FC = () => {
           <div className="w-8 h-8">
             {getFileIcon(doc.type, 32)}
           </div>
-          <div>
+          <div onClick={() => handleDocumentClick(doc)}>
             <p className="font-medium text-gray-900">{doc.name}</p>
             <p className="text-sm text-gray-500">{doc.owner}</p>
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-500">
+      <td className="px-6 py-4 text-sm text-gray-500" onClick={() => handleDocumentClick(doc)}>
         {format(new Date(doc.lastModified), 'MMM dd, yyyy HH:mm')}
       </td>
-      <td className="px-6 py-4 text-sm text-gray-500">
+      <td className="px-6 py-4 text-sm text-gray-500" onClick={() => handleDocumentClick(doc)}>
         {formatFileSize(doc.size)}
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center space-x-2">
           {doc.starred && <Star size={16} className="text-yellow-500 fill-current" />}
           {doc.shared && <Share2 size={16} className="text-blue-600" />}
-          <button className="p-1 hover:bg-gray-100 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+          <button 
+            className="p-1 hover:bg-gray-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          >
             <MoreVertical size={16} className="text-gray-400" />
           </button>
         </div>
@@ -409,6 +430,13 @@ const ReportsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal 
+        document={selectedDocument}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 };
