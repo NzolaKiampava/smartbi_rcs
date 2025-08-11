@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  BarChart3, 
   Users, 
   ShoppingCart, 
   TrendingUp, 
@@ -11,7 +10,8 @@ import {
   Database,
   X,
   Upload,
-  MessageSquare
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -64,9 +64,11 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
 
         <div className="hidden lg:flex items-center p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-              <BarChart3 size={20} className="text-white" />
-            </div>
+            <img 
+              src="/LOGOTIPO-IT-DATA-1943x2048.png" 
+              alt="IT Data Logo" 
+              className="w-8 h-8 object-contain"
+            />
             <div>
               <h2 className="text-xl font-bold text-gray-900">SmartBI</h2>
               <p className="text-xs text-gray-500">Business Intelligence</p>

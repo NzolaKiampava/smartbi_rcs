@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, BarChart3, Shield, Zap, TrendingUp } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Shield, BarChart3, Zap, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import NeuralNetworkAnimation from './NeuralNetworkAnimation';
+import NeuralNetworkAnimation from './NeuralNetworkAnimation.tsx';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -60,9 +60,11 @@ const LoginPage: React.FC = () => {
         <div className="relative z-10 flex flex-col justify-center max-w-lg">
           <div className="mb-12">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
-                <BarChart3 size={24} className="text-white" />
-              </div>
+              <img 
+                src="/LOGOTIPO-BANKING-1536x1534.png" 
+                alt="IT Data Logo" 
+                className="w-12 h-12 object-contain"
+              />
               <div>
                 <h1 className="text-3xl font-bold">SmartBI</h1>
                 <p className="text-blue-100">Business Intelligence Platform</p>
@@ -108,9 +110,11 @@ const LoginPage: React.FC = () => {
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-8">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                <BarChart3 size={20} className="text-white" />
-              </div>
+              <img 
+                src="/LOGOTIPO-IT-DATA-1943x2048.png" 
+                alt="IT Data Logo" 
+                className="w-10 h-10 object-contain"
+              />
               <h1 className="text-2xl font-bold text-gray-900">SmartBI</h1>
             </div>
             <p className="text-gray-600">Business Intelligence Platform</p>
