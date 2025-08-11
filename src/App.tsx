@@ -10,6 +10,7 @@ import DataTable from './components/Tables/DataTable';
 import FileUploadPage from './components/FileUpload/FileUploadPage';
 import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLanguageQueryPage';
 import ReportsPage from './components/Reports/ReportsPage';
+import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 
 const Dashboard: React.FC = () => {
@@ -89,6 +90,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Componente Chatbase - carrega o widget de chat */}
+      <ChatbaseWidget />
+      
       <div className="flex">
         <Sidebar 
           sidebarOpen={sidebarOpen}
