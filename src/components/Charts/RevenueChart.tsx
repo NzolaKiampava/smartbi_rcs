@@ -17,10 +17,10 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-        <p className="text-sm text-gray-500">Monthly revenue performance over the year</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Revenue Trend</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Monthly revenue performance over the year</p>
       </div>
       
       <div className="h-80">

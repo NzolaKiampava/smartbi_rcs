@@ -48,25 +48,25 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
       
       <div 
         ref={modalRef}
-        className="relative bg-white rounded-xl shadow-2xl border border-gray-200 w-80 animate-in slide-in-from-top-2 duration-200"
+        className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-80 animate-in slide-in-from-top-2 duration-200"
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                 <User size={20} className="text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">{user?.name || 'User'}</h3>
-                <p className="text-sm text-gray-500">{user?.email || 'user@example.com'}</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{user?.name || 'User'}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
             >
-              <X size={16} className="text-gray-400" />
+              <X size={16} className="text-gray-400 dark:text-gray-500" />
             </button>
           </div>
         </div>
@@ -79,31 +79,31 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
               <button
                 key={index}
                 onClick={item.action}
-                className="w-full flex items-center px-6 py-3 text-left hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center px-6 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                <Icon size={18} className="text-gray-400 mr-3" />
-                <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                <Icon size={18} className="text-gray-400 dark:text-gray-500 mr-3" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
               </button>
             );
           })}
         </div>
 
         {/* Logout */}
-        <div className="border-t border-gray-100 py-2">
+        <div className="border-t border-gray-100 dark:border-gray-700 py-2">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center px-6 py-3 text-left hover:bg-red-50 transition-colors group"
+            className="w-full flex items-center px-6 py-3 text-left hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group"
           >
-            <LogOut size={18} className="text-gray-400 group-hover:text-red-500 mr-3 transition-colors" />
-            <span className="text-sm font-medium text-gray-700 group-hover:text-red-600 transition-colors">
+            <LogOut size={18} className="text-gray-400 dark:text-gray-500 group-hover:text-red-500 dark:group-hover:text-red-400 mr-3 transition-colors" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
               Sign Out
             </span>
           </button>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 rounded-b-xl">
-          <p className="text-xs text-gray-500 text-center">
+        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 rounded-b-xl">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
             SmartBI Dashboard v2.1.0
           </p>
         </div>

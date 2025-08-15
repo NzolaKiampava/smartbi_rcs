@@ -52,17 +52,17 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         w-64
       `}>
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 lg:hidden">
-          <h2 className="text-xl font-bold text-gray-900">SmartBI</h2>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 lg:hidden bg-white dark:bg-gray-800">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">SmartBI</h2>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-2 hover:bg-gray-100 rounded-md"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-600 dark:text-gray-300"
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="hidden lg:flex items-center p-6 border-b border-gray-200">
+        <div className="hidden lg:flex items-center p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="flex items-center space-x-3">
             <img 
               src="/LOGOTIPO-IT-DATA-1943x2048.png" 
@@ -70,13 +70,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
               className="w-8 h-8 object-contain"
             />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">SmartBI</h2>
-              <p className="text-xs text-gray-500">Business Intelligence</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">SmartBI</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Business Intelligence</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-6">
+        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-6 bg-white dark:bg-gray-800">
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -92,21 +92,21 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
                   className={`
                     w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-all duration-200
                     ${isActive 
-                      ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700' 
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-r-2 border-blue-700 dark:border-blue-400' 
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                     }
                   `}
                 >
-                  <Icon size={20} className={`mr-3 ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
+                  <Icon size={20} className={`mr-3 ${isActive ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
                   {item.name}
                 </button>
               );
             })}
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <button className="w-full flex items-center px-4 py-3 text-left text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors">
-              <Settings size={20} className="mr-3 text-gray-400" />
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <button className="w-full flex items-center px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors">
+              <Settings size={20} className="mr-3 text-gray-400 dark:text-gray-500" />
               Settings
             </button>
           </div>
