@@ -62,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
           </button>
         </div>
 
-        <div className="hidden lg:flex items-center p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="hidden lg:flex items-center p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-200">
           <div className="flex items-center space-x-3">
             <img 
               src="/LOGOTIPO-IT-DATA-1943x2048.png" 
@@ -76,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-6 bg-white dark:bg-gray-800">
+        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-6 bg-white dark:bg-gray-800 transition-colors duration-200">
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -92,12 +92,12 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
                   className={`
                     w-full flex items-center px-4 py-3 text-left text-sm font-medium rounded-lg transition-all duration-200
                     ${isActive 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-r-2 border-blue-700 dark:border-blue-400' 
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-r-2 border-blue-700 dark:border-blue-400' 
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                     }
                   `}
                 >
-                  <Icon size={20} className={`mr-3 ${isActive ? 'text-blue-700 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  <Icon size={20} className={`mr-3 ${isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500'}`} />
                   {item.name}
                 </button>
               );
