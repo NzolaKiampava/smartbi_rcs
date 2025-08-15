@@ -47,8 +47,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
 
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 z-50 h-full bg-white shadow-lg transform transition-transform duration-300 ease-in-out
-        lg:relative lg:transform-none lg:shadow-none lg:border-r lg:border-gray-200 lg:flex-shrink-0
+        fixed top-0 left-0 z-50 h-full bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out
+        lg:relative lg:transform-none lg:shadow-none lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:flex-shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         w-64
       `}>
