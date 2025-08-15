@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import LoginPage from './components/Auth/LoginPage';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
@@ -89,7 +90,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden transition-colors duration-200">
       {/* Componente Chatbase - carrega o widget de chat */}
       <ChatbaseWidget />
       
@@ -107,10 +108,10 @@ const Dashboard: React.FC = () => {
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-7xl mx-auto">
               <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                   {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Dashboard
                 </h1>
-                <p className="text-gray-600 mt-2">
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
                   Welcome to SmartBI - Your comprehensive business intelligence platform
                 </p>
               </div>
@@ -120,18 +121,18 @@ const Dashboard: React.FC = () => {
           </main>
           
           {/* Fixed Footer */}
-          <footer className="h-16 bg-white border-t border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
+          <footer className="h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 flex-shrink-0 transition-colors duration-200">
             <div className="flex items-center space-x-4">
-              <p className="text-sm text-gray-600">© {new Date().getFullYear()} SmartBI. All rights reserved.</p>
+              <p className="text-sm text-gray-600">© 2024 SmartBI. All rights reserved.</p>
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
               <span>Version 2.1.0</span>
               <span>•</span>
-              <button className="hover:text-gray-700 transition-colors">Privacy</button>
+              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Privacy</button>
               <span>•</span>
-              <button className="hover:text-gray-700 transition-colors">Terms</button>
+              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Terms</button>
               <span>•</span>
-              <button className="hover:text-gray-700 transition-colors">Support</button>
+              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Support</button>
             </div>
           </footer>
         </div>
@@ -145,10 +146,10 @@ const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-200">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -163,9 +164,11 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
