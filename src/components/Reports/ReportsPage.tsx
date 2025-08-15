@@ -294,13 +294,13 @@ const ReportsPage: React.FC = () => {
       </div>
 
       {/* Recent Documents */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Clock size={20} className="mr-2 text-gray-500" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+            <Clock size={20} className="mr-2 text-gray-500 dark:text-gray-400" />
             Recent Documents
           </h3>
-          <button className="text-sm text-blue-600 hover:text-blue-700 transition-colors">
+          <button className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
             View All
           </button>
         </div>
