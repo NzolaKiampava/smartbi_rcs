@@ -122,7 +122,7 @@ const Dashboard: React.FC = () => {
           {/* Fixed Footer */}
           <footer className="h-16 bg-white border-t border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
             <div className="flex items-center space-x-4">
-              <p className="text-sm text-gray-600">© 2024 SmartBI. All rights reserved.</p>
+              <p className="text-sm text-gray-600">© {new Date().getFullYear()} SmartBI. All rights reserved.</p>
             </div>
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               <span>Version 2.1.0</span>
