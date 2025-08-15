@@ -89,11 +89,11 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Componente Chatbase - carrega o widget de chat */}
       <ChatbaseWidget />
       
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar 
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
@@ -101,10 +101,10 @@ const Dashboard: React.FC = () => {
           setActiveSection={setActiveSection}
         />
         
-        <div className="flex-1 flex flex-col min-h-screen">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
           
-          <main className="flex-1 p-6">
+          <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-7xl mx-auto">
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900">
@@ -118,6 +118,22 @@ const Dashboard: React.FC = () => {
               {renderContent()}
             </div>
           </main>
+          
+          {/* Fixed Footer */}
+          <footer className="h-16 bg-white border-t border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
+            <div className="flex items-center space-x-4">
+              <p className="text-sm text-gray-600">© 2024 SmartBI. All rights reserved.</p>
+            </div>
+            <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <span>Version 2.1.0</span>
+              <span>•</span>
+              <button className="hover:text-gray-700 transition-colors">Privacy</button>
+              <span>•</span>
+              <button className="hover:text-gray-700 transition-colors">Terms</button>
+              <span>•</span>
+              <button className="hover:text-gray-700 transition-colors">Support</button>
+            </div>
+          </footer>
         </div>
       </div>
     </div>

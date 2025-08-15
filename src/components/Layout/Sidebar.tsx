@@ -48,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
       {/* Sidebar */}
       <div className={`
         fixed top-0 left-0 z-50 h-full bg-white shadow-lg transform transition-transform duration-300 ease-in-out
-        lg:relative lg:transform-none lg:shadow-none lg:border-r lg:border-gray-200
+        lg:relative lg:transform-none lg:shadow-none lg:border-r lg:border-gray-200 lg:flex-shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         w-64
       `}>
@@ -76,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
           </div>
         </div>
 
-        <nav className="mt-6 px-3">
+        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-6">
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
