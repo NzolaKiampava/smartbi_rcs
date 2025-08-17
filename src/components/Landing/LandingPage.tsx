@@ -242,6 +242,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             
             <div className="relative">
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 border border-gray-200 dark:border-gray-700">
+                {/** 
                 <div className="flex items-center space-x-2 mb-4">
                   <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                   <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
@@ -261,6 +262,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded flex-1"></div>
                   </div>
                 </div>
+                */}
+                 <img 
+                  src="https://www.pagar.me/static/Hero-a2b52ccd52f7983c155b32654bbdd12b.png"
+                  alt="Business Intelligence Dashboard"
+                  className="w-full h-auto object-cover"
+                />
               </div>
               
               {/* Floating elements */}
