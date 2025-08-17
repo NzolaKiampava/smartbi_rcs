@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import LandingPage from './components/Landing/LandingPage';
 import LoginPage from './components/Auth/LoginPage';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
@@ -143,6 +144,7 @@ const Dashboard: React.FC = () => {
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const [showLanding, setShowLanding] = useState(true);
 
   if (isLoading) {
     return (
@@ -153,6 +155,10 @@ const AppContent: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  if (showLanding && !isAuthenticated) {
+    return <LandingPage onGetStarted={() => setShowLanding(false)} />;
   }
 
   if (!isAuthenticated) {
