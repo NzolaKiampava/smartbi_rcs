@@ -164,12 +164,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <img 
-                src="/LOGOTIPO-IT-DATA-1943x2048.png" 
-                alt="IT Data Logo" 
-                className="w-8 h-8 object-contain"
-              />
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">SmartBI</span>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="flex items-center space-x-3 focus:outline-none"
+                aria-label="Refresh page"
+              >
+                <img 
+                  src="/LOGOTIPO-IT-DATA-1943x2048.png" 
+                  alt="IT Data Logo" 
+                  className="w-8 h-8 object-contain"
+                />
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">SmartBI</span>
+              </button>
             </div>
             
             <div className="hidden md:flex items-center space-x-8">
