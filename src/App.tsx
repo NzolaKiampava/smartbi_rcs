@@ -14,10 +14,33 @@ import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLangua
 import ReportsPage from './components/Reports/ReportsPage';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+
+const sections = [
+  'overview',
+  'analytics',
+  'users',
+  'file-upload',
+  'natural-query',
+  'reports'
+];
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const sectionFromUrl = location.pathname.replace('/', '') || 'overview';
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState(sectionFromUrl);
+
+  // Atualiza o estado quando a URL muda
+  React.useEffect(() => {
+    setActiveSection(sectionFromUrl);
+  }, [sectionFromUrl]);
+
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
+    navigate(`/${section}`);
+  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -100,7 +123,7 @@ const Dashboard: React.FC = () => {
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
           activeSection={activeSection}
-          setActiveSection={setActiveSection}
+          setActiveSection={handleSectionChange}
         />
         
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -164,15 +187,20 @@ const AppContent: React.FC = () => {
   if (!isAuthenticated) {
     return <LoginPage />;
   }
-
-  return <Dashboard />;
+  return (
+    <Routes>
+      <Route path="/*" element={<Dashboard />} />
+    </Routes>
+  );
 };
 
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppContent />
+        <Router>
+          <AppContent />
+        </Router>
       </AuthProvider>
     </ThemeProvider>
   );
