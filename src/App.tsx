@@ -172,6 +172,14 @@ const Dashboard: React.FC = () => {
 const AppContent: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [showLanding, setShowLanding] = useState(true);
+  const location = useLocation();
+
+  // Reset showLanding quando a URL for '/'
+  React.useEffect(() => {
+    if (location.pathname === '/') {
+      setShowLanding(true);
+    }
+  }, [location.pathname]);
 
   if (isLoading) {
     return (
@@ -184,13 +192,17 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (showLanding && !isAuthenticated) {
+  // Se não autenticado e showLanding é true, mostra landing page
+  if (!isAuthenticated && showLanding) {
     return <LandingPage onGetStarted={() => setShowLanding(false)} />;
   }
 
+  // Se não autenticado e showLanding é false, mostra login
   if (!isAuthenticated) {
     return <LoginPage />;
   }
+
+  // Se autenticado, mostra dashboard
   return (
     <Routes>
       <Route path="/*" element={<Dashboard />} />

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, Shield, BarChart3, Zap, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import NeuralNetworkAnimation from './NeuralNetworkAnimation.tsx';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,19 +60,25 @@ const LoginPage: React.FC = () => {
         <NeuralNetworkAnimation />
         
         <div className="relative z-10 flex flex-col justify-center max-w-lg">
-          <div className="mb-12">
-            <div className="flex items-center space-x-3 mb-6">
-              <img 
-                src="/LOGOTIPO-BANKING-1536x1534.png" 
-                alt="IT Data Logo" 
-                className="w-12 h-12 object-contain"
-              />
-              <div>
-                <h1 className="text-3xl font-bold">SmartBI</h1>
-                <p className="text-blue-100">Business Intelligence Platform</p>
-              </div>
+          <div
+            className="flex items-center space-x-3 mb-6 cursor-pointer hover:opacity-80 transition"
+            onClick={() => window.location.href = '/'}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter') window.location.href = '/'; }}
+          >
+            <img 
+              src="/LOGOTIPO-BANKING-1536x1534.png" 
+              alt="IT Data Logo" 
+              className="w-12 h-12 object-contain"
+            />
+            <div>
+              <h1 className="text-3xl font-bold">SmartBI</h1>
+              <p className="text-blue-100">Business Intelligence Platform</p>
             </div>
-            
+          </div>
+          
+          <div className="mb-12">
             <h2 className="text-4xl font-bold mb-4 leading-tight">
               Transform Your Data Into Actionable Insights
             </h2>
