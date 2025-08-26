@@ -12,6 +12,7 @@ import DataTable from './components/Tables/DataTable';
 import FileUploadPage from './components/FileUpload/FileUploadPage';
 import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLanguageQueryPage';
 import ReportsPage from './components/Reports/ReportsPage';
+import PerformancePage from './components/Performance/PerformancePage';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -100,6 +101,9 @@ const Dashboard: React.FC = () => {
       
       case 'reports':
         return <ReportsPage />;
+      
+      case 'performance':
+        return <PerformancePage />;
       
       default:
         return (
