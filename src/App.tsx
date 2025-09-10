@@ -13,6 +13,7 @@ import FileUploadPage from './components/FileUpload/FileUploadPage';
 import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLanguageQueryPage';
 import ReportsPage from './components/Reports/ReportsPage';
 import PerformancePage from './components/Performance/PerformancePage';
+import DatabasePage from './components/Database/DatabasePage';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -23,7 +24,8 @@ const sections = [
   'users',
   'file-upload',
   'natural-query',
-  'reports'
+  'reports',
+  'database'
 ];
 
 const Dashboard: React.FC = () => {
@@ -104,6 +106,9 @@ const Dashboard: React.FC = () => {
       
       case 'performance':
         return <PerformancePage />;
+      
+      case 'database':
+        return <DatabasePage />;
       
       default:
         return (
