@@ -11,7 +11,9 @@ import {
   X,
   Upload,
   MessageSquare,
-  BarChart3
+  BarChart3,
+  Sparkles,
+  Crown
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -50,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
         fixed top-0 left-0 z-50 h-full bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out
         lg:relative lg:transform-none lg:shadow-none lg:border-r lg:border-gray-200 dark:lg:border-gray-700 lg:flex-shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        w-64
+        w-64 flex flex-col
       `}>
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 lg:hidden bg-white dark:bg-gray-800">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">SmartBI</h2>
@@ -76,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto mt-6 px-3 pb-6 bg-white dark:bg-gray-800">
+        <nav className="flex-1 overflow-y-auto mt-6 px-3 bg-white dark:bg-gray-800">
           <div className="space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -111,6 +113,43 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
             </button>
           </div>
         </nav>
+
+        {/* Cool SaaS Banner */}
+        <div className="p-4 bg-white dark:bg-gray-800">
+          <div className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 rounded-xl p-4 overflow-hidden group hover:shadow-lg transition-all duration-300">
+            {/* Animated background elements */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 animate-pulse"></div>
+            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-110 transition-transform duration-500"></div>
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full translate-y-8 -translate-x-8 group-hover:scale-110 transition-transform duration-500"></div>
+            
+            {/* Content */}
+            <div className="relative z-10">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg backdrop-blur-sm">
+                  <Crown size={16} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-sm">IT Data</h3>
+                  <p className="text-blue-100 text-xs">SaaS Solutions</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 text-white/90">
+                <Sparkles size={14} className="text-yellow-300" />
+                <span className="text-xs font-medium">Powered by 42</span>
+              </div>
+              
+              {/* Version badge */}
+              <div className="mt-3 inline-flex items-center px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full">
+                <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-white text-xs font-medium">v2.1.0</span>
+              </div>
+            </div>
+            
+            {/* Hover effect overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          </div>
+        </div>
       </div>
     </>
   );
