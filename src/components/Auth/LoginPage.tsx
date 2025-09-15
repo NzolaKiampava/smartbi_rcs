@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, Shield, BarChart3, Zap, TrendingUp } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Shield, BarChart3, Zap, TrendingUp, Building2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import NeuralNetworkAnimation from './NeuralNetworkAnimation.tsx';
 import { useNavigate } from 'react-router-dom';
@@ -7,24 +7,20 @@ import { useNavigate } from 'react-router-dom';
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [companySlug, setCompanySlug] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
-    if (!email || !password) {
-      setError('Please fill in all fields');
+    if (!email || !password || !companySlug) {
       return;
     }
 
-    const success = await login(email, password);
-    if (!success) {
-      setError('Invalid email or password');
-    }
+    // Pass company slug to login function
+    await login(email, password, companySlug);
   };
 
   const features = [
@@ -134,13 +130,26 @@ const LoginPage: React.FC = () => {
               <p className="text-gray-600">Sign in to access your dashboard</p>
             </div>
 
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="companySlug" className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Slug
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    id="companySlug"
+                    type="text"
+                    value={companySlug}
+                    onChange={(e) => setCompanySlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="your-company"
+                    disabled={isLoading}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">e.g., acme-corp, my-company-ltd</p>
+              </div>
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
@@ -223,6 +232,7 @@ const LoginPage: React.FC = () => {
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h4>
               <div className="text-sm text-blue-700 space-y-1">
+                <p><strong>Company Slug:</strong> demo-company</p>
                 <p><strong>Email:</strong> admin@smartbi.com</p>
                 <p><strong>Password:</strong> admin123</p>
               </div>
@@ -239,7 +249,7 @@ const LoginPage: React.FC = () => {
           </div>
 
           <div className="mt-8 text-center text-sm text-gray-500">
-            <p>© 2024 SmartBI. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} SmartBI. All rights reserved.</p>
           </div>
         </div>
       </div>
