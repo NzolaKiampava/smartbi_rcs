@@ -14,6 +14,7 @@ import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLangua
 import ReportsPage from './components/Reports/ReportsPage';
 import PerformancePage from './components/Performance/PerformancePage';
 import DatabasePage from './components/Database/DatabasePage';
+import NotificationsPage from './components/Notifications/NotificationsPage';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -110,6 +111,9 @@ const Dashboard: React.FC = () => {
       case 'database':
         return <DatabasePage />;
       
+      case 'notifications':
+        return <NotificationsPage />;
+      
       default:
         return (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
@@ -142,10 +146,13 @@ const Dashboard: React.FC = () => {
             <div className="max-w-7xl mx-auto">
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Dashboard
+                  {activeSection === 'notifications' ? 'Notifications' : `${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Dashboard`}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  Welcome to SmartBI - Your comprehensive business intelligence platform
+                  {activeSection === 'notifications' 
+                    ? 'Manage your system notifications and alerts'
+                    : 'Welcome to SmartBI - Your comprehensive business intelligence platform'
+                  }
                 </p>
               </div>
               

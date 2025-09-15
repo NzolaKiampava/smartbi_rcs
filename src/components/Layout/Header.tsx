@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bell, Search, User, Menu, Sun, Moon } from 'lucide-react';
 import UserProfileModal from './UserProfileModal';
+import NotificationsDropdown from './NotificationsDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -11,8 +12,58 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const [profileModalOpen, setProfileModalOpen] = React.useState(false);
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const { user } = useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
+
+  // Mock notifications data
+  const [notifications, setNotifications] = React.useState([
+    {
+      id: '1',
+      title: 'System Performance Alert',
+      message: 'Database response time has increased by 15% in the last hour.',
+      type: 'warning' as const,
+      timestamp: '2024-01-18T10:30:00Z',
+      read: false,
+      priority: 'high' as const,
+      category: 'performance' as const,
+      actionUrl: '/performance'
+    },
+    {
+      id: '2',
+      title: 'New User Registration',
+      message: 'Sarah Johnson has registered and is pending approval.',
+      type: 'info' as const,
+      timestamp: '2024-01-18T09:45:00Z',
+      read: false,
+      priority: 'medium' as const,
+      category: 'user' as const
+    },
+    {
+      id: '3',
+      title: 'Data Export Completed',
+      message: 'Your Q4 2023 sales report export has been completed.',
+      type: 'success' as const,
+      timestamp: '2024-01-18T09:15:00Z',
+      read: true,
+      priority: 'low' as const,
+      category: 'data' as const
+    }
+  ]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   return (
     <>
@@ -52,9 +103,16 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
           
-          <button className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+          <button 
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+          >
             <Bell size={20} />
-            <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
           
           <div 
@@ -76,6 +134,15 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
       <UserProfileModal 
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
+      />
+      
+      <NotificationsDropdown
+        isOpen={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onDeleteNotification={handleDeleteNotification}
       />
     </>
   );
