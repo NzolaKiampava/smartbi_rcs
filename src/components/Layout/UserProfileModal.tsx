@@ -58,7 +58,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                 <User size={20} className="text-white" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">{user?.name || 'User'}</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{user?.firstName || 'User'}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>
               </div>
             </div>

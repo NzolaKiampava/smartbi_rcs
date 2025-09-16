@@ -123,7 +123,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
               <User size={16} className="text-white" />
             </div>
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || 'User'}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.firstName || 'User'}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>
             </div>
           </div>
