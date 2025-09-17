@@ -169,10 +169,10 @@ const NaturalLanguageQueryPage: React.FC = () => {
   };
 
   const exportData = (format: 'csv' | 'json' | 'excel') => {
-    if (!activeQuery?.results?.data) return;
+    if (!activeQuery?.results) return;
 
     // Convert results to exportable format
-    const data = activeQuery.results.data;
+    const data = activeQuery.results;
     let content = '';
     let filename = `query_results_${new Date().toISOString().split('T')[0]}`;
     
@@ -213,7 +213,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
     }
   };
 
-  const formatCellValue = (value: any, type: string) => {
+  const formatCellValue = (value: unknown, type: string) => {
     if (value === null || value === undefined) return '-';
     
     switch (type) {
@@ -484,8 +484,8 @@ const NaturalLanguageQueryPage: React.FC = () => {
                         <Clock size={12} className="mr-1" />
                         {format(new Date(q.createdAt), 'dd/MM HH:mm')}
                       </span>
-                      {q.results && q.results.data && (
-                        <span>{q.results.data.length} registros retornados</span>
+                      {q.results && q.results.length > 0 && (
+                        <span>{q.results.length} registros retornados</span>
                       )}
                     </div>
                   </div>
@@ -563,7 +563,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resultados da Consulta</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {activeQuery.results?.data?.length || 0} registros retornados
+                    {activeQuery.results?.length || 0} registros retornados
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -589,7 +589,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    {activeQuery.results?.data?.[0] && Object.keys(activeQuery.results.data?.[0] || {}).map((column) => (
+                    {activeQuery.results?.[0]?.data && Object.keys(activeQuery.results[0].data || {}).map((column) => (
                       <th
                         key={column}
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
@@ -603,23 +603,26 @@ const NaturalLanguageQueryPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {activeQuery.results?.data?.slice(0, 100).map((row, index) => (
-                    <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                      {Object.entries(row).map(([column, value]) => (
-                        <td key={column} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatCellValue(value, 'string')}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                  {activeQuery.results?.slice(0, 100).map((item, index) => {
+                    const rowData = item.data || item;
+                    return (
+                      <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        {Object.entries(rowData).map(([column, value]) => (
+                          <td key={column} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            {value === null || value === undefined ? '-' : String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
-            {activeQuery.results?.data && activeQuery.results.data.length > 100 && (
+            {activeQuery.results && activeQuery.results.length > 100 && (
               <div className="p-4 text-center border-t border-gray-200 dark:border-gray-700">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Mostrando os primeiros 100 registros de {activeQuery.results?.data?.length || 0} total.
+                  Mostrando os primeiros 100 registros de {activeQuery.results?.length || 0} total.
                   Use a exportação para ver todos os dados.
                 </p>
               </div>
@@ -629,7 +632,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {activeQuery && activeQuery.status === 'SUCCESS' && activeQuery.results?.data?.length === 0 && (
+      {activeQuery && activeQuery.status === 'SUCCESS' && activeQuery.results?.length === 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center transition-colors duration-200">
           <Database className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
