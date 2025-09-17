@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   History, 
   Search, 
-  Filter, 
   Trash2, 
   CheckCircle, 
   XCircle, 
@@ -11,16 +10,14 @@ import {
   Eye,
   Copy,
   Download,
-  Calendar,
-  MoreVertical,
   AlertCircle,
   Loader,
   BarChart3,
-  RefreshCw,
-  Archive
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNotification } from '../../contexts/NotificationContext';
+import QueryResultsModal from '../NaturalLanguage/QueryResultsModal';
 
 interface QueryHistoryItem {
   id: string;
@@ -28,7 +25,7 @@ interface QueryHistoryItem {
   generatedQuery: string;
   status: 'SUCCESS' | 'ERROR' | 'PROCESSING';
   executionTime: number;
-  resultCount: number;
+  results?: Record<string, unknown>[];
   connectionName: string;
   connectionType: string;
   error?: string;
@@ -40,12 +37,12 @@ interface QueryHistoryItem {
 const QueryHistoryPage: React.FC = () => {
   const [queries, setQueries] = useState<QueryHistoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'error' | 'processing'>('all');
-  const [connectionFilter, setConnectionFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'SUCCESS' | 'ERROR' | 'PROCESSING'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [selectedQueries, setSelectedQueries] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [selectedResultModal, setSelectedResultModal] = useState<QueryHistoryItem | null>(null);
   const { showSuccess, showError } = useNotification();
 
   // Mock data - in real app, this would come from API
@@ -56,7 +53,13 @@ const QueryHistoryPage: React.FC = () => {
       generatedQuery: 'SELECT * FROM users LIMIT 5',
       status: 'SUCCESS',
       executionTime: 245,
-      resultCount: 5,
+      results: [
+        { data: { id: 1, name: 'João Silva', email: 'joao@email.com' } },
+        { data: { id: 2, name: 'Maria Santos', email: 'maria@email.com' } },
+        { data: { id: 3, name: 'Pedro Costa', email: 'pedro@email.com' } },
+        { data: { id: 4, name: 'Ana Lima', email: 'ana@email.com' } },
+        { data: { id: 5, name: 'Carlos Oliveira', email: 'carlos@email.com' } }
+      ],
       connectionName: 'Production DB',
       connectionType: 'PostgreSQL',
       createdAt: '2024-01-18T10:30:00Z',
@@ -69,7 +72,7 @@ const QueryHistoryPage: React.FC = () => {
       generatedQuery: 'SELECT COUNT(*) FROM users',
       status: 'SUCCESS',
       executionTime: 156,
-      resultCount: 1,
+      results: [{ data: { count: 150 } }],
       connectionName: 'Production DB',
       connectionType: 'PostgreSQL',
       createdAt: '2024-01-18T09:45:00Z',
@@ -82,7 +85,7 @@ const QueryHistoryPage: React.FC = () => {
       generatedQuery: 'SELECT * FROM sales_data',
       status: 'ERROR',
       executionTime: 0,
-      resultCount: 0,
+      results: [],
       connectionName: 'Analytics DB',
       connectionType: 'MySQL',
       error: 'Table "sales_data" does not exist',
@@ -96,30 +99,21 @@ const QueryHistoryPage: React.FC = () => {
       generatedQuery: 'SELECT * FROM companies WHERE status = "active"',
       status: 'SUCCESS',
       executionTime: 342,
-      resultCount: 23,
+      results: [
+        { data: { id: 1, name: 'Empresa A', status: 'active' } },
+        { data: { id: 2, name: 'Empresa B', status: 'active' } },
+        { data: { id: 3, name: 'Empresa C', status: 'active' } }
+      ],
       connectionName: 'Production DB',
       connectionType: 'PostgreSQL',
       createdAt: '2024-01-17T16:20:00Z',
       userId: 'user3',
       userName: 'Carlos Oliveira'
-    },
-    {
-      id: '5',
-      naturalQuery: 'Consulta complexa com múltiplas tabelas',
-      generatedQuery: 'SELECT u.*, c.name FROM users u JOIN companies c ON u.company_id = c.id',
-      status: 'PROCESSING',
-      executionTime: 0,
-      resultCount: 0,
-      connectionName: 'Analytics DB',
-      connectionType: 'MySQL',
-      createdAt: '2024-01-18T10:35:00Z',
-      userId: 'user2',
-      userName: 'Maria Santos'
     }
   ];
 
+  // Load query history (mock data for now)
   useEffect(() => {
-    // Simulate API call
     const loadQueries = async () => {
       setIsLoading(true);
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -135,12 +129,7 @@ const QueryHistoryPage: React.FC = () => {
                          query.generatedQuery.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          query.userName.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'success' && query.status === 'SUCCESS') ||
-                         (statusFilter === 'error' && query.status === 'ERROR') ||
-                         (statusFilter === 'processing' && query.status === 'PROCESSING');
-    
-    const matchesConnection = connectionFilter === 'all' || query.connectionName === connectionFilter;
+    const matchesStatus = statusFilter === 'all' || query.status === statusFilter;
     
     const matchesDate = dateFilter === 'all' || (() => {
       const queryDate = new Date(query.createdAt);
@@ -156,7 +145,7 @@ const QueryHistoryPage: React.FC = () => {
       }
     })();
     
-    return matchesSearch && matchesStatus && matchesConnection && matchesDate;
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const successCount = queries.filter(q => q.status === 'SUCCESS').length;
@@ -223,9 +212,7 @@ const QueryHistoryPage: React.FC = () => {
       generatedQuery: q.generatedQuery,
       status: q.status,
       executionTime: q.executionTime,
-      resultCount: q.resultCount,
-      connectionName: q.connectionName,
-      userName: q.userName,
+      resultCount: q.results?.length || 0,
       createdAt: q.createdAt
     }));
 
@@ -241,8 +228,6 @@ const QueryHistoryPage: React.FC = () => {
     
     showSuccess('Histórico exportado com sucesso');
   };
-
-  const uniqueConnections = Array.from(new Set(queries.map(q => q.connectionName)));
 
   return (
     <div className="space-y-6">
@@ -328,29 +313,18 @@ const QueryHistoryPage: React.FC = () => {
             
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'SUCCESS' | 'ERROR' | 'PROCESSING')}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="all">Todos os Status</option>
-              <option value="success">Sucesso</option>
-              <option value="error">Erro</option>
-              <option value="processing">Processando</option>
-            </select>
-            
-            <select
-              value={connectionFilter}
-              onChange={(e) => setConnectionFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="all">Todas as Conexões</option>
-              {uniqueConnections.map(conn => (
-                <option key={conn} value={conn}>{conn}</option>
-              ))}
+              <option value="SUCCESS">Sucesso</option>
+              <option value="ERROR">Erro</option>
+              <option value="PROCESSING">Processando</option>
             </select>
             
             <select
               value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value as any)}
+              onChange={(e) => setDateFilter(e.target.value as 'all' | 'today' | 'week' | 'month')}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="all">Todas as Datas</option>
@@ -463,12 +437,8 @@ const QueryHistoryPage: React.FC = () => {
                             {format(new Date(query.createdAt), 'dd/MM/yyyy HH:mm')}
                           </span>
                           <span className="flex items-center">
-                            <Database size={14} className="mr-1" />
-                            {query.connectionName} ({query.connectionType})
-                          </span>
-                          <span className="flex items-center">
                             <BarChart3 size={14} className="mr-1" />
-                            {query.resultCount} registros
+                            {query.results?.length || 0} registros
                           </span>
                           {query.status === 'SUCCESS' && (
                             <span className="flex items-center">
@@ -481,6 +451,15 @@ const QueryHistoryPage: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {query.status === 'SUCCESS' && query.results && query.results.length > 0 && (
+                          <button
+                            onClick={() => setSelectedResultModal(query)}
+                            className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Visualizar detalhes"
+                          >
+                            <Eye size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={() => copyToClipboard(query.generatedQuery)}
                           className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
@@ -509,7 +488,7 @@ const QueryHistoryPage: React.FC = () => {
               Nenhuma consulta encontrada
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              {searchTerm || statusFilter !== 'all' || connectionFilter !== 'all' || dateFilter !== 'all'
+              {searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
                 ? 'Tente ajustar os filtros de busca'
                 : 'Nenhuma consulta foi executada ainda'
               }
@@ -517,6 +496,18 @@ const QueryHistoryPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Query Results Modal */}
+      {selectedResultModal && (
+        <QueryResultsModal
+          result={{
+            ...selectedResultModal,
+            results: selectedResultModal.results || []
+          }}
+          isOpen={!!selectedResultModal}
+          onClose={() => setSelectedResultModal(null)}
+        />
+      )}
     </div>
   );
 };

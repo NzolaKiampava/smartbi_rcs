@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNotification } from './NotificationContext';
 
 interface User {
@@ -191,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Logout function
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     try {
       await graphqlRequest(LOGOUT_MUTATION, {}, true);
       showSuccess('Logout realizado com sucesso. Até breve!');
@@ -206,10 +206,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setCompany(null);
     }
-  };
+  }, [showSuccess, showError, LOGOUT_MUTATION]);
 
   // Refresh token function
-  const refreshToken = async (): Promise<boolean> => {
+  const refreshToken = useCallback(async (): Promise<boolean> => {
     const refreshTokenValue = localStorage.getItem('refreshToken');
     if (!refreshTokenValue) {
       return false;
@@ -239,10 +239,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await logout();
       return false;
     }
-  };
+  }, [REFRESH_TOKEN_MUTATION, logout]);
 
   // Check if user is authenticated
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     setIsLoading(true);
     
     const token = localStorage.getItem('accessToken');
@@ -279,12 +279,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [refreshToken, logout, showError, ME_QUERY]);
 
   // Check authentication on mount
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   // Auto-refresh token before expiry
   useEffect(() => {
@@ -303,7 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return () => clearTimeout(timeoutId);
     }
-  }, [user]);
+  }, [user, refreshToken]);
 
   const value = {
     user,

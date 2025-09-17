@@ -21,16 +21,6 @@ import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
-const sections = [
-  'overview',
-  'analytics',
-  'users',
-  'file-upload',
-  'natural-query',
-  'reports',
-  'database'
-];
-
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();

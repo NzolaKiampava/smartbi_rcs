@@ -13,7 +13,8 @@ import {
   MessageSquare,
   BarChart3,
   Sparkles,
-  Crown
+  Crown,
+  Clock
 } from 'lucide-react';
 
 interface SidebarProps {
