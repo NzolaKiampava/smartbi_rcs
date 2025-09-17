@@ -55,7 +55,7 @@ const QueryHistoryPage: React.FC = () => {
     const matchesSearch = query.naturalQuery.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          query.generatedQuery.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || query.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || query.status?.toLowerCase() === statusFilter.toLowerCase();
     
     const matchesDate = dateFilter === 'all' || (() => {
       const queryDate = new Date(query.createdAt);
@@ -74,13 +74,13 @@ const QueryHistoryPage: React.FC = () => {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  const successCount = queries.filter(q => q.status === 'success').length;
-  const errorCount = queries.filter(q => q.status === 'error').length;
-  const processingCount = queries.filter(q => q.status === 'processing').length;
-  const avgExecutionTime = queries.filter(q => q.status === 'success').reduce((sum, q) => sum + q.executionTime, 0) / successCount || 0;
+  const successCount = queries.filter(q => q.status?.toLowerCase() === 'success').length;
+  const errorCount = queries.filter(q => q.status?.toLowerCase() === 'error').length;
+  const processingCount = queries.filter(q => q.status?.toLowerCase() === 'processing').length;
+  const avgExecutionTime = queries.filter(q => q.status?.toLowerCase() === 'success').reduce((sum, q) => sum + (q.executionTime || 0), 0) / successCount || 0;
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'success': return <CheckCircle size={16} className="text-green-500" />;
       case 'error': return <XCircle size={16} className="text-red-500" />;
       case 'processing': return <Loader size={16} className="text-blue-500 animate-spin" />;
@@ -89,7 +89,7 @@ const QueryHistoryPage: React.FC = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'success': return 'border-l-green-500 bg-green-50 dark:bg-green-900/10';
       case 'error': return 'border-l-red-500 bg-red-50 dark:bg-red-900/10';
       case 'processing': return 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/10';
@@ -339,13 +339,13 @@ const QueryHistoryPage: React.FC = () => {
                           </h3>
                           {getStatusIcon(query.status)}
                           <span className={`text-sm font-medium ${
-                            query.status === 'success' ? 'text-green-600 dark:text-green-400' :
-                            query.status === 'error' ? 'text-red-600 dark:text-red-400' :
+                            query.status?.toLowerCase() === 'success' ? 'text-green-600 dark:text-green-400' :
+                            query.status?.toLowerCase() === 'error' ? 'text-red-600 dark:text-red-400' :
                             'text-blue-600 dark:text-blue-400'
                           }`}>
                             {query.status}
                           </span>
-                          {query.status === 'success' && (
+                          {query.status?.toLowerCase() === 'success' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                               <Eye size={10} className="mr-1" />
                               Detalhes disponíveis
@@ -379,7 +379,7 @@ const QueryHistoryPage: React.FC = () => {
                               <BarChart3 size={14} className="mr-1" />
                               {query.results?.length || 0} registros
                             </span>
-                            {query.status === 'success' && (
+                            {query.status?.toLowerCase() === 'success' && (
                               <span className="flex items-center">
                                 <Clock size={14} className="mr-1" />
                                 {query.executionTime}ms
@@ -387,7 +387,7 @@ const QueryHistoryPage: React.FC = () => {
                             )}
                           </div>
                           
-                          {query.status === 'success' && (
+                          {query.status?.toLowerCase() === 'success' && (
                             <button
                               onClick={() => setSelectedResultModal(query)}
                               className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
@@ -401,7 +401,7 @@ const QueryHistoryPage: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        {query.status === 'SUCCESS' && (
+                        {query.status?.toLowerCase() === 'success' && (
                           <button
                             onClick={() => setSelectedResultModal(query)}
                             className="flex items-center space-x-1 px-3 py-1.5 text-sm  dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
