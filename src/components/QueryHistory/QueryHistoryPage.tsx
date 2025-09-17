@@ -181,6 +181,7 @@ const QueryHistoryPage: React.FC = () => {
             <button
               onClick={() => window.location.reload()}
               className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
+              title="Atualizar página"
             >
               <RefreshCw size={20} className="text-white" />
             </button>
@@ -241,6 +242,7 @@ const QueryHistoryPage: React.FC = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | 'SUCCESS' | 'ERROR' | 'PROCESSING')}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              title="Filtrar por status"
             >
               <option value="all">Todos os Status</option>
               <option value="SUCCESS">Sucesso</option>
@@ -252,6 +254,7 @@ const QueryHistoryPage: React.FC = () => {
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as 'all' | 'today' | 'week' | 'month')}
               className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              title="Filtrar por data"
             >
               <option value="all">Todas as Datas</option>
               <option value="today">Hoje</option>
@@ -282,6 +285,7 @@ const QueryHistoryPage: React.FC = () => {
                 className={`p-2 rounded-md transition-colors ${
                   viewMode === 'list' ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-300'
                 }`}
+                title="Visualização em lista"
               >
                 <History size={16} />
               </button>
@@ -290,6 +294,7 @@ const QueryHistoryPage: React.FC = () => {
                 className={`p-2 rounded-md transition-colors ${
                   viewMode === 'grid' ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-300'
                 }`}
+                title="Visualização em grade"
               >
                 <BarChart3 size={16} />
               </button>
@@ -318,6 +323,7 @@ const QueryHistoryPage: React.FC = () => {
                     checked={selectedQueries.has(query.id)}
                     onChange={() => toggleQuerySelection(query.id)}
                     className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    title="Selecionar consulta"
                   />
                   
                   <div className="flex-shrink-0 mt-1">
@@ -339,6 +345,12 @@ const QueryHistoryPage: React.FC = () => {
                           }`}>
                             {query.status}
                           </span>
+                          {query.status === 'success' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                              <Eye size={10} className="mr-1" />
+                              Detalhes disponíveis
+                            </span>
+                          )}
                         </div>
                         
                         <div className="bg-gray-900 rounded-lg p-3 mb-3 overflow-x-auto">
@@ -357,32 +369,45 @@ const QueryHistoryPage: React.FC = () => {
                           </div>
                         )}
                         
-                        <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-                          <span className="flex items-center">
-                            <Clock size={14} className="mr-1" />
-                            {format(new Date(query.createdAt), 'dd/MM/yyyy HH:mm')}
-                          </span>
-                          <span className="flex items-center">
-                            <BarChart3 size={14} className="mr-1" />
-                            {query.results?.length || 0} registros
-                          </span>
-                          {query.status === 'success' && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
                             <span className="flex items-center">
                               <Clock size={14} className="mr-1" />
-                              {query.executionTime}ms
+                              {format(new Date(query.createdAt), 'dd/MM/yyyy HH:mm')}
                             </span>
+                            <span className="flex items-center">
+                              <BarChart3 size={14} className="mr-1" />
+                              {query.results?.length || 0} registros
+                            </span>
+                            {query.status === 'success' && (
+                              <span className="flex items-center">
+                                <Clock size={14} className="mr-1" />
+                                {query.executionTime}ms
+                              </span>
+                            )}
+                          </div>
+                          
+                          {query.status === 'success' && (
+                            <button
+                              onClick={() => setSelectedResultModal(query)}
+                              className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                              title="Ver todos os detalhes desta consulta"
+                            >
+                              <Eye size={12} />
+                              <span>Ver todos os detalhes</span>
+                            </button>
                           )}
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {query.status === 'success' && query.results && query.results.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        {query.status === 'SUCCESS' && (
                           <button
                             onClick={() => setSelectedResultModal(query)}
-                            className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                            title="Visualizar detalhes"
+                            className="flex items-center space-x-1 px-3 py-1.5 text-sm  dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
+                            title="Visualizar detalhes completos da consulta"
                           >
-                            <Eye size={16} />
+                            <Eye size={14} />
                           </button>
                         )}
                         <button
