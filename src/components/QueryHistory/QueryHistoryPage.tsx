@@ -17,117 +17,43 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNotification } from '../../contexts/NotificationContext';
+import { graphqlService, AIQueryResult } from '../../services/graphqlService';
 import QueryResultsModal from '../NaturalLanguage/QueryResultsModal';
 
-interface QueryHistoryItem {
-  id: string;
-  naturalQuery: string;
-  generatedQuery: string;
-  status: 'SUCCESS' | 'ERROR' | 'PROCESSING';
-  executionTime: number;
-  results?: Record<string, unknown>[];
-  connectionName: string;
-  connectionType: string;
-  error?: string;
-  createdAt: string;
-  userId: string;
-  userName: string;
-}
-
 const QueryHistoryPage: React.FC = () => {
-  const [queries, setQueries] = useState<QueryHistoryItem[]>([]);
+  const [queries, setQueries] = useState<AIQueryResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'SUCCESS' | 'ERROR' | 'PROCESSING'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [selectedQueries, setSelectedQueries] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [selectedResultModal, setSelectedResultModal] = useState<QueryHistoryItem | null>(null);
+  const [selectedResultModal, setSelectedResultModal] = useState<AIQueryResult | null>(null);
   const { showSuccess, showError } = useNotification();
 
-  // Mock data - in real app, this would come from API
-  const mockQueries: QueryHistoryItem[] = [
-    {
-      id: '1',
-      naturalQuery: 'Mostre os 5 primeiros usuários',
-      generatedQuery: 'SELECT * FROM users LIMIT 5',
-      status: 'SUCCESS',
-      executionTime: 245,
-      results: [
-        { data: { id: 1, name: 'João Silva', email: 'joao@email.com' } },
-        { data: { id: 2, name: 'Maria Santos', email: 'maria@email.com' } },
-        { data: { id: 3, name: 'Pedro Costa', email: 'pedro@email.com' } },
-        { data: { id: 4, name: 'Ana Lima', email: 'ana@email.com' } },
-        { data: { id: 5, name: 'Carlos Oliveira', email: 'carlos@email.com' } }
-      ],
-      connectionName: 'Production DB',
-      connectionType: 'PostgreSQL',
-      createdAt: '2024-01-18T10:30:00Z',
-      userId: 'user1',
-      userName: 'João Silva'
-    },
-    {
-      id: '2',
-      naturalQuery: 'Quantos usuários temos no total?',
-      generatedQuery: 'SELECT COUNT(*) FROM users',
-      status: 'SUCCESS',
-      executionTime: 156,
-      results: [{ data: { count: 150 } }],
-      connectionName: 'Production DB',
-      connectionType: 'PostgreSQL',
-      createdAt: '2024-01-18T09:45:00Z',
-      userId: 'user2',
-      userName: 'Maria Santos'
-    },
-    {
-      id: '3',
-      naturalQuery: 'Mostre vendas da tabela inexistente',
-      generatedQuery: 'SELECT * FROM sales_data',
-      status: 'ERROR',
-      executionTime: 0,
-      results: [],
-      connectionName: 'Analytics DB',
-      connectionType: 'MySQL',
-      error: 'Table "sales_data" does not exist',
-      createdAt: '2024-01-18T09:15:00Z',
-      userId: 'user1',
-      userName: 'João Silva'
-    },
-    {
-      id: '4',
-      naturalQuery: 'Listar todas as empresas ativas',
-      generatedQuery: 'SELECT * FROM companies WHERE status = "active"',
-      status: 'SUCCESS',
-      executionTime: 342,
-      results: [
-        { data: { id: 1, name: 'Empresa A', status: 'active' } },
-        { data: { id: 2, name: 'Empresa B', status: 'active' } },
-        { data: { id: 3, name: 'Empresa C', status: 'active' } }
-      ],
-      connectionName: 'Production DB',
-      connectionType: 'PostgreSQL',
-      createdAt: '2024-01-17T16:20:00Z',
-      userId: 'user3',
-      userName: 'Carlos Oliveira'
-    }
-  ];
-
-  // Load query history (mock data for now)
+  // Load query history from API
   useEffect(() => {
     const loadQueries = async () => {
       setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setQueries(mockQueries);
-      setIsLoading(false);
+      try {
+        const queryHistory = await graphqlService.getQueryHistory();
+        setQueries(queryHistory);
+        showSuccess(`${queryHistory.length} consultas carregadas com sucesso`);
+      } catch (error) {
+        console.error('Failed to load query history:', error);
+        showError('Erro ao carregar histórico de consultas');
+        setQueries([]); // Fallback to empty array on error
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadQueries();
-  }, []);
+  }, [showSuccess, showError]);
 
   const filteredQueries = queries.filter(query => {
     const matchesSearch = query.naturalQuery.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         query.generatedQuery.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         query.userName.toLowerCase().includes(searchTerm.toLowerCase());
+                         query.generatedQuery.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || query.status === statusFilter;
     
@@ -148,25 +74,25 @@ const QueryHistoryPage: React.FC = () => {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  const successCount = queries.filter(q => q.status === 'SUCCESS').length;
-  const errorCount = queries.filter(q => q.status === 'ERROR').length;
-  const processingCount = queries.filter(q => q.status === 'PROCESSING').length;
-  const avgExecutionTime = queries.filter(q => q.status === 'SUCCESS').reduce((sum, q) => sum + q.executionTime, 0) / successCount || 0;
+  const successCount = queries.filter(q => q.status === 'success').length;
+  const errorCount = queries.filter(q => q.status === 'error').length;
+  const processingCount = queries.filter(q => q.status === 'processing').length;
+  const avgExecutionTime = queries.filter(q => q.status === 'success').reduce((sum, q) => sum + q.executionTime, 0) / successCount || 0;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'SUCCESS': return <CheckCircle size={16} className="text-green-500" />;
-      case 'ERROR': return <XCircle size={16} className="text-red-500" />;
-      case 'PROCESSING': return <Loader size={16} className="text-blue-500 animate-spin" />;
+      case 'success': return <CheckCircle size={16} className="text-green-500" />;
+      case 'error': return <XCircle size={16} className="text-red-500" />;
+      case 'processing': return <Loader size={16} className="text-blue-500 animate-spin" />;
       default: return <Clock size={16} className="text-gray-500" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'SUCCESS': return 'border-l-green-500 bg-green-50 dark:bg-green-900/10';
-      case 'ERROR': return 'border-l-red-500 bg-red-50 dark:bg-red-900/10';
-      case 'PROCESSING': return 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/10';
+      case 'success': return 'border-l-green-500 bg-green-50 dark:bg-green-900/10';
+      case 'error': return 'border-l-red-500 bg-red-50 dark:bg-red-900/10';
+      case 'processing': return 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/10';
       default: return 'border-l-gray-300 dark:border-l-gray-600 bg-white dark:bg-gray-800';
     }
   };
@@ -395,7 +321,7 @@ const QueryHistoryPage: React.FC = () => {
                   />
                   
                   <div className="flex-shrink-0 mt-1">
-                    {getConnectionIcon(query.connectionType)}
+                    {getConnectionIcon('default')}
                   </div>
                   
                   <div className="flex-1 min-w-0">
@@ -407,8 +333,8 @@ const QueryHistoryPage: React.FC = () => {
                           </h3>
                           {getStatusIcon(query.status)}
                           <span className={`text-sm font-medium ${
-                            query.status === 'SUCCESS' ? 'text-green-600 dark:text-green-400' :
-                            query.status === 'ERROR' ? 'text-red-600 dark:text-red-400' :
+                            query.status === 'success' ? 'text-green-600 dark:text-green-400' :
+                            query.status === 'error' ? 'text-red-600 dark:text-red-400' :
                             'text-blue-600 dark:text-blue-400'
                           }`}>
                             {query.status}
@@ -440,18 +366,17 @@ const QueryHistoryPage: React.FC = () => {
                             <BarChart3 size={14} className="mr-1" />
                             {query.results?.length || 0} registros
                           </span>
-                          {query.status === 'SUCCESS' && (
+                          {query.status === 'success' && (
                             <span className="flex items-center">
                               <Clock size={14} className="mr-1" />
                               {query.executionTime}ms
                             </span>
                           )}
-                          <span>por {query.userName}</span>
                         </div>
                       </div>
                       
                       <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {query.status === 'SUCCESS' && query.results && query.results.length > 0 && (
+                        {query.status === 'success' && query.results && query.results.length > 0 && (
                           <button
                             onClick={() => setSelectedResultModal(query)}
                             className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"

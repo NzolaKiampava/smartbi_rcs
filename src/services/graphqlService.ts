@@ -43,13 +43,21 @@ class GraphQLService {
 
   private async makeRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     try {
+      // Get auth token from localStorage
+      const token = localStorage.getItem('accessToken');
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add authorization header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(this.endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add authorization header if needed
-          // 'Authorization': `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({
           query,
           variables,
@@ -122,6 +130,28 @@ class GraphQLService {
 
     const response = await this.makeRequest<ExecuteAIQueryResponse>(mutation, variables);
     return response.executeAIQueryPublic;
+  }
+
+  async getQueryHistory(): Promise<AIQueryResult[]> {
+    const query = `
+      query GetAllQueryHistory {
+        getAIQueryHistoryPublic {
+          id
+          naturalQuery
+          generatedQuery
+          status
+          executionTime
+          error
+          createdAt
+          results {
+            data
+          }
+        }
+      }
+    `;
+
+    const response = await this.makeRequest<{ getAIQueryHistoryPublic: AIQueryResult[] }>(query);
+    return response.getAIQueryHistoryPublic;
   }
 }
 
