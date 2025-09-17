@@ -16,6 +16,7 @@ import ReportsPage from './components/Reports/ReportsPage';
 import PerformancePage from './components/Performance/PerformancePage';
 import DatabasePage from './components/Database/DatabasePage';
 import NotificationsPage from './components/Notifications/NotificationsPage';
+import QueryHistoryPage from './components/QueryHistory/QueryHistoryPage';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -114,6 +115,9 @@ const Dashboard: React.FC = () => {
       
       case 'notifications':
         return <NotificationsPage />;
+      
+      case 'query-history':
+        return <QueryHistoryPage />;
       
       default:
         return (

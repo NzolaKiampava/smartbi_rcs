@@ -31,6 +31,7 @@ const navigation = [
   { name: 'Performance', icon: TrendingUp, section: 'performance' },
   { name: 'AI Analysis', icon: Upload, section: 'file-upload' },
   { name: 'Natural Query', icon: MessageSquare, section: 'natural-query' },
+  { name: 'Query History', icon: Clock, section: 'query-history' },
   { name: 'Reports', icon: FileText, section: 'reports' },
   { name: 'Activity', icon: Activity, section: 'activity' },
   { name: 'Database', icon: Database, section: 'database' },
