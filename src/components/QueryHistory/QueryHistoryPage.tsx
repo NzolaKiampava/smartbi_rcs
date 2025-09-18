@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { useNotification } from '../../contexts/NotificationContext';
 import { graphqlService, AIQueryResult } from '../../services/graphqlService';
 import QueryResultsModal from '../NaturalLanguage/QueryResultsModal';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 const QueryHistoryPage: React.FC = () => {
   const [queries, setQueries] = useState<AIQueryResult[]>([]);
@@ -29,6 +30,17 @@ const QueryHistoryPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedResultModal, setSelectedResultModal] = useState<AIQueryResult | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    type: 'single' | 'multiple' | 'all';
+    queryId?: string;
+    queryTitle?: string;
+    selectedCount?: number;
+  }>({
+    isOpen: false,
+    type: 'single'
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const { showSuccess, showError } = useNotification();
 
   // Load query history from API
@@ -116,15 +128,71 @@ const QueryHistoryPage: React.FC = () => {
     setSelectedQueries(newSelected);
   };
 
-  const handleDeleteQuery = (queryId: string) => {
-    setQueries(prev => prev.filter(q => q.id !== queryId));
-    showSuccess('Consulta deletada com sucesso');
+  const handleDeleteQuery = (queryId: string, queryTitle: string) => {
+    setDeleteModal({
+      isOpen: true,
+      type: 'single',
+      queryId,
+      queryTitle
+    });
   };
 
   const handleBulkDelete = () => {
-    setQueries(prev => prev.filter(q => !selectedQueries.has(q.id)));
-    setSelectedQueries(new Set());
-    showSuccess(`${selectedQueries.size} consultas deletadas com sucesso`);
+    setDeleteModal({
+      isOpen: true,
+      type: 'multiple',
+      selectedCount: selectedQueries.size
+    });
+  };
+
+  const handleClearAllHistory = () => {
+    setDeleteModal({
+      isOpen: true,
+      type: 'all'
+    });
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      switch (deleteModal.type) {
+        case 'single': {
+          if (deleteModal.queryId) {
+            await graphqlService.deleteQueryHistory(deleteModal.queryId);
+            setQueries(prev => prev.filter(q => q.id !== deleteModal.queryId));
+            showSuccess('Consulta removida com sucesso');
+          }
+          break;
+        }
+        
+        case 'multiple': {
+          const selectedIds = Array.from(selectedQueries);
+          const result = await graphqlService.deleteMultipleQueryHistory(selectedIds);
+          setQueries(prev => prev.filter(q => !selectedQueries.has(q.id)));
+          setSelectedQueries(new Set());
+          if (result.errors.length > 0) {
+            showError(`${result.deletedCount} consultas removidas, ${result.errors.length} falharam`);
+          } else {
+            showSuccess(`${result.deletedCount} consultas removidas com sucesso`);
+          }
+          break;
+        }
+        
+        case 'all': {
+          const clearResult = await graphqlService.clearAllQueryHistory();
+          setQueries([]);
+          setSelectedQueries(new Set());
+          showSuccess(`${clearResult.deletedCount} consultas removidas. ${clearResult.message}`);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete queries:', error);
+      showError('Erro ao remover consultas. Tente novamente.');
+    } finally {
+      setIsDeleting(false);
+      setDeleteModal({ isOpen: false, type: 'single' });
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -279,6 +347,17 @@ const QueryHistoryPage: React.FC = () => {
               </div>
             )}
             
+            {queries.length > 0 && (
+              <button
+                onClick={handleClearAllHistory}
+                className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-200 dark:border-red-800"
+                title="Limpar todo o histórico"
+              >
+                <Trash2 size={14} />
+                <span>Limpar Tudo</span>
+              </button>
+            )}
+            
             <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('list')}
@@ -418,7 +497,7 @@ const QueryHistoryPage: React.FC = () => {
                           <Copy size={16} />
                         </button>
                         <button
-                          onClick={() => handleDeleteQuery(query.id)}
+                          onClick={() => handleDeleteQuery(query.id, query.naturalQuery)}
                           className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           title="Deletar consulta"
                         >
@@ -446,6 +525,35 @@ const QueryHistoryPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, type: 'single' })}
+        onConfirm={confirmDelete}
+        isLoading={isDeleting}
+        title={
+          deleteModal.type === 'single' 
+            ? 'Confirmar Remoção de Consulta'
+            : deleteModal.type === 'multiple'
+            ? 'Confirmar Remoção em Lote'
+            : 'Confirmar Limpeza do Histórico'
+        }
+        message={
+          deleteModal.type === 'single'
+            ? `Tem certeza que deseja remover a consulta "${deleteModal.queryTitle}"?`
+            : deleteModal.type === 'multiple'
+            ? `Tem certeza que deseja remover as ${deleteModal.selectedCount} consultas selecionadas?`
+            : 'Tem certeza que deseja limpar todo o histórico de consultas? Esta ação irá remover permanentemente todas as consultas salvas.'
+        }
+        itemCount={
+          deleteModal.type === 'single' 
+            ? 1 
+            : deleteModal.type === 'multiple' 
+            ? deleteModal.selectedCount 
+            : queries.length
+        }
+      />
 
       {/* Query Results Modal */}
       {selectedResultModal && (

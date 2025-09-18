@@ -153,6 +153,47 @@ class GraphQLService {
     const response = await this.makeRequest<{ getAIQueryHistoryPublic: AIQueryResult[] }>(query);
     return response.getAIQueryHistoryPublic;
   }
+
+  async deleteQueryHistory(id: string): Promise<boolean> {
+    const mutation = `
+      mutation DeleteAIQuery($id: ID!) {
+        deleteAIQueryPublic(id: $id)
+      }
+    `;
+
+    const variables = { id };
+    const response = await this.makeRequest<{ deleteAIQueryPublic: boolean }>(mutation, variables);
+    return response.deleteAIQueryPublic;
+  }
+
+  async deleteMultipleQueryHistory(ids: string[]): Promise<{ deletedCount: number; errors: string[] }> {
+    const mutation = `
+      mutation DeleteMultipleAIQueries($ids: [ID!]!) {
+        deleteMultipleAIQueriesPublic(ids: $ids) {
+          deletedCount
+          errors
+        }
+      }
+    `;
+
+    const variables = { ids };
+    const response = await this.makeRequest<{ deleteMultipleAIQueriesPublic: { deletedCount: number; errors: string[] } }>(mutation, variables);
+    return response.deleteMultipleAIQueriesPublic;
+  }
+
+  async clearAllQueryHistory(): Promise<{ deletedCount: number; message: string }> {
+    const mutation = `
+      mutation ClearAIQueryHistory {
+        clearAIQueryHistoryPublic {
+          deletedCount
+          message
+        }
+      }
+    `;
+
+    const response = await this.makeRequest<{ clearAIQueryHistoryPublic: { deletedCount: number; message: string } }>(mutation);
+    return response.clearAIQueryHistoryPublic;
+  }
 }
 
 export const graphqlService = new GraphQLService();
