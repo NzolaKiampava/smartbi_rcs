@@ -49,8 +49,20 @@ const DatabasePage: React.FC = () => {
     loadDatabases();
   }, [showSuccess, showError]);
 
+  // Function to map backend status to display status
+  const mapStatus = (backendStatus: string) => {
+    switch (backendStatus?.toLowerCase()) {
+      case 'active': return 'connected';
+      case 'inactive': return 'disconnected';
+      case 'error': return 'error';
+      case 'connecting': return 'connecting';
+      default: return 'disconnected';
+    }
+  };
+
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const mappedStatus = mapStatus(status);
+    switch (mappedStatus) {
       case 'connected': return 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30';
       case 'disconnected': return 'text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-900/30';
       case 'error': return 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/30';
@@ -60,7 +72,8 @@ const DatabasePage: React.FC = () => {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    const mappedStatus = mapStatus(status);
+    switch (mappedStatus) {
       case 'connected': return <CheckCircle size={16} className="text-green-500" />;
       case 'disconnected': return <XCircle size={16} className="text-gray-500" />;
       case 'error': return <AlertCircle size={16} className="text-red-500" />;
@@ -77,7 +90,7 @@ const DatabasePage: React.FC = () => {
       case 'postgres': 
         return <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
       
-      case 'SUPABASE': 
+      case 'supabase': 
         return <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
       
       case 'mongodb': 
@@ -101,7 +114,7 @@ const DatabasePage: React.FC = () => {
       case 'snowflake': 
         return <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
       
-      case 'supabase': 
+      case 'api_rest': 
         return <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
       
       case 'firebase': 
@@ -133,22 +146,35 @@ const DatabasePage: React.FC = () => {
     }
   };
 
+  const getDatabaseBackgroundColor = (type: string, status?: string) => {
+    const mappedStatus = status ? mapStatus(status) : '';
+    
+    // Se o status for connected, usar cor verde independente do tipo
+    if (mappedStatus === 'connected') {
+      return 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-600/70';
+    }
+    
+    // Se não for ativo, usar cores baseadas no tipo
+
+  };
+
   const filteredDatabases = databases.filter(db => {
     const matchesSearch = db.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          db.type.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = filterStatus === 'all' || db.status?.toLowerCase() === filterStatus.toLowerCase();
+    const mappedStatus = mapStatus(db.status || '');
+    const matchesStatus = filterStatus === 'all' || mappedStatus === filterStatus;
     const matchesType = filterType === 'all' || db.type.toLowerCase() === filterType.toLowerCase();
     
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const connectedCount = databases.filter(db => db.status?.toLowerCase() === 'connected').length;
-  const disconnectedCount = databases.filter(db => db.status?.toLowerCase() === 'disconnected').length;
-  const errorCount = databases.filter(db => db.status?.toLowerCase() === 'error').length;
+  const connectedCount = databases.filter(db => mapStatus(db.status || '') === 'connected').length;
+  const disconnectedCount = databases.filter(db => mapStatus(db.status || '') === 'disconnected').length;
+  const errorCount = databases.filter(db => mapStatus(db.status || '') === 'error').length;
 
   const DatabaseCard: React.FC<{ database: Connection }> = ({ database }) => (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 hover:shadow-lg transition-all duration-200 group">
+    <div className={`${getDatabaseBackgroundColor(database.type, database.status)} rounded-xl p-6 hover:shadow-lg transition-all duration-200 group`}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
           {getDatabaseIcon(database.type)}
@@ -161,7 +187,7 @@ const DatabasePage: React.FC = () => {
         <div className="flex items-center space-x-2">
           <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(database.status)}`}>
             {getStatusIcon(database.status)}
-            <span className="capitalize">{database.status}</span>
+            <span className="capitalize">{mapStatus(database.status || '')}</span>
           </div>
           <button 
             className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all"
@@ -324,7 +350,11 @@ const DatabasePage: React.FC = () => {
               <option value="mysql">MySQL</option>
               <option value="mongodb">MongoDB</option>
               <option value="oracle">Oracle</option>
+              <option value="sqlserver">SQL Server</option>
+              <option value="api_rest">API Rest</option>
               <option value="redis">Redis</option>
+              <option value="supabase">Supabase</option>
+              <option value="elasticsearch">Elasticsearch</option>
               <option value="snowflake">Snowflake</option>
             </select>
           </div>
@@ -397,8 +427,8 @@ const DatabasePage: React.FC = () => {
         </div>
       )}
 
-      {filteredDatabases.length === 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center transition-colors duration-200">
+      {filteredDatabases.length === 0 && !isLoading && (
+        <div className={`${filterType !== 'all' ? getDatabaseBackgroundColor(filterType) : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'} rounded-xl shadow-sm border p-12 text-center transition-colors duration-200`}>
           <Database size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No databases found</h3>
           <p className="text-gray-500 dark:text-gray-400 mb-6">
