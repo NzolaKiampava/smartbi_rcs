@@ -116,7 +116,11 @@ const Dashboard: React.FC = () => {
         />
         
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          <Header 
+            sidebarOpen={sidebarOpen} 
+            setSidebarOpen={setSidebarOpen}
+            setActiveSection={handleSectionChange}
+          />
           
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-7xl mx-auto">

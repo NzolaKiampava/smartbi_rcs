@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Search, User, Menu, Sun, Moon } from 'lucide-react';
+import { Bell, Search, User, Menu, Sun, Moon, ChevronRight } from 'lucide-react';
 import UserProfileModal from './UserProfileModal';
 import NotificationsDropdown from './NotificationsDropdown';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,13 +8,53 @@ import { useTheme } from '../../contexts/ThemeContext';
 interface HeaderProps {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  setActiveSection: (section: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
+const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveSection }) => {
   const [profileModalOpen, setProfileModalOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
   const { user } = useAuth();
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
+
+  // Pages available in the system
+  const pages = [
+    { id: 'overview', title: 'Overview', description: 'Dashboard overview with key metrics' },
+    { id: 'analytics', title: 'Analytics', description: 'Business intelligence and data analysis' },
+    { id: 'file-upload', title: 'File Upload', description: 'Upload and manage data files' },
+    { id: 'natural-query', title: 'Natural Language Query', description: 'Query data using natural language' },
+    { id: 'reports', title: 'Reports', description: 'Generate and view reports' },
+    { id: 'performance', title: 'Performance', description: 'System performance monitoring' },
+    { id: 'notifications', title: 'Notifications', description: 'View system notifications' },
+    { id: 'query-history', title: 'Query History', description: 'History of executed queries' },
+    { id: 'users', title: 'Users', description: 'User management and administration' },
+    { id: 'database', title: 'Database', description: 'Database connections and management' }
+  ];
+
+  // Filter pages based on search query
+  const filteredPages = pages.filter(page => 
+    page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    page.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setShowSuggestions(value.length > 0);
+  };
+
+  const handlePageSelect = (pageId: string) => {
+    setActiveSection(pageId);
+    setSearchQuery('');
+    setShowSuggestions(false);
+  };
+
+  const handleSearchBlur = () => {
+    // Delay hiding suggestions to allow clicks
+    setTimeout(() => setShowSuggestions(false), 200);
+  };
 
   // Mock notifications data
   const [notifications, setNotifications] = React.useState([
@@ -73,6 +113,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+            title="Toggle sidebar"
           >
             <Menu size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
@@ -88,9 +129,47 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
             <input
               type="text"
-              placeholder="Search analytics, reports, users..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={() => searchQuery.length > 0 && setShowSuggestions(true)}
+              onBlur={handleSearchBlur}
+              placeholder="Search pages..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all"
             />
+            
+            {/* Suggestions Dropdown */}
+            {showSuggestions && filteredPages.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                {filteredPages.map((page) => (
+                  <button
+                    key={page.id}
+                    onClick={() => handlePageSelect(page.id)}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-600 last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {page.title}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {page.description}
+                        </p>
+                      </div>
+                      <ChevronRight size={16} className="text-gray-400 dark:text-gray-500" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {/* No results message */}
+            {showSuggestions && searchQuery.length > 0 && filteredPages.length === 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 px-4 py-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No pages found matching "{searchQuery}"
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
