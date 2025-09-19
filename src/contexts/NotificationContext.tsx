@@ -18,13 +18,32 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationCounter, setNotificationCounter] = useState(0);
 
   const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(notification => notification.id !== id));
   }, []);
 
+  const generateUniqueId = useCallback(() => {
+    const timestamp = Date.now();
+    const counter = notificationCounter;
+    setNotificationCounter(prev => prev + 1);
+    return `notification-${timestamp}-${counter}`;
+  }, [notificationCounter]);
+
   const showSuccess = useCallback((message: string, duration = 5000) => {
-    const id = Date.now().toString();
+    // Evita notificações duplicadas com a mesma mensagem nos últimos 1000ms
+    const now = Date.now();
+    const existingNotification = notifications.find(n => 
+      n.message === message && 
+      n.type === 'success' && 
+      (now - parseInt(n.id.split('-')[1])) < 1000
+    );
+    if (existingNotification) {
+      return;
+    }
+
+    const id = generateUniqueId();
     const notification: Notification = {
       id,
       type: 'success',
@@ -38,10 +57,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setTimeout(() => {
       removeNotification(id);
     }, duration);
-  }, [removeNotification]);
+  }, [removeNotification, generateUniqueId, notifications]);
 
   const showError = useCallback((message: string, duration = 5000) => {
-    const id = Date.now().toString();
+    // Evita notificações duplicadas com a mesma mensagem nos últimos 1000ms
+    const now = Date.now();
+    const existingNotification = notifications.find(n => 
+      n.message === message && 
+      n.type === 'error' && 
+      (now - parseInt(n.id.split('-')[1])) < 1000
+    );
+    if (existingNotification) {
+      return;
+    }
+
+    const id = generateUniqueId();
     const notification: Notification = {
       id,
       type: 'error',
@@ -55,7 +85,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setTimeout(() => {
       removeNotification(id);
     }, duration);
-  }, [removeNotification]);
+  }, [removeNotification, generateUniqueId, notifications]);
 
   const value = {
     showSuccess,
@@ -68,14 +98,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       {children}
       
       {/* Notification Container */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-3">
+      <div className="fixed bottom-4 right-4 z-[9999] space-y-3 pointer-events-none max-w-md">
         {notifications.map((notification) => (
           <div
             key={notification.id}
             className={`
               flex items-center p-4 rounded-xl shadow-2xl border-l-4 transform transition-all duration-500 ease-in-out
-              animate-in slide-in-from-right-full max-w-md min-w-96
-              backdrop-blur-sm
+              animate-in slide-in-from-right-full w-full
+              backdrop-blur-sm pointer-events-auto
               ${notification.type === 'success' 
                 ? 'bg-green-500 border-green-600 text-white shadow-green-500/50' 
                 : 'bg-red-500 border-red-600 text-white shadow-red-500/50'
@@ -99,12 +129,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             </div>
             
             <button
-              onClick={() => removeNotification(notification.id)}
-              className="flex-shrink-0 ml-3 p-1.5 rounded-full transition-all duration-200 hover:bg-white/20 text-white/80 hover:text-white"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                removeNotification(notification.id);
+              }}
+              className="flex-shrink-0 ml-3 p-1.5 rounded-full transition-all duration-200 hover:bg-white/20 text-white/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer"
               aria-label="Fechar notificação"
               title="Fechar notificação"
+              type="button"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 pointer-events-none" />
             </button>
           </div>
         ))}

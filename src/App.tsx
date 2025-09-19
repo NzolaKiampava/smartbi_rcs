@@ -17,6 +17,7 @@ import PerformancePage from './components/Performance/PerformancePage';
 import DatabasePage from './components/Database/DatabasePage';
 import NotificationsPage from './components/Notifications/NotificationsPage';
 import QueryHistoryPage from './components/QueryHistory/QueryHistoryPage';
+import UsersPage from './components/Users/UsersPage';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -76,18 +77,6 @@ const Dashboard: React.FC = () => {
           </div>
         );
       
-      case 'users':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">User Management</h2>
-              <p className="text-gray-600">Manage user accounts, permissions, and activity tracking.</p>
-            </div>
-            
-            <DataTable data={tableData} />
-          </div>
-        );
-      
       case 'file-upload':
         return <FileUploadPage />;
       
@@ -108,6 +97,9 @@ const Dashboard: React.FC = () => {
       
       case 'query-history':
         return <QueryHistoryPage />;
+      
+      case 'users':
+        return <UsersPage />;
       
       default:
         return (

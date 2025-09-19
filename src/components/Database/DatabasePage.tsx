@@ -60,7 +60,8 @@ const DatabasePage: React.FC = () => {
       try {
         const connections = await graphqlService.getConnections();
         setDatabases(connections);
-        showSuccess(`${connections.length} conexões carregadas com sucesso`);
+        // Removendo notificação aqui para evitar duplicação
+        // showSuccess(`${connections.length} conexões carregadas com sucesso`);
       } catch (error) {
         console.error('Failed to load database connections:', error);
         showError('Erro ao carregar conexões de banco de dados');
@@ -71,7 +72,8 @@ const DatabasePage: React.FC = () => {
     };
 
     loadDatabases();
-  }, [showSuccess, showError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Carregamento inicial apenas
 
   // Function to map backend status to display status
   const mapStatus = (backendStatus: string) => {

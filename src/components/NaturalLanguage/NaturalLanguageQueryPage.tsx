@@ -57,14 +57,16 @@ const NaturalLanguageQueryPage: React.FC = () => {
         setSelectedConnectionId(defaultConnection.id);
       }
       
-      showSuccess(`${connectionsList.length} conexões carregadas com sucesso`);
+      // Removendo notificação para evitar duplicação
+      // showSuccess(`${connectionsList.length} conexões carregadas com sucesso`);
     } catch (error) {
       console.error('Failed to load connections:', error);
       showError('Erro ao carregar conexões de banco de dados');
     } finally {
       setIsLoadingConnections(false);
     }
-  }, [showSuccess, showError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Removendo dependências das notificações
 
   // Check API status periodically
   const checkAPIStatus = useCallback(async () => {

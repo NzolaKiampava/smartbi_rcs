@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   `;
 
   // Helper function to make GraphQL requests
-  const graphqlRequest = async (query: string, variables?: any, includeAuth = false) => {
+  const graphqlRequest = useCallback(async (query: string, variables?: Record<string, unknown>, includeAuth = false) => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -148,10 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('GraphQL request failed:', error);
       throw error;
     }
-  };
+  }, []);
 
   // Login function
-  const login = async (email: string, password: string, companySlug: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string, companySlug: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       const data = await graphqlRequest(LOGIN_MUTATION, {
@@ -188,7 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [LOGIN_MUTATION, showSuccess, showError, graphqlRequest]);
 
   // Logout function
   const logout = useCallback(async (): Promise<void> => {
@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setCompany(null);
     }
-  }, [showSuccess, showError, LOGOUT_MUTATION]);
+  }, [showSuccess, showError, LOGOUT_MUTATION, graphqlRequest]);
 
   // Refresh token function
   const refreshToken = useCallback(async (): Promise<boolean> => {
@@ -239,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await logout();
       return false;
     }
-  }, [REFRESH_TOKEN_MUTATION, logout]);
+  }, [REFRESH_TOKEN_MUTATION, logout, graphqlRequest]);
 
   // Check if user is authenticated
   const checkAuth = useCallback(async () => {
@@ -279,7 +279,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [refreshToken, logout, showError, ME_QUERY]);
+  }, [refreshToken, logout, showError, ME_QUERY, graphqlRequest]);
 
   // Check authentication on mount
   useEffect(() => {

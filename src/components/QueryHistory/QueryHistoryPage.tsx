@@ -50,7 +50,8 @@ const QueryHistoryPage: React.FC = () => {
       try {
         const queryHistory = await graphqlService.getQueryHistory();
         setQueries(queryHistory);
-        showSuccess(`${queryHistory.length} consultas carregadas com sucesso`);
+        // Removendo notificação para evitar duplicação
+        // showSuccess(`${queryHistory.length} consultas carregadas com sucesso`);
       } catch (error) {
         console.error('Failed to load query history:', error);
         showError('Erro ao carregar histórico de consultas');
@@ -61,7 +62,8 @@ const QueryHistoryPage: React.FC = () => {
     };
 
     loadQueries();
-  }, [showSuccess, showError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Carregamento inicial apenas
 
   const filteredQueries = queries.filter(query => {
     const matchesSearch = query.naturalQuery.toLowerCase().includes(searchTerm.toLowerCase()) ||
