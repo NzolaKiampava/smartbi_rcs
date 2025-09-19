@@ -14,7 +14,13 @@ import {
   RefreshCw,
   BarChart3,
   Calendar,
-  Loader
+  Loader,
+  X,
+  Eye,
+  EyeOff,
+  Globe,
+  Server,
+  Key
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { graphqlService, Connection } from '../../services/graphqlService';
@@ -27,6 +33,24 @@ const DatabasePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [databases, setDatabases] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [connectionMode, setConnectionMode] = useState<'database' | 'api'>('database');
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'postgresql',
+    host: '',
+    port: '',
+    database: '',
+    username: '',
+    password: '',
+    description: '',
+    // API specific fields
+    baseUrl: '',
+    apiKey: '',
+    authType: 'none',
+    headers: ''
+  });
   const { showSuccess, showError } = useNotification();
 
   // Load database connections from API
@@ -154,8 +178,76 @@ const DatabasePage: React.FC = () => {
       return 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-600/70';
     }
     
+    // Se for erro, usar cor vermelha
+    if (mappedStatus === 'error') {
+      return 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-600/70';
+    }
+    
+    // Se for connecting, usar cor amarela
+    if (mappedStatus === 'connecting') {
+      return 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-600/70';
+    }
+    
     // Se não for ativo, usar cores baseadas no tipo
-
+    switch (type.toLowerCase()) {
+      case 'postgresql': 
+      case 'postgres': 
+        return 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700/50';
+      
+      case 'mysql': 
+        return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700/50';
+      
+      case 'mongodb': 
+      case 'mongo': 
+        return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50';
+      
+      case 'oracle': 
+        return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/50';
+      
+      case 'sqlserver': 
+      case 'mssql': 
+        return 'bg-slate-50 dark:bg-slate-900/30 border-slate-300 dark:border-slate-600/50';
+      
+      case 'redis': 
+        return 'bg-red-50 dark:bg-red-900/25 border-red-300 dark:border-red-600/50';
+      
+      case 'elasticsearch': 
+      case 'elastic': 
+        return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700/50';
+      
+      case 'snowflake': 
+        return 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-700/50';
+      
+      case 'supabase': 
+        return 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700/50';
+      
+      case 'firebase': 
+        return 'bg-yellow-50 dark:bg-yellow-900/25 border-yellow-300 dark:border-yellow-600/50';
+      
+      case 'sqlite': 
+        return 'bg-slate-50 dark:bg-slate-900/20 border-slate-200 dark:border-slate-700/50';
+      
+      case 'cassandra': 
+        return 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-700/50';
+      
+      case 'mariadb': 
+        return 'bg-teal-50 dark:bg-teal-900/25 border-teal-300 dark:border-teal-600/50';
+      
+      case 'dynamodb': 
+        return 'bg-orange-50 dark:bg-orange-900/25 border-orange-300 dark:border-orange-600/50';
+      
+      case 'bigquery': 
+        return 'bg-purple-50 dark:bg-purple-900/15 border-purple-200 dark:border-purple-800/50';
+      
+      case 'clickhouse': 
+        return 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-400 dark:border-yellow-600/50';
+      
+      case 'influxdb': 
+        return 'bg-purple-50 dark:bg-purple-900/25 border-purple-300 dark:border-purple-600/50';
+      
+      default: 
+        return 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-700/50';
+    }
   };
 
   const filteredDatabases = databases.filter(db => {
@@ -267,7 +359,7 @@ const DatabasePage: React.FC = () => {
           </div>
           
           <button
-            onClick={() => showSuccess('Funcionalidade de adicionar banco de dados será implementada em breve')}
+            onClick={() => setShowAddModal(true)}
             className="inline-flex items-center px-4 py-2 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-100 transition-colors"
           >
             <Plus size={20} className="mr-2" />
@@ -438,7 +530,7 @@ const DatabasePage: React.FC = () => {
             }
           </p>
           <button
-            onClick={() => showSuccess('Funcionalidade de adicionar banco de dados será implementada em breve')}
+            onClick={() => setShowAddModal(true)}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus size={20} className="mr-2" />
@@ -487,6 +579,432 @@ const DatabasePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Database Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  {connectionMode === 'database' ? (
+                    <Database size={20} className="text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <Globe size={20} className="text-blue-600 dark:text-blue-400" />
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Add {connectionMode === 'database' ? 'Database' : 'API'} Connection
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Connect to your {connectionMode === 'database' ? 'database' : 'API service'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Fechar modal"
+                aria-label="Fechar modal"
+              >
+                <X size={20} className="text-gray-400 dark:text-gray-500" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              {/* Connection Mode Toggle */}
+              <div className="flex items-center justify-center">
+                <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                  <button
+                    onClick={() => setConnectionMode('database')}
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      connectionMode === 'database' 
+                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' 
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100'
+                    }`}
+                  >
+                    <Database size={16} className="mr-2" />
+                    Database
+                  </button>
+                  <button
+                    onClick={() => setConnectionMode('api')}
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      connectionMode === 'api' 
+                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' 
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100'
+                    }`}
+                  >
+                    <Globe size={16} className="mr-2" />
+                    API
+                  </button>
+                </div>
+              </div>
+              {/* Connection Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Server size={16} className="inline mr-2" />
+                  {connectionMode === 'database' ? 'Database Type' : 'API Type'}
+                </label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  title={`Selecionar tipo de ${connectionMode === 'database' ? 'banco de dados' : 'API'}`}
+                  aria-label={`Tipo de ${connectionMode === 'database' ? 'banco de dados' : 'API'}`}
+                >
+                  {connectionMode === 'database' ? (
+                    <>
+                      <option value="postgresql">PostgreSQL</option>
+                      <option value="mysql">MySQL</option>
+                      <option value="mongodb">MongoDB</option>
+                      <option value="oracle">Oracle</option>
+                      <option value="sqlserver">SQL Server</option>
+                      <option value="redis">Redis</option>
+                      <option value="supabase">Supabase</option>
+                      <option value="elasticsearch">Elasticsearch</option>
+                      <option value="snowflake">Snowflake</option>
+                      <option value="sqlite">SQLite</option>
+                      <option value="firebase">Firebase</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="rest">REST API</option>
+                      <option value="graphql">GraphQL API</option>
+                      <option value="soap">SOAP API</option>
+                      <option value="webhook">Webhook</option>
+                      <option value="custom">Custom API</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              {/* Connection Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Connection Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder={connectionMode === 'database' ? "e.g., Production Database" : "e.g., Customer API"}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                />
+              </div>
+
+              {/* Database specific fields */}
+              {connectionMode === 'database' && (
+                <>
+                  {/* Host and Port */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <Globe size={16} className="inline mr-2" />
+                        Host *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.host}
+                        onChange={(e) => setFormData({...formData, host: e.target.value})}
+                        placeholder="localhost or database.example.com"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Port
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.port}
+                        onChange={(e) => setFormData({...formData, port: e.target.value})}
+                        placeholder="5432"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Database Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Database Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.database}
+                      onChange={(e) => setFormData({...formData, database: e.target.value})}
+                      placeholder="my_database"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    />
+                  </div>
+
+                  {/* Username and Password */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.username}
+                        onChange={(e) => setFormData({...formData, username: e.target.value})}
+                        placeholder="database_user"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <Key size={16} className="inline mr-2" />
+                        Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          placeholder="••••••••"
+                          className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                          title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                          aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                        >
+                          {showPassword ? (
+                            <EyeOff size={16} className="text-gray-400 dark:text-gray-500" />
+                          ) : (
+                            <Eye size={16} className="text-gray-400 dark:text-gray-500" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* API specific fields */}
+              {connectionMode === 'api' && (
+                <>
+                  {/* Base URL */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <Globe size={16} className="inline mr-2" />
+                      Base URL *
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.baseUrl}
+                      onChange={(e) => setFormData({...formData, baseUrl: e.target.value})}
+                      placeholder="https://api.example.com/v1"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                    />
+                  </div>
+
+                  {/* Authentication Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Authentication Type
+                    </label>
+                    <select
+                      value={formData.authType}
+                      onChange={(e) => setFormData({...formData, authType: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      title="Selecionar tipo de autenticação"
+                      aria-label="Tipo de autenticação"
+                    >
+                      <option value="none">No Authentication</option>
+                      <option value="apikey">API Key</option>
+                      <option value="bearer">Bearer Token</option>
+                      <option value="basic">Basic Auth</option>
+                      <option value="oauth">OAuth 2.0</option>
+                    </select>
+                  </div>
+
+                  {/* API Key (if auth type is apikey or bearer) */}
+                  {(formData.authType === 'apikey' || formData.authType === 'bearer') && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <Key size={16} className="inline mr-2" />
+                        {formData.authType === 'apikey' ? 'API Key' : 'Bearer Token'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={formData.apiKey}
+                          onChange={(e) => setFormData({...formData, apiKey: e.target.value})}
+                          placeholder="Enter your API key or token"
+                          className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                          title={showPassword ? "Ocultar token" : "Mostrar token"}
+                          aria-label={showPassword ? "Ocultar token" : "Mostrar token"}
+                        >
+                          {showPassword ? (
+                            <EyeOff size={16} className="text-gray-400 dark:text-gray-500" />
+                          ) : (
+                            <Eye size={16} className="text-gray-400 dark:text-gray-500" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Basic Auth Username/Password */}
+                  {formData.authType === 'basic' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Username
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.username}
+                          onChange={(e) => setFormData({...formData, username: e.target.value})}
+                          placeholder="api_username"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          <Key size={16} className="inline mr-2" />
+                          Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            value={formData.password}
+                            onChange={(e) => setFormData({...formData, password: e.target.value})}
+                            placeholder="••••••••"
+                            className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                            title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                            aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                          >
+                            {showPassword ? (
+                              <EyeOff size={16} className="text-gray-400 dark:text-gray-500" />
+                            ) : (
+                              <Eye size={16} className="text-gray-400 dark:text-gray-500" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom Headers */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Custom Headers (Optional)
+                    </label>
+                    <textarea
+                      value={formData.headers}
+                      onChange={(e) => setFormData({...formData, headers: e.target.value})}
+                      placeholder={`Content-Type: application/json\nX-Custom-Header: value`}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      One header per line in format: Header-Name: value
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="Describe this database connection..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-red-500">*</span> Required fields
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setFormData({
+                      name: '',
+                      type: connectionMode === 'database' ? 'postgresql' : 'rest',
+                      host: '',
+                      port: '',
+                      database: '',
+                      username: '',
+                      password: '',
+                      description: '',
+                      baseUrl: '',
+                      apiKey: '',
+                      authType: 'none',
+                      headers: ''
+                    });
+                    setShowPassword(false);
+                    setConnectionMode('database');
+                  }}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    // Here you would typically validate and submit the form
+                    console.log('Form data:', formData);
+                    console.log('Connection mode:', connectionMode);
+                    showSuccess(`${connectionMode === 'database' ? 'Database' : 'API'} connection will be added soon!`);
+                    setShowAddModal(false);
+                    setFormData({
+                      name: '',
+                      type: connectionMode === 'database' ? 'postgresql' : 'rest',
+                      host: '',
+                      port: '',
+                      database: '',
+                      username: '',
+                      password: '',
+                      description: '',
+                      baseUrl: '',
+                      apiKey: '',
+                      authType: 'none',
+                      headers: ''
+                    });
+                    setShowPassword(false);
+                  }}
+                  disabled={
+                    !formData.name || 
+                    (connectionMode === 'database' && !formData.host) ||
+                    (connectionMode === 'api' && !formData.baseUrl)
+                  }
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Plus size={16} className="inline mr-2" />
+                  Add Connection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
