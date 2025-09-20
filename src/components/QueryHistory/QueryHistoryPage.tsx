@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   History, 
   Search, 
@@ -41,6 +41,7 @@ const QueryHistoryPage: React.FC = () => {
     type: 'single'
   });
   const [isDeleting, setIsDeleting] = useState(false);
+  const lastDeleteTimeRef = useRef<number>(0);
   const { showSuccess, showError } = useNotification();
 
   // Load query history from API
@@ -64,6 +65,21 @@ const QueryHistoryPage: React.FC = () => {
     loadQueries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Carregamento inicial apenas
+
+  // Função para recarregar dados sem refresh da página
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    try {
+      const queryHistory = await graphqlService.getQueryHistory();
+      setQueries(queryHistory);
+      showSuccess('Histórico atualizado com sucesso');
+    } catch (error) {
+      console.error('Failed to refresh query history:', error);
+      showError('Erro ao atualizar histórico');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredQueries = queries.filter(query => {
     const matchesSearch = query.naturalQuery.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -154,7 +170,21 @@ const QueryHistoryPage: React.FC = () => {
     });
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (e?: React.MouseEvent) => {
+    // Prevenir comportamento padrão se o evento existir
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    const now = Date.now();
+    
+    // Previne múltiplas execuções (debounce de 500ms)
+    if (isDeleting || (now - lastDeleteTimeRef.current) < 500) {
+      return;
+    }
+    
+    lastDeleteTimeRef.current = now;
     setIsDeleting(true);
     try {
       switch (deleteModal.type) {
@@ -188,12 +218,14 @@ const QueryHistoryPage: React.FC = () => {
           break;
         }
       }
+      
+      // Fechar modal após sucesso
+      setDeleteModal({ isOpen: false, type: 'single' });
     } catch (error) {
       console.error('Failed to delete queries:', error);
       showError('Erro ao remover consultas. Tente novamente.');
     } finally {
       setIsDeleting(false);
-      setDeleteModal({ isOpen: false, type: 'single' });
     }
   };
 
@@ -242,6 +274,7 @@ const QueryHistoryPage: React.FC = () => {
           
           <div className="flex items-center space-x-3">
             <button
+              type="button"
               onClick={exportQueries}
               className="inline-flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium rounded-lg transition-colors"
             >
@@ -249,9 +282,10 @@ const QueryHistoryPage: React.FC = () => {
               Exportar
             </button>
             <button
-              onClick={() => window.location.reload()}
+              type="button"
+              onClick={handleRefresh}
               className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
-              title="Atualizar página"
+              title="Atualizar histórico"
             >
               <RefreshCw size={20} className="text-white" />
             </button>
@@ -340,7 +374,12 @@ const QueryHistoryPage: React.FC = () => {
                   {selectedQueries.size} selecionadas
                 </span>
                 <button
-                  onClick={handleBulkDelete}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleBulkDelete();
+                  }}
                   className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   title="Deletar selecionadas"
                 >
@@ -351,7 +390,12 @@ const QueryHistoryPage: React.FC = () => {
             
             {queries.length > 0 && (
               <button
-                onClick={handleClearAllHistory}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleClearAllHistory();
+                }}
                 className="flex items-center space-x-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-200 dark:border-red-800"
                 title="Limpar todo o histórico"
               >
@@ -362,6 +406,7 @@ const QueryHistoryPage: React.FC = () => {
             
             <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
               <button
+                type="button"
                 onClick={() => setViewMode('list')}
                 className={`p-2 rounded-md transition-colors ${
                   viewMode === 'list' ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-300'
@@ -371,6 +416,7 @@ const QueryHistoryPage: React.FC = () => {
                 <History size={16} />
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-md transition-colors ${
                   viewMode === 'grid' ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-300'
@@ -402,7 +448,10 @@ const QueryHistoryPage: React.FC = () => {
                   <input
                     type="checkbox"
                     checked={selectedQueries.has(query.id)}
-                    onChange={() => toggleQuerySelection(query.id)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleQuerySelection(query.id);
+                    }}
                     className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     title="Selecionar consulta"
                   />
@@ -470,7 +519,12 @@ const QueryHistoryPage: React.FC = () => {
                           
                           {query.status?.toLowerCase() === 'success' && (
                             <button
-                              onClick={() => setSelectedResultModal(query)}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedResultModal(query);
+                              }}
                               className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                               title="Ver todos os detalhes desta consulta"
                             >
@@ -484,7 +538,12 @@ const QueryHistoryPage: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         {query.status?.toLowerCase() === 'success' && (
                           <button
-                            onClick={() => setSelectedResultModal(query)}
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedResultModal(query);
+                            }}
                             className="flex items-center space-x-1 px-3 py-1.5 text-sm  dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
                             title="Visualizar detalhes completos da consulta"
                           >
@@ -492,15 +551,28 @@ const QueryHistoryPage: React.FC = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => copyToClipboard(query.generatedQuery)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            copyToClipboard(query.generatedQuery);
+                          }}
                           className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                           title="Copiar SQL"
                         >
                           <Copy size={16} />
                         </button>
                         <button
-                          onClick={() => handleDeleteQuery(query.id, query.naturalQuery)}
-                          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!isDeleting) {
+                              handleDeleteQuery(query.id, query.naturalQuery);
+                            }
+                          }}
+                          disabled={isDeleting}
+                          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Deletar consulta"
                         >
                           <Trash2 size={16} />
@@ -532,7 +604,7 @@ const QueryHistoryPage: React.FC = () => {
       <DeleteConfirmationModal
         isOpen={deleteModal.isOpen}
         onClose={() => setDeleteModal({ isOpen: false, type: 'single' })}
-        onConfirm={confirmDelete}
+        onConfirm={(e) => confirmDelete(e)}
         isLoading={isDeleting}
         title={
           deleteModal.type === 'single' 

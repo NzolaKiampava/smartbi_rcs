@@ -4,7 +4,7 @@ import { AlertTriangle, X, Trash2 } from 'lucide-react';
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (e?: React.MouseEvent) => void;
   title: string;
   message: string;
   itemCount?: number;
@@ -28,7 +28,13 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
         {/* Background overlay */}
         <div 
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={onClose}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isLoading) {
+              onClose();
+            }
+          }}
         />
         
         {/* Modal panel */}
@@ -73,7 +79,13 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
           <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
             <button
               type="button"
-              onClick={onConfirm}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isLoading) {
+                  onConfirm(e);
+                }
+              }}
               disabled={isLoading}
               className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
@@ -91,7 +103,13 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!isLoading) {
+                  onClose();
+                }
+              }}
               disabled={isLoading}
               className="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-600 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:mt-0 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
