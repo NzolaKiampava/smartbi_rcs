@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   Brain, 
@@ -16,7 +16,8 @@ import {
   Award,
   Target,
   Lightbulb,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -24,6 +25,27 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  // Fechar modal com tecla Escape
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsVideoModalOpen(false);
+      }
+    };
+
+    if (isVideoModalOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden'; // Previne scroll do body
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isVideoModalOpen]);
+
   const features = [
     {
       icon: Brain,
@@ -225,7 +247,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                   <ArrowRight size={20} className="ml-2" />
                 </button>
                 
-                <button className="inline-flex items-center px-8 py-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <button 
+                  onClick={() => setIsVideoModalOpen(true)}
+                  className="inline-flex items-center px-8 py-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
                   <Play size={20} className="mr-2" />
                   Watch Demo
                 </button>
@@ -548,6 +573,53 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </div>
         </div>
       </footer>
+
+      {/* Video Modal */}
+      {isVideoModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            {/* Background overlay */}
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-75 transition-opacity"
+              onClick={() => setIsVideoModalOpen(false)}
+            />
+            
+            {/* Modal panel */}
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4">
+              {/* Close button */}
+              <button
+                onClick={() => setIsVideoModalOpen(false)}
+                className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-colors"
+                aria-label="Fechar modal de vídeo"
+              >
+                <X size={20} />
+              </button>
+              
+              {/* Video container */}
+              <div className="relative w-full aspect-video">
+                <iframe
+                  className="absolute top-0 left-0 w-full h-full rounded-lg"
+                  src="https://www.youtube.com/embed/iNi_bIVF4Ss?autoplay=1"
+                  title="SmartBI Demo Video"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              
+              {/* Video title */}
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  SmartBI Platform Demo
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Veja como nossa plataforma pode transformar a análise de dados da sua empresa
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
