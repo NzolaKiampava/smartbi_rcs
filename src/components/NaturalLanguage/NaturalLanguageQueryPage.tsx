@@ -17,7 +17,7 @@ import {
   Eye
 } from 'lucide-react';
 import { graphqlService, Connection, AIQueryResult } from '../../services/graphqlService';
-import { useNotification } from '../../contexts/NotificationContext';
+// import { useNotification } from '../../contexts/NotificationContext'; // Temporariamente desabilitado para debug
 import { format } from 'date-fns';
 import QueryResultsModal from './QueryResultsModal';
 
@@ -32,7 +32,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
   const [showSqlQuery, setShowSqlQuery] = useState(false);
   const [apiStatus, setApiStatus] = useState<'checking' | 'available' | 'unavailable' | null>(null);
   const [selectedResultModal, setSelectedResultModal] = useState<AIQueryResult | null>(null);
-  const { showSuccess, showError } = useNotification();
+  // const { showSuccess, showError } = useNotification(); // Temporariamente desabilitado para debug
 
   const exampleQueries = [
     "Mostre os 5 primeiros usuários",
@@ -61,12 +61,11 @@ const NaturalLanguageQueryPage: React.FC = () => {
       // showSuccess(`${connectionsList.length} conexões carregadas com sucesso`);
     } catch (error) {
       console.error('Failed to load connections:', error);
-      showError('Erro ao carregar conexões de banco de dados');
+      console.warn('Erro ao carregar conexões de banco de dados');
     } finally {
       setIsLoadingConnections(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Removendo dependências das notificações
+  }, []);
 
   // Check API status periodically
   const checkAPIStatus = useCallback(async () => {
@@ -97,12 +96,25 @@ const NaturalLanguageQueryPage: React.FC = () => {
     // Check API status every 30 seconds
     const interval = setInterval(checkAPIStatus, 30000);
     return () => clearInterval(interval);
-  }, [loadConnections, checkAPIStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove dependencies to prevent infinite loops
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleSubmitQuery();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitQuery();
+    }
+  };
 
   const handleSubmitQuery = async () => {
     if (!query.trim() || isProcessing || !selectedConnectionId) {
       if (!selectedConnectionId) {
-        showError('Por favor, selecione uma conexão de banco de dados');
+        console.warn('Por favor, selecione uma conexão de banco de dados');
       }
       return;
     }
@@ -116,7 +128,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
         setQueries(prev => [result, ...prev]);
         setActiveQuery(result);
         setQuery('');
-        showSuccess('Consulta executada com sucesso!');
+        console.log('Consulta executada com sucesso!');
       } else {
         // Handle specific error messages from the backend
         let errorMessage = result.error || 'Erro desconhecido ao processar consulta';
@@ -136,7 +148,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
         
         setQueries(prev => [result, ...prev]);
         setActiveQuery(result);
-        showError(errorMessage);
+        console.warn(errorMessage);
       }
     } catch (error) {
       console.error('Query processing failed:', error);
@@ -155,7 +167,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
         errorMessage += 'Tente novamente ou contate o suporte.';
       }
       
-      showError(errorMessage);
+      console.warn(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -167,7 +179,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    showSuccess('Copiado para a área de transferência');
+    console.log('Copiado para a área de transferência');
   };
 
   const exportData = (format: 'csv' | 'json' | 'excel') => {
@@ -193,7 +205,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
           filename += '.csv';
           break;
         default:
-          showError('Formato de exportação não suportado ainda');
+          console.warn('Formato de exportação não suportado ainda');
           return;
       }
 
@@ -208,27 +220,10 @@ const NaturalLanguageQueryPage: React.FC = () => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      showSuccess(`Dados exportados como ${format.toUpperCase()}`);
+      console.log(`Dados exportados como ${format.toUpperCase()}`);
     } catch (error) {
       console.error('Export failed:', error);
-      showError('Erro ao exportar dados');
-    }
-  };
-
-  const formatCellValue = (value: unknown, type: string) => {
-    if (value === null || value === undefined) return '-';
-    
-    switch (type) {
-      case 'date':
-        return format(new Date(value), 'dd/MM/yyyy');
-      case 'datetime':
-        return format(new Date(value), 'dd/MM/yyyy HH:mm');
-      case 'number':
-        return typeof value === 'number' ? value.toLocaleString() : value;
-      case 'currency':
-        return typeof value === 'number' ? `$${value.toLocaleString()}` : value;
-      default:
-        return String(value);
+      console.warn('Erro ao exportar dados');
     }
   };
 
@@ -328,12 +323,13 @@ const NaturalLanguageQueryPage: React.FC = () => {
 
       {/* Query Input */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
-        {/* Connection Selector */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            <Database className="inline w-4 h-4 mr-1" />
-            Conexão de Banco de Dados
-          </label>
+        <form onSubmit={handleFormSubmit}>
+          {/* Connection Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <Database className="inline w-4 h-4 mr-1" />
+              Conexão de Banco de Dados
+            </label>
           <div className="relative">
             <select
               value={selectedConnectionId}
@@ -389,6 +385,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
             <textarea
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="ex: Mostre os 5 primeiros usuários da empresa"
               className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               rows={3}
@@ -400,7 +397,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <button
-              onClick={handleSubmitQuery}
+              type="submit"
               disabled={!query.trim() || isProcessing || !selectedConnectionId || apiStatus === 'unavailable'}
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -430,6 +427,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
             )}
 
             <button
+              type="button"
               onClick={loadConnections}
               disabled={isLoadingConnections}
               className="inline-flex items-center px-4 py-3 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
@@ -444,6 +442,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
             Histórico: {queries.length} consultas
           </div>
         </div>
+        </form>
 
         {/* Example Queries */}
         <div className="mt-6">
@@ -452,6 +451,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
             {exampleQueries.map((example, index) => (
               <button
                 key={index}
+                type="button"
                 onClick={() => handleExampleClick(example)}
                 className="text-xs px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 disabled={isProcessing}
@@ -494,6 +494,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     {q.status === 'SUCCESS' && (
                       <button
+                        type="button"
                         onClick={() => setSelectedResultModal(q)}
                         className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
                         title="Visualizar detalhes"
@@ -513,14 +514,17 @@ const NaturalLanguageQueryPage: React.FC = () => {
       )}
 
       {/* Results */}
-      {activeQuery && activeQuery.results && (
+      {activeQuery && (
         <div className="space-y-6">
-          {/* SQL Query Display */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
+          {activeQuery.results && activeQuery.results.length > 0 ? (
+            <>
+              {/* SQL Query Display */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">SQL Gerado</h3>
               <div className="flex items-center space-x-2">
                 <button
+                  type="button"
                   onClick={() => setSelectedResultModal(activeQuery)}
                   className="flex items-center px-3 py-1.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                   title="Visualizar detalhes completos"
@@ -529,6 +533,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
                   Detalhes
                 </button>
                 <button
+                  type="button"
                   onClick={() => copyToClipboard(activeQuery.generatedQuery)}
                   className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   title="Copiar SQL"
@@ -536,6 +541,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
                   <Copy size={16} />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowSqlQuery(!showSqlQuery)}
                   className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
@@ -570,6 +576,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
+                    type="button"
                     onClick={() => exportData('csv')}
                     className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
@@ -577,6 +584,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
                     CSV
                   </button>
                   <button
+                    type="button"
                     onClick={() => exportData('json')}
                     className="inline-flex items-center px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
@@ -591,13 +599,13 @@ const NaturalLanguageQueryPage: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    {activeQuery.results?.[0]?.data && Object.keys(activeQuery.results[0].data || {}).map((column) => (
+                    {activeQuery.results?.[0] && Object.keys(activeQuery.results[0].data || activeQuery.results[0] || {}).map((column) => (
                       <th
                         key={column}
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                       >
                         <div className="flex items-center space-x-1">
-                          <span>{column}</span>
+                          <span>{String(column)}</span>
                           <Filter size={12} className="text-gray-400 dark:text-gray-500" />
                         </div>
                       </th>
@@ -630,6 +638,18 @@ const NaturalLanguageQueryPage: React.FC = () => {
               </div>
             )}
           </div>
+            </>
+          ) : (
+            activeQuery.status === 'ERROR' && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-6">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  <h3 className="text-lg font-medium text-red-900 dark:text-red-200">Erro na consulta</h3>
+                </div>
+                <p className="text-red-700 dark:text-red-300 mt-2">{activeQuery.error}</p>
+              </div>
+            )
+          )}
         </div>
       )}
 
