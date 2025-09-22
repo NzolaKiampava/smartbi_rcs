@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Activity, 
   TrendingUp, 
@@ -6,134 +6,135 @@ import {
   Clock, 
   Database, 
   Users, 
-  Zap,
   Server,
   BarChart3,
-  PieChart,
-  LineChart as LineChartIcon,
   RefreshCw,
   AlertTriangle,
   CheckCircle,
-  Calendar,
-  Filter,
   Download,
-  Eye,
   Settings
 } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, AreaChart, Area, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const PerformancePage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | '90d'>('7d');
-  const [selectedMetric, setSelectedMetric] = useState<string>('response_time');
+  // const [selectedMetric, setSelectedMetric] = useState<string>('response_time');
+
 
   // Mock performance data
-  const systemMetrics = [
-    {
-      id: 'response_time',
-      title: 'Avg Response Time',
-      value: '245ms',
-      change: -12.5,
-      changeType: 'decrease' as const,
-      icon: Clock,
-      color: 'bg-blue-500',
-      target: '< 300ms',
-      status: 'good'
-    },
-    {
-      id: 'query_throughput',
-      title: 'Query Throughput',
-      value: '1,247/min',
-      change: 18.3,
-      changeType: 'increase' as const,
-      icon: Database,
-      color: 'bg-green-500',
-      target: '> 1,000/min',
-      status: 'excellent'
-    },
-    {
-      id: 'active_users',
-      title: 'Active Users',
-      value: '2,847',
-      change: 5.7,
-      changeType: 'increase' as const,
-      icon: Users,
-      color: 'bg-purple-500',
-      target: '< 3,000',
-      status: 'good'
-    },
-    {
-      id: 'system_uptime',
-      title: 'System Uptime',
-      value: '99.97%',
-      change: 0.02,
-      changeType: 'increase' as const,
-      icon: Server,
-      color: 'bg-emerald-500',
-      target: '> 99.9%',
-      status: 'excellent'
-    },
-    {
-      id: 'data_processed',
-      title: 'Data Processed',
-      value: '847GB',
-      change: 23.1,
-      changeType: 'increase' as const,
-      icon: BarChart3,
-      color: 'bg-orange-500',
-      target: '< 1TB',
-      status: 'good'
-    },
-    {
-      id: 'error_rate',
-      title: 'Error Rate',
-      value: '0.03%',
-      change: -45.2,
-      changeType: 'decrease' as const,
-      icon: AlertTriangle,
-      color: 'bg-red-500',
-      target: '< 0.1%',
-      status: 'excellent'
-    }
-  ];
+  const [systemMetrics, setSystemMetrics] = useState<any[]>([]);
+  const [responseTimeData, setResponseTimeData] = useState<any[]>([]);
+  const [queryPerformanceData, setQueryPerformanceData] = useState<any[]>([]);
+  const [resourceUtilizationData, setResourceUtilizationData] = useState<any[]>([]);
+  const [userActivityData, setUserActivityData] = useState<any[]>([]);
 
-  const responseTimeData = [
-    { time: '00:00', response_time: 234, queries: 890, users: 1200 },
-    { time: '04:00', response_time: 198, queries: 567, users: 890 },
-    { time: '08:00', response_time: 267, queries: 1234, users: 2100 },
-    { time: '12:00', response_time: 289, queries: 1456, users: 2800 },
-    { time: '16:00', response_time: 245, queries: 1389, users: 2650 },
-    { time: '20:00', response_time: 223, queries: 1123, users: 2200 }
-  ];
+  function fetchPerformanceData() {
+    setSystemMetrics([
+      {
+        id: 'response_time',
+        title: 'Avg Response Time',
+        value: `${Math.floor(200 + Math.random() * 100)}ms`,
+        change: parseFloat((Math.random() * 20 - 10).toFixed(1)),
+        changeType: Math.random() > 0.5 ? 'increase' : 'decrease',
+        icon: Clock,
+        color: 'bg-blue-500',
+        target: '< 300ms',
+        status: 'good'
+      },
+      {
+        id: 'query_throughput',
+        title: 'Query Throughput',
+        value: `${Math.floor(1000 + Math.random() * 500)}/min`,
+        change: parseFloat((Math.random() * 30 - 10).toFixed(1)),
+        changeType: 'increase',
+        icon: Database,
+        color: 'bg-green-500',
+        target: '> 1,000/min',
+        status: 'excellent'
+      },
+      {
+        id: 'active_users',
+        title: 'Active Users',
+        value: `${Math.floor(2000 + Math.random() * 1000)}`,
+        change: parseFloat((Math.random() * 10 - 5).toFixed(1)),
+        changeType: 'increase',
+        icon: Users,
+        color: 'bg-purple-500',
+        target: '< 3,000',
+        status: 'good'
+      },
+      {
+        id: 'system_uptime',
+        title: 'System Uptime',
+        value: `${(99.9 + Math.random() * 0.1).toFixed(2)}%`,
+        change: parseFloat((Math.random() * 0.1).toFixed(2)),
+        changeType: 'increase',
+        icon: Server,
+        color: 'bg-emerald-500',
+        target: '> 99.9%',
+        status: 'excellent'
+      },
+      {
+        id: 'data_processed',
+        title: 'Data Processed',
+        value: `${Math.floor(500 + Math.random() * 500)}GB`,
+        change: parseFloat((Math.random() * 30).toFixed(1)),
+        changeType: 'increase',
+        icon: BarChart3,
+        color: 'bg-orange-500',
+        target: '< 1TB',
+        status: 'good'
+      },
+      {
+        id: 'error_rate',
+        title: 'Error Rate',
+        value: `${(Math.random() * 0.1).toFixed(2)}%`,
+        change: parseFloat((Math.random() * 50 - 25).toFixed(1)),
+        changeType: 'decrease',
+        icon: AlertTriangle,
+        color: 'bg-red-500',
+        target: '< 0.1%',
+        status: 'excellent'
+      }
+    ]);
 
-  const queryPerformanceData = [
-    { category: 'Dashboard Queries', avg_time: 145, count: 12450, success_rate: 99.8 },
-    { category: 'Report Generation', avg_time: 2340, count: 3420, success_rate: 99.2 },
-    { category: 'Data Export', avg_time: 4560, count: 890, success_rate: 98.9 },
-    { category: 'Real-time Analytics', avg_time: 89, count: 8900, success_rate: 99.9 },
-    { category: 'AI Analysis', avg_time: 5670, count: 567, success_rate: 97.8 }
-  ];
+    setResponseTimeData([
+      { time: '00:00', response_time: 200 + Math.random() * 100, queries: 800 + Math.random() * 400, users: 1000 + Math.random() * 1000 },
+      { time: '04:00', response_time: 200 + Math.random() * 100, queries: 800 + Math.random() * 400, users: 1000 + Math.random() * 1000 },
+      { time: '08:00', response_time: 200 + Math.random() * 100, queries: 800 + Math.random() * 400, users: 1000 + Math.random() * 1000 },
+      { time: '12:00', response_time: 200 + Math.random() * 100, queries: 800 + Math.random() * 400, users: 1000 + Math.random() * 1000 },
+      { time: '16:00', response_time: 200 + Math.random() * 100, queries: 800 + Math.random() * 400, users: 1000 + Math.random() * 1000 },
+      { time: '20:00', response_time: 200 + Math.random() * 100, queries: 800 + Math.random() * 400, users: 1000 + Math.random() * 1000 }
+    ]);
 
-  const resourceUtilizationData = [
-    { name: 'CPU Usage', value: 68, color: '#3B82F6' },
-    { name: 'Memory Usage', value: 74, color: '#10B981' },
-    { name: 'Storage Usage', value: 45, color: '#F59E0B' },
-    { name: 'Network I/O', value: 32, color: '#EF4444' }
-  ];
+    setQueryPerformanceData([
+      { category: 'Dashboard Queries', avg_time: 100 + Math.random() * 100, count: 12000 + Math.floor(Math.random() * 1000), success_rate: 99 + Math.random() },
+      { category: 'Report Generation', avg_time: 2000 + Math.random() * 500, count: 3000 + Math.floor(Math.random() * 500), success_rate: 98 + Math.random() * 2 },
+      { category: 'Data Export', avg_time: 4000 + Math.random() * 1000, count: 800 + Math.floor(Math.random() * 200), success_rate: 98 + Math.random() * 2 },
+      { category: 'Real-time Analytics', avg_time: 50 + Math.random() * 100, count: 8000 + Math.floor(Math.random() * 2000), success_rate: 99 + Math.random() },
+      { category: 'AI Analysis', avg_time: 5000 + Math.random() * 1000, count: 500 + Math.floor(Math.random() * 100), success_rate: 97 + Math.random() * 3 }
+    ]);
 
-  const userActivityData = [
-    { hour: '00', active_users: 234, sessions: 189, page_views: 1234 },
-    { hour: '02', active_users: 189, sessions: 145, page_views: 987 },
-    { hour: '04', active_users: 156, sessions: 123, page_views: 756 },
-    { hour: '06', active_users: 234, sessions: 198, page_views: 1123 },
-    { hour: '08', active_users: 567, sessions: 456, page_views: 2345 },
-    { hour: '10', active_users: 789, sessions: 634, page_views: 3456 },
-    { hour: '12', active_users: 923, sessions: 745, page_views: 4123 },
-    { hour: '14', active_users: 1045, sessions: 834, page_views: 4567 },
-    { hour: '16', active_users: 1123, sessions: 897, page_views: 4890 },
-    { hour: '18', active_users: 987, sessions: 789, page_views: 4234 },
-    { hour: '20', active_users: 756, sessions: 612, page_views: 3456 },
-    { hour: '22', active_users: 456, sessions: 367, page_views: 2345 }
-  ];
+    setResourceUtilizationData([
+      { name: 'CPU Usage', value: Math.floor(50 + Math.random() * 40), color: '#3B82F6' },
+      { name: 'Memory Usage', value: Math.floor(50 + Math.random() * 40), color: '#10B981' },
+      { name: 'Storage Usage', value: Math.floor(30 + Math.random() * 40), color: '#F59E0B' },
+      { name: 'Network I/O', value: Math.floor(20 + Math.random() * 40), color: '#EF4444' }
+    ]);
+
+    setUserActivityData(Array.from({ length: 12 }, (_, i) => ({
+      hour: String(i * 2).padStart(2, '0'),
+      active_users: Math.floor(100 + Math.random() * 1000),
+      sessions: Math.floor(80 + Math.random() * 800),
+      page_views: Math.floor(500 + Math.random() * 4000)
+    })));
+  }
+
+  useEffect(() => {
+    fetchPerformanceData();
+    const interval = setInterval(fetchPerformanceData, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
