@@ -14,6 +14,7 @@ import FileUploadPage from './components/FileUpload/FileUploadPage';
 import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLanguageQueryPage';
 import ReportsPage from './components/Reports/ReportsPage';
 import PerformancePage from './components/Performance/PerformancePage';
+import ActivityPage from './components/Activity/ActivityPage';
 import DatabasePage from './components/Database/DatabasePage';
 import NotificationsPage from './components/Notifications/NotificationsPage';
 import QueryHistoryPage from './components/QueryHistory/QueryHistoryPage';
@@ -74,6 +75,8 @@ const Dashboard: React.FC = () => {
       
       case 'performance':
         return <PerformancePage />;
+      case 'activity':
+        return <ActivityPage />;
       
       case 'database':
         return <DatabasePage />;
