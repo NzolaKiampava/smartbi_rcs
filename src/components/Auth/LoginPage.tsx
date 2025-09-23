@@ -19,8 +19,17 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    // Pass company slug to login function
-    await login(email, password, companySlug);
+    try {
+      // Pass company slug to login function
+      const loginSuccess = await login(email, password, companySlug);
+      
+      if (loginSuccess) {
+        // Redirect to dashboard after successful login
+        navigate('/overview');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+    }
   };
 
   const features = [

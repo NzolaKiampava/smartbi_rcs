@@ -26,12 +26,111 @@ interface AIQueryResult {
   createdAt: string;
 }
 
+interface FileUpload {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimetype: string;
+  encoding: string;
+  size: number;
+  path: string;
+  fileType: string;
+  uploadedAt: string;
+  metadata?: Record<string, unknown>;
+  analysisReport?: AnalysisReport;
+}
+
+interface AnalysisReport {
+  id: string;
+  fileUploadId: string;
+  fileUpload: FileUpload;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  title: string;
+  summary: string;
+  executionTime?: number;
+  insights: Insight[];
+  recommendations: string[];
+  dataQuality?: DataQuality;
+  visualizations: Visualization[];
+  rawAnalysis?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  error?: string;
+}
+
+interface Insight {
+  id: string;
+  reportId: string;
+  type: string;
+  title: string;
+  description: string;
+  value?: string;
+  confidence?: number;
+  importance?: number;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+interface DataQuality {
+  score: number;
+  completeness: number;
+  accuracy: number;
+  consistency: number;
+  validity: number;
+  issues: DataQualityIssue[];
+}
+
+interface DataQualityIssue {
+  type: string;
+  description: string;
+  severity: string;
+  count: number;
+  examples: string[];
+}
+
+interface Visualization {
+  id: string;
+  type: string;
+  title: string;
+  description?: string;
+  data: Record<string, unknown>;
+  config?: Record<string, unknown>;
+}
+
+interface FileUploadInput {
+  file: File;
+  description?: string;
+  tags?: string[];
+  analysisOptions?: AnalysisOptionsInput;
+}
+
+interface AnalysisOptionsInput {
+  analyzeRevenue?: boolean;
+  analyzeTables?: boolean;
+  generateInsights?: boolean;
+  checkDataQuality?: boolean;
+  generateVisualizations?: boolean;
+  customPrompts?: string[];
+}
+
 interface GetConnectionsResponse {
   getDataConnectionsPublic: Connection[];
 }
 
 interface ExecuteAIQueryResponse {
   executeAIQueryPublic: AIQueryResult;
+}
+
+interface UploadAndAnalyzeFileResponse {
+  uploadAndAnalyzeFile: AnalysisReport;
+}
+
+interface GetAnalysisReportResponse {
+  getAnalysisReport: AnalysisReport;
+}
+
+interface ListFileUploadsResponse {
+  listFileUploads: FileUpload[];
 }
 
 class GraphQLService {
@@ -194,7 +293,238 @@ class GraphQLService {
     const response = await this.makeRequest<{ clearAIQueryHistoryPublic: { deletedCount: number; message: string } }>(mutation);
     return response.clearAIQueryHistoryPublic;
   }
+
+  // File Upload and Analysis Methods
+  async uploadAndAnalyzeFile(input: FileUploadInput): Promise<AnalysisReport> {
+    const formData = new FormData();
+    
+    // Create GraphQL operation for file upload
+    const operations = JSON.stringify({
+      query: `
+        mutation UploadAndAnalyzeFile($input: FileUploadInput!) {
+          uploadAndAnalyzeFile(input: $input) {
+            id
+            fileUploadId
+            status
+            title
+            summary
+            executionTime
+            insights {
+              id
+              type
+              title
+              description
+              value
+              confidence
+              importance
+              createdAt
+            }
+            recommendations
+            dataQuality {
+              score
+              completeness
+              accuracy
+              consistency
+              validity
+              issues {
+                type
+                description
+                severity
+                count
+                examples
+              }
+            }
+            visualizations {
+              id
+              type
+              title
+              description
+              data
+              config
+            }
+            fileUpload {
+              id
+              filename
+              originalName
+              mimetype
+              size
+              fileType
+              uploadedAt
+            }
+            createdAt
+            updatedAt
+            error
+          }
+        }
+      `,
+      variables: {
+        input: {
+          description: input.description,
+          tags: input.tags,
+          analysisOptions: input.analysisOptions
+        }
+      }
+    });
+
+    // Create map for file upload
+    const map = JSON.stringify({
+      "0": ["variables.input.file"]
+    });
+
+    // Add to FormData
+    formData.append('operations', operations);
+    formData.append('map', map);
+    formData.append('0', input.file);
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(this.endpoint, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: GraphQLResponse<UploadAndAnalyzeFileResponse> = await response.json();
+
+      if (result.errors) {
+        throw new Error(result.errors[0]?.message || 'GraphQL error occurred');
+      }
+
+      if (!result.data) {
+        throw new Error('No data returned from GraphQL query');
+      }
+
+      return result.data.uploadAndAnalyzeFile;
+    } catch (error) {
+      console.error('File upload and analysis failed:', error);
+      throw error;
+    }
+  }
+
+  async getAnalysisReport(id: string): Promise<AnalysisReport | null> {
+    const query = `
+      query GetAnalysisReport($id: ID!) {
+        getAnalysisReport(id: $id) {
+          id
+          fileUploadId
+          status
+          title
+          summary
+          executionTime
+          insights {
+            id
+            type
+            title
+            description
+            value
+            confidence
+            importance
+            createdAt
+          }
+          recommendations
+          dataQuality {
+            score
+            completeness
+            accuracy
+            consistency
+            validity
+            issues {
+              type
+              description
+              severity
+              count
+              examples
+            }
+          }
+          visualizations {
+            id
+            type
+            title
+            description
+            data
+            config
+          }
+          fileUpload {
+            id
+            filename
+            originalName
+            mimetype
+            size
+            fileType
+            uploadedAt
+          }
+          createdAt
+          updatedAt
+          error
+        }
+      }
+    `;
+
+    const variables = { id };
+    const response = await this.makeRequest<GetAnalysisReportResponse>(query, variables);
+    return response.getAnalysisReport;
+  }
+
+  async listFileUploads(limit: number = 20, offset: number = 0): Promise<FileUpload[]> {
+    const query = `
+      query ListFileUploads($limit: Int, $offset: Int) {
+        listFileUploads(limit: $limit, offset: $offset) {
+          id
+          filename
+          originalName
+          mimetype
+          size
+          fileType
+          uploadedAt
+          metadata
+          analysisReport {
+            id
+            status
+            title
+            summary
+            createdAt
+          }
+        }
+      }
+    `;
+
+    const variables = { limit, offset };
+    const response = await this.makeRequest<ListFileUploadsResponse>(query, variables);
+    return response.listFileUploads;
+  }
+
+  async deleteFileUpload(id: string): Promise<boolean> {
+    const mutation = `
+      mutation DeleteFileUpload($id: ID!) {
+        deleteFileUpload(id: $id)
+      }
+    `;
+
+    const variables = { id };
+    const response = await this.makeRequest<{ deleteFileUpload: boolean }>(mutation, variables);
+    return response.deleteFileUpload;
+  }
 }
 
 export const graphqlService = new GraphQLService();
-export type { Connection, AIQueryResult };
+export type { 
+  Connection, 
+  AIQueryResult, 
+  FileUpload, 
+  AnalysisReport, 
+  Insight, 
+  DataQuality, 
+  Visualization,
+  FileUploadInput,
+  AnalysisOptionsInput
+};

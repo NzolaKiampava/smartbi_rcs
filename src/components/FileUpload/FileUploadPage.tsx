@@ -19,8 +19,7 @@ import {
   Trash2,
   RefreshCw
 } from 'lucide-react';
-import { analyzeFile } from '../../utils/aiAnalyzer';
-import { AnalysisResult } from '../../types/analysis';
+import { graphqlService, FileUploadInput, AnalysisReport } from '../../services/graphqlService';
 import AnalysisResults from '../Analysis/AnalysisResults';
 
 interface UploadedFile {
@@ -30,13 +29,14 @@ interface UploadedFile {
   type: string;
   status: 'uploading' | 'analyzing' | 'completed' | 'error';
   progress: number;
-  analysisResult?: AnalysisResult;
+  analysisResult?: AnalysisReport;
+  uploadId?: string; // Backend file upload ID
 }
 
 const FileUploadPage: React.FC = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisResult | null>(null);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisReport | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -48,7 +48,7 @@ const FileUploadPage: React.FC = () => {
     setIsDragOver(false);
   }, []);
 
-  const processFile = async (file: File) => {
+  const processFile = useCallback(async (file: File) => {
     const newFile: UploadedFile = {
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
@@ -60,63 +60,81 @@ const FileUploadPage: React.FC = () => {
 
     setFiles(prev => [...prev, newFile]);
 
-    // Simulate upload progress
-    const uploadInterval = setInterval(() => {
-      setFiles(prev => prev.map(f => {
-        if (f.id === newFile.id && f.status === 'uploading') {
-          const newProgress = f.progress + Math.random() * 30;
-          if (newProgress >= 100) {
-            clearInterval(uploadInterval);
-            
-            // Start AI analysis simulation
-            setTimeout(() => {
-              setFiles(prev => prev.map(file => 
-                file.id === newFile.id 
-                  ? { ...file, status: 'analyzing', progress: 0 }
-                  : file
-              ));
-
-              // Perform actual AI analysis
-              analyzeFile(file).then(analysisResult => {
-                setFiles(prev => prev.map(f => 
-                  f.id === newFile.id 
-                    ? { ...f, status: 'completed', progress: 100, analysisResult }
-                    : f
-                ));
-              }).catch(error => {
-                console.error('Analysis failed:', error);
-                setFiles(prev => prev.map(f => 
-                  f.id === newFile.id 
-                    ? { ...f, status: 'error', progress: 0 }
-                    : f
-                ));
-              });
-
-              // Simulate analysis progress
-              const progressInterval = setInterval(() => {
-                setFiles(prev => prev.map(f => {
-                  if (f.id === newFile.id && f.status === 'analyzing') {
-                    const newProgress = Math.min(f.progress + Math.random() * 15, 95);
-                    return { ...f, progress: newProgress };
-                  }
-                  return f;
-                }));
-              }, 300);
-
-              // Clear progress interval after analysis completes
-              setTimeout(() => {
-                clearInterval(progressInterval);
-              }, 5000);
-            }, 500);
-
-            return { ...f, status: 'uploading', progress: 100 };
-          }
-          return { ...f, progress: newProgress };
+    try {
+      // Prepare file upload input
+      const uploadInput: FileUploadInput = {
+        file,
+        description: `File upload: ${file.name}`,
+        analysisOptions: {
+          analyzeRevenue: true,
+          analyzeTables: true,
+          generateInsights: true,
+          checkDataQuality: true,
+          generateVisualizations: true
         }
-        return f;
-      }));
-    }, 100);
-  };
+      };
+
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setFiles(prev => prev.map(f => {
+          if (f.id === newFile.id && f.status === 'uploading') {
+            const newProgress = Math.min(f.progress + Math.random() * 20, 95);
+            return { ...f, progress: newProgress };
+          }
+          return f;
+        }));
+      }, 300);
+
+      // Upload and analyze file
+      const analysisResult = await graphqlService.uploadAndAnalyzeFile(uploadInput);
+      
+      // Clear progress interval
+      clearInterval(progressInterval);
+
+      // Update file status to analyzing
+      setFiles(prev => prev.map(f => 
+        f.id === newFile.id 
+          ? { ...f, status: 'analyzing', progress: 0, uploadId: analysisResult.fileUploadId }
+          : f
+      ));
+
+      // Simulate analysis progress (since we don't have real-time updates yet)
+      const analysisInterval = setInterval(() => {
+        setFiles(prev => prev.map(f => {
+          if (f.id === newFile.id && f.status === 'analyzing') {
+            const newProgress = Math.min(f.progress + Math.random() * 15, 95);
+            return { ...f, progress: newProgress };
+          }
+          return f;
+        }));
+      }, 400);
+
+      // Wait a bit to simulate processing time
+      setTimeout(() => {
+        clearInterval(analysisInterval);
+        
+        // Mark as completed with analysis result
+        setFiles(prev => prev.map(f => 
+          f.id === newFile.id 
+            ? { ...f, status: 'completed', progress: 100, analysisResult }
+            : f
+        ));
+
+                showSuccess(`Analysis completed for ${file.name}`);
+      }, 3000);
+
+    } catch (error) {
+      console.error('File upload and analysis failed:', error);
+      
+      setFiles(prev => prev.map(f => 
+        f.id === newFile.id 
+          ? { ...f, status: 'error', progress: 0 }
+          : f
+      ));
+
+      console.error(`Failed to process ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -124,12 +142,12 @@ const FileUploadPage: React.FC = () => {
     
     const droppedFiles = Array.from(e.dataTransfer.files);
     droppedFiles.forEach(processFile);
-  }, []);
+  }, [processFile]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     selectedFiles.forEach(file => processFile(file));
-  };
+  }, [processFile]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -499,7 +517,7 @@ const FileUploadPage: React.FC = () => {
                               </div>
                               
                               <p className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-2">
-                                {file.analysisResult.insights.summary}
+                                {file.analysisResult.summary}
                               </p>
                               
                               <div className="flex items-center space-x-3">
