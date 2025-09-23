@@ -42,9 +42,18 @@ interface AnalysisResultsProps {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
 
+// Helper function to format file size
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, onClose }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'charts' | 'tables'>('overview');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['metrics', 'trends']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['metrics', 'trends', 'recommendations']));
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Helper functions to adapt backend data to frontend expectations
@@ -210,7 +219,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, onClose }) 
   return (
     <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className={`bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 ${
-        isFullscreen ? 'w-full h-full' : 'max-w-7xl w-full max-h-[95vh]'
+        isFullscreen ? 'w-full h-full' : 'max-w-7xl w-full max-h-[90vh]'
       } overflow-hidden transition-all duration-300`}>
         
         {/* Professional Header with KPIs */}
@@ -286,7 +295,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, onClose }) 
                   </div>
                   <div className="flex items-center space-x-1 text-blue-400">
                     <Clock size={14} />
-                    <span className="text-xs font-medium">Fast</span>
+                    <span className="text-xs font-medium">Actual</span>
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-white mb-1">{analysis.executionTime ? (analysis.executionTime / 1000).toFixed(1) : '2.3'}s</div>
@@ -308,19 +317,19 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, onClose }) 
                 <div className="text-sm text-blue-100">Analysis Type</div>
               </div>
 
-              {/* Data Quality */}
+              {/* File Size */}
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
                 <div className="flex items-center justify-between mb-2">
                   <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                    <Shield size={20} className="text-orange-400" />
+                    <FileText size={20} className="text-orange-400" />
                   </div>
                   <div className="flex items-center space-x-1 text-orange-400">
                     <Star size={14} />
-                    <span className="text-xs font-medium">Premium</span>
+                    <span className="text-xs font-medium">Size</span>
                   </div>
                 </div>
-                <div className="text-2xl font-bold text-white mb-1">98.5%</div>
-                <div className="text-sm text-blue-100">Data Quality</div>
+                <div className="text-2xl font-bold text-white mb-1">{formatFileSize(analysis.fileUpload?.size || 0)}</div>
+                <div className="text-sm text-blue-100">File Size</div>
               </div>
             </div>
           </div>
@@ -403,8 +412,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, onClose }) 
 
         {/* Enhanced Content Area */}
         <div className={`p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900 ${
-          isFullscreen ? 'max-h-[calc(100vh-280px)]' : 'max-h-[60vh]'
-        }`}>
+          isFullscreen ? 'max-h-[calc(100vh-280px)]' : 'max-h-[calc(90vh-300px)]'
+        } scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800`}>
           {activeTab === 'overview' && (
             <div className="space-y-8">
               {/* Executive Summary Card */}
@@ -537,44 +546,71 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, onClose }) 
                 )}
               </div>
 
-              {/* AI Recommendations */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-200 dark:border-gray-700">
+              {/* AI Recommendations - Enhanced Visibility */}
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl p-8 shadow-lg border-2 border-amber-200 dark:border-amber-700/50">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center">
-                      <Brain size={24} className="text-white" />
+                    <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <Brain size={28} className="text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">AI Recommendations</h3>
-                      <p className="text-gray-600 dark:text-gray-400">Smart insights for optimization</p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                        AI Recommendations
+                        <span className="ml-3 px-3 py-1 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-sm font-medium rounded-full">
+                          {analysis.recommendations.length} insights
+                        </span>
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 font-medium">Smart insights for optimization and performance</p>
                     </div>
                   </div>
                   <button
                     onClick={() => toggleSection('recommendations')}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="p-3 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
                     title="Toggle recommendations section"
                   >
                     {expandedSections.has('recommendations') ? 
-                      <ChevronUp size={20} className="text-gray-600 dark:text-gray-400" /> : 
-                      <ChevronDown size={20} className="text-gray-600 dark:text-gray-400" />
+                      <ChevronUp size={24} className="text-amber-600 dark:text-amber-400" /> : 
+                      <ChevronDown size={24} className="text-amber-600 dark:text-amber-400" />
                     }
                   </button>
                 </div>
                 
                 {expandedSections.has('recommendations') && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {analysis.recommendations.map((recommendation, index) => (
-                      <div key={index} className="flex items-start space-x-4 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-700/50 rounded-xl hover:shadow-md transition-all duration-300">
-                        <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                          <Settings size={16} className="text-white" />
+                      <div key={index} className="flex items-start space-x-5 p-6 bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700/50 rounded-xl hover:shadow-lg hover:border-amber-300 dark:hover:border-amber-600/50 transition-all duration-300 group">
+                        <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg group-hover:shadow-xl transition-shadow">
+                          <Settings size={18} className="text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-gray-800 dark:text-gray-200 leading-relaxed font-medium">
-                            {recommendation}
-                          </p>
+                          <div className="flex items-start justify-between">
+                            <p className="text-gray-800 dark:text-gray-200 leading-relaxed font-medium text-lg">
+                              {recommendation}
+                            </p>
+                            <span className="ml-4 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-sm font-medium rounded-full whitespace-nowrap">
+                              Priority {index + 1}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Action buttons for recommendations */}
+                    <div className="pt-4 border-t border-amber-200 dark:border-amber-700/50">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                          💡 These recommendations are powered by advanced AI analysis
+                        </p>
+                        <div className="flex space-x-3">
+                          <button className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium">
+                            Export Recommendations
+                          </button>
+                          <button className="px-4 py-2 bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-600 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-sm font-medium">
+                            Apply All
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

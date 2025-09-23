@@ -31,6 +31,7 @@ interface UploadedFile {
   progress: number;
   analysisResult?: AnalysisReport;
   uploadId?: string; // Backend file upload ID
+  processingTime?: number; // Tempo de processamento em caso de erro
 }
 
 const FileUploadPage: React.FC = () => {
@@ -49,6 +50,7 @@ const FileUploadPage: React.FC = () => {
   }, []);
 
   const processFile = useCallback(async (file: File) => {
+    const startTime = Date.now(); // Capturar tempo de início
     const newFile: UploadedFile = {
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
@@ -113,22 +115,39 @@ const FileUploadPage: React.FC = () => {
       setTimeout(() => {
         clearInterval(analysisInterval);
         
+        const endTime = Date.now();
+        const processingTime = endTime - startTime; // Calcular tempo real de processamento
+        
+        // Atualizar analysisResult com tempo real
+        const updatedAnalysisResult = {
+          ...analysisResult,
+          executionTime: processingTime,
+          fileUpload: {
+            ...analysisResult.fileUpload,
+            size: file.size,
+            originalName: file.name
+          }
+        };
+        
         // Mark as completed with analysis result
         setFiles(prev => prev.map(f => 
           f.id === newFile.id 
-            ? { ...f, status: 'completed', progress: 100, analysisResult }
+            ? { ...f, status: 'completed', progress: 100, analysisResult: updatedAnalysisResult }
             : f
         ));
 
-                showSuccess(`Analysis completed for ${file.name}`);
+        console.log(`Analysis completed for ${file.name}`);
       }, 3000);
 
     } catch (error) {
       console.error('File upload and analysis failed:', error);
       
+      const endTime = Date.now();
+      const processingTime = endTime - startTime; // Capturar tempo mesmo no erro
+      
       setFiles(prev => prev.map(f => 
         f.id === newFile.id 
-          ? { ...f, status: 'error', progress: 0 }
+          ? { ...f, status: 'error', progress: 0, processingTime }
           : f
       ));
 
