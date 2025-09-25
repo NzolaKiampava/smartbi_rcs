@@ -1,4 +1,4 @@
-import { gql } from 'graphql-tag';
+import { gql } from 'apollo-server-express';
 
 export const fileAnalysisTypeDefs = gql`
   scalar Upload
@@ -8,9 +8,9 @@ export const fileAnalysisTypeDefs = gql`
   enum FileType {
     CSV
     EXCEL
+    JSON
     PDF
     SQL
-    JSON
     TXT
     XML
     OTHER
@@ -69,6 +69,7 @@ export const fileAnalysisTypeDefs = gql`
     recommendations: [String!]!
     dataQuality: DataQuality
     visualizations: [Visualization!]!
+    extractedText: String
     rawAnalysis: JSON
     createdAt: DateTime!
     updatedAt: DateTime!

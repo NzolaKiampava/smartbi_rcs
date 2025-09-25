@@ -52,6 +52,7 @@ interface AnalysisReport {
   recommendations: string[];
   dataQuality?: DataQuality;
   visualizations: Visualization[];
+  extractedText?: string;
   rawAnalysis?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -309,6 +310,7 @@ class GraphQLService {
             title
             summary
             executionTime
+            extractedText
             insights {
               id
               type
@@ -421,6 +423,7 @@ class GraphQLService {
           title
           summary
           executionTime
+          extractedText
           insights {
             id
             type
