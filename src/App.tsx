@@ -6,10 +6,7 @@ import LandingPage from './components/Landing/LandingPage';
 import LoginPage from './components/Auth/LoginPage';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
-import MetricCard from './components/Dashboard/MetricCard';
-import RevenueChart from './components/Charts/RevenueChart';
-import CategoryChart from './components/Charts/CategoryChart';
-import DataTable from './components/Tables/DataTable';
+import OverviewPage from './components/Overview/OverviewPage';
 import FileUploadPage from './components/FileUpload/FileUploadPage';
 import NaturalLanguageQueryPage from './components/NaturalLanguage/NaturalLanguageQueryPage';
 import ReportsPage from './components/Reports/ReportsPage';
@@ -21,7 +18,6 @@ import QueryHistoryPage from './components/QueryHistory/QueryHistoryPage';
 import UsersPage from './components/Users/UsersPage';
 import AnalyticsPage from './components/Analytics/AnalyticsPage';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
-import { metricsData, revenueData, categoryData, tableData } from './data/mockData';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
@@ -44,25 +40,7 @@ const Dashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return (
-          <div className="space-y-6">
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {metricsData.map((metric) => (
-                <MetricCard key={metric.id} metric={metric} />
-              ))}
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <RevenueChart data={revenueData} />
-              <CategoryChart data={categoryData} />
-            </div>
-
-            {/* Data Table */}
-            <DataTable data={tableData} />
-          </div>
-        );
+        return <OverviewPage />;
       
       case 'file-upload':
         return <FileUploadPage />;
