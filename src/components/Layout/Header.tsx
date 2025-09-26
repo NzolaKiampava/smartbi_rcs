@@ -1,9 +1,11 @@
 import React from 'react';
-import { Bell, Search, User, Menu, Sun, Moon, ChevronRight } from 'lucide-react';
+import { Bell, Search, User, Menu, Sun, Moon, ChevronRight, Settings } from 'lucide-react';
 import UserProfileModal from './UserProfileModal';
 import NotificationsDropdown from './NotificationsDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import SettingsDropdown from './SettingsDropdown';
+import { useSettings } from '../../contexts/SettingsContext';
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -14,6 +16,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveSection }) => {
   const [profileModalOpen, setProfileModalOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const { isSettingsOpen, openSettings, closeSettings } = useSettings();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showSuggestions, setShowSuggestions] = React.useState(false);
   const { user } = useAuth();
@@ -176,15 +179,16 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
         <div className="flex items-center space-x-4">
           <button
             onClick={toggleTheme}
-            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            className="p-3 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md sm:rounded-full transition-colors flex flex-col items-center"
             title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
           >
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            <span className="text-[10px] mt-1 sm:hidden text-gray-700 dark:text-gray-200">{isDark ? 'Light' : 'Dark'}</span>
           </button>
           
           <button 
             onClick={() => setNotificationsOpen(!notificationsOpen)}
-            className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            className="relative p-3 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md sm:rounded-full transition-colors flex flex-col items-center"
           >
             <Bell size={20} />
             {unreadCount > 0 && (
@@ -192,10 +196,19 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
+            <span className="text-[10px] mt-1 sm:hidden text-gray-700 dark:text-gray-200">Alerts</span>
+          </button>
+          <button
+            onClick={() => openSettings()}
+            className="p-3 sm:p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md sm:rounded-full transition-colors flex flex-col items-center"
+            title="Settings"
+          >
+            <Settings size={20} />
+            <span className="text-[10px] mt-1 sm:hidden text-gray-700 dark:text-gray-200">Settings</span>
           </button>
           
           <div 
-            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-2 transition-colors"
+            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md p-2 sm:p-2 transition-colors flex-col sm:flex-row items-center"
             onClick={() => setProfileModalOpen(true)}
           >
             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
@@ -205,6 +218,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
               <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.firstName || 'User'}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>
             </div>
+            <span className="text-[10px] mt-1 sm:hidden text-gray-700 dark:text-gray-200">Profile</span>
           </div>
         </div>
       </div>
@@ -223,6 +237,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
         onMarkAllAsRead={handleMarkAllAsRead}
         onDeleteNotification={handleDeleteNotification}
       />
+  <SettingsDropdown isOpen={isSettingsOpen} onClose={() => closeSettings()} />
     </>
   );
 };
