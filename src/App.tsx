@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import SettingsProvider from './contexts/SettingsContext';
 import LandingPage from './components/Landing/LandingPage';
 import LoginPage from './components/Auth/LoginPage';
 import Header from './components/Layout/Header';
@@ -188,9 +189,11 @@ function App() {
     <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
-          <Router>
-            <AppContent />
-          </Router>
+          <SettingsProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </SettingsProvider>
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>
