@@ -1,7 +1,6 @@
 import React from 'react';
 import { 
   Users, 
-  ShoppingCart, 
   TrendingUp, 
   Settings, 
   FileText, 
@@ -28,7 +27,6 @@ const navigation = [
   { name: 'Overview', icon: BarChart3, section: 'overview' },
   { name: 'Analytics', icon: PieChart, section: 'analytics' },
   { name: 'Users', icon: Users, section: 'users' },
-  { name: 'Orders', icon: ShoppingCart, section: 'orders' },
   { name: 'Performance', icon: TrendingUp, section: 'performance' },
   { name: 'AI Analysis', icon: Upload, section: 'file-upload' },
   { name: 'Natural Query', icon: MessageSquare, section: 'natural-query' },
