@@ -239,7 +239,7 @@ const QueryResultsModal: React.FC<QueryResultsModalProps> = ({ result, isOpen, o
         </head>
         <body>
           <div class="header" style="display: flex; align-items: center; justify-content: flex-start;">
-            <img src="/public/LOGOTIPO-IT-DATA-1943x2048.png" alt="Logo" style="height: 48px; width: auto; margin-right: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;" />
+            <img src="/LOGOTIPO-IT-DATA-1943x2048.png" alt="Logo" style="height: 48px; width: auto; margin-right: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;" />
             <div>
               <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Relatório de Consulta de Dados</h1>
               <div class="subtitle">
