@@ -13,7 +13,8 @@ import {
   Database,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AIQueryResult } from '../../services/graphqlService';
@@ -43,6 +44,324 @@ const QueryResultsModal: React.FC<QueryResultsModalProps> = ({ result, isOpen, o
       newExpanded.add(section);
     }
     setExpandedSections(newExpanded);
+  };
+
+  const exportToPDF = () => {
+    if (!result.results || result.results.length === 0) {
+      showError('Nenhum dado disponível para exportação');
+      return;
+    }
+
+    try {
+      // Criar HTML para PDF
+      const data = result.results.map(item => item.data).filter(Boolean);
+      const columns = data.length > 0 ? Object.keys(data[0] || {}) : [];
+      const insights = generateInsights();
+      
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Relatório de Consulta de Dados</title>
+          <style>
+            body {
+              font-family: 'Arial', sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #333;
+              line-height: 1.6;
+            }
+            
+            .header {
+              background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+              color: white;
+              padding: 30px;
+              margin: -20px -20px 30px -20px;
+              text-align: center;
+            }
+            
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+              font-weight: bold;
+            }
+            
+            .header .subtitle {
+              margin: 10px 0 0 0;
+              font-size: 14px;
+              opacity: 0.9;
+            }
+            
+            .section {
+              margin-bottom: 30px;
+              page-break-inside: avoid;
+            }
+            
+            .section-title {
+              font-size: 18px;
+              font-weight: bold;
+              color: #3B82F6;
+              border-bottom: 2px solid #3B82F6;
+              padding-bottom: 5px;
+              margin-bottom: 15px;
+            }
+            
+            .info-box {
+              background: #F8FAFC;
+              border: 1px solid #E2E8F0;
+              border-left: 4px solid #3B82F6;
+              padding: 20px;
+              margin: 15px 0;
+              border-radius: 5px;
+            }
+            
+            .metrics-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 15px;
+              margin: 20px 0;
+            }
+            
+            .metric-card {
+              background: white;
+              border: 1px solid #E2E8F0;
+              border-radius: 8px;
+              padding: 20px;
+              text-align: center;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .metric-value {
+              font-size: 24px;
+              font-weight: bold;
+              color: #3B82F6;
+              margin: 10px 0;
+            }
+            
+            .metric-label {
+              font-size: 12px;
+              color: #6B7280;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            
+            .status-indicator {
+              display: inline-block;
+              padding: 5px 15px;
+              border-radius: 20px;
+              color: white;
+              font-weight: bold;
+              margin: 10px 0;
+            }
+            
+            .status-success {
+              background-color: #10B981;
+            }
+            
+            .status-error {
+              background-color: #EF4444;
+            }
+            
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+              background: white;
+              border-radius: 8px;
+              overflow: hidden;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            th {
+              background: #3B82F6;
+              color: white;
+              padding: 12px;
+              text-align: left;
+              font-weight: bold;
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            }
+            
+            td {
+              padding: 12px;
+              border-bottom: 1px solid #E2E8F0;
+              font-size: 11px;
+            }
+            
+            tr:nth-child(even) {
+              background: #F8FAFC;
+            }
+            
+            tr:hover {
+              background: #EFF6FF;
+            }
+            
+            .recommendations {
+              background: #FEF3C7;
+              border: 1px solid #F59E0B;
+              border-radius: 8px;
+              padding: 20px;
+              margin: 20px 0;
+            }
+            
+            .recommendations h4 {
+              color: #92400E;
+              margin: 0 0 15px 0;
+            }
+            
+            .recommendations ul {
+              margin: 0;
+              padding-left: 20px;
+            }
+            
+            .recommendations li {
+              margin: 8px 0;
+              color: #78350F;
+            }
+            
+            .footer {
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 1px solid #E2E8F0;
+              text-align: center;
+              font-size: 12px;
+              color: #6B7280;
+            }
+            
+            @media print {
+              body { margin: 0; }
+              .section { page-break-inside: avoid; }
+              .header { page-break-after: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header" style="display: flex; align-items: center; justify-content: flex-start;">
+            <img src="/public/LOGOTIPO-IT-DATA-1943x2048.png" alt="Logo" style="height: 48px; width: auto; margin-right: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;" />
+            <div>
+              <h1 style="margin: 0; font-size: 28px; font-weight: bold;">Relatório de Consulta de Dados</h1>
+              <div class="subtitle">
+                Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
+              </div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">1. Informações da Consulta</div>
+            <div class="info-box">
+              <strong>Consulta Natural:</strong><br>
+              ${result.naturalQuery || 'Consulta não especificada'}
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">2. Status da Execução</div>
+            <div style="margin: 15px 0;">
+              <span class="status-indicator ${result.status === 'SUCCESS' ? 'status-success' : 'status-error'}">
+                ${result.status === 'SUCCESS' ? 'SUCESSO' : 'ERRO'}
+              </span>
+              <div style="margin-top: 10px; font-size: 14px; color: #6B7280;">
+                <strong>Tempo de Execução:</strong> ${result.executionTime || 0}ms |
+                <strong>Registros Encontrados:</strong> ${data.length}
+              </div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">3. Métricas Principais</div>
+            <div class="metrics-grid">
+              ${insights.metrics.map(metric => `
+                <div class="metric-card">
+                  <div class="metric-label">${metric.label}</div>
+                  <div class="metric-value">${metric.value}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">4. Resumo da Análise</div>
+            <div class="info-box">
+              ${insights.summary}
+            </div>
+          </div>
+          
+          ${data.length > 0 ? `
+          <div class="section">
+            <div class="section-title">5. Dados (Primeiros 20 Registros)</div>
+            <table>
+              <thead>
+                <tr>
+                  ${columns.map(col => `<th>${col}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${data.slice(0, 20).map((row: any) => `
+                  <tr>
+                    ${columns.map(col => `
+                      <td>${row[col]?.toString()?.slice(0, 50) || '-'}</td>
+                    `).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${data.length > 20 ? `
+              <div style="text-align: center; margin-top: 15px; color: #6B7280; font-size: 12px;">
+                <em>Mostrando os primeiros 20 registros de ${data.length} total. Para ver todos os dados, use a exportação CSV ou JSON.</em>
+              </div>
+            ` : ''}
+          </div>
+          ` : ''}
+          
+          <div class="section">
+            <div class="section-title">6. Recomendações</div>
+            <div class="recommendations">
+              <h4>💡 Sugestões para Otimização:</h4>
+              <ul>
+                ${insights.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <div>Relatório gerado automaticamente pelo sistema SmartBI</div>
+            <div>© ${new Date().getFullYear()} - Todos os direitos reservados</div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      // Criar e baixar o arquivo
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Aguardar o carregamento e imprimir
+        printWindow.onload = () => {
+          printWindow.print();
+          printWindow.close();
+        };
+      } else {
+        // Fallback: download como HTML
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio_consulta_${new Date().toISOString().split('T')[0]}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+      
+      showSuccess('Relatório gerado com sucesso! Use Ctrl+P para salvar como PDF');
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      showError('Erro ao gerar relatório');
+    }
   };
 
   const exportData = (format: 'csv' | 'json') => {
@@ -134,7 +453,7 @@ const QueryResultsModal: React.FC<QueryResultsModalProps> = ({ result, isOpen, o
     if (recordCount > 10) {
       trends.push({
         category: 'Volume de Dados',
-        direction: 'up',
+        direction: 'up' as const,
         percentage: 85,
         description: 'Boa quantidade de registros encontrados'
       });
@@ -295,6 +614,13 @@ const QueryResultsModal: React.FC<QueryResultsModalProps> = ({ result, isOpen, o
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={exportToPDF}
+              className="flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              PDF
+            </button>
             <button
               onClick={() => exportData('csv')}
               className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
