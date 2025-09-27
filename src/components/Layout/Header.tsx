@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
     { id: 'analytics', title: 'Analytics', description: 'Business intelligence and data analysis' },
     { id: 'file-upload', title: 'File Upload', description: 'Upload and manage data files' },
     { id: 'natural-query', title: 'Natural Language Query', description: 'Query data using natural language' },
-    { id: 'reports', title: 'Reports', description: 'Generate and view reports' },
+   // { id: 'reports', title: 'Reports', description: 'Generate and view reports' },
     { id: 'performance', title: 'Performance', description: 'System performance monitoring' },
     { id: 'notifications', title: 'Notifications', description: 'View system notifications' },
     { id: 'query-history', title: 'Query History', description: 'History of executed queries' },
