@@ -19,6 +19,9 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Temporary: disable rule that currently crashes with our TS/ESLint version
+      // See: TypeError while loading rule '@typescript-eslint/no-unused-expressions'
+      '@typescript-eslint/no-unused-expressions': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

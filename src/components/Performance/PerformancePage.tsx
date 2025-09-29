@@ -246,7 +246,7 @@ const PerformancePage: React.FC = () => {
       };
     } catch (e) {
       // If connection fails, fallback to periodic mock updates
-      // eslint-disable-next-line no-console
+       
       console.error('Failed to connect performance websocket', e);
       const interval = setInterval(fetchPerformanceData, 5000);
       return () => clearInterval(interval);

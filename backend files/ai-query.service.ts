@@ -212,7 +212,7 @@ Respond with ONLY the JSON object:
 
   private parseSQLResponse(response: string, connectionType: ConnectionType): AIQueryResult {
     // Clean the response from markdown and extra formatting
-    let cleanedQuery = this.cleanSQLResponse(response);
+    const cleanedQuery = this.cleanSQLResponse(response);
     
     // Basic validation
     const confidence = this.calculateSQLConfidence(cleanedQuery);

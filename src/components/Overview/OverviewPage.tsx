@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
-  TrendingDown, 
   Users, 
   DollarSign, 
   ShoppingCart, 
@@ -10,7 +9,6 @@ import {
   Activity,
   Database,
   Globe,
-  Zap,
   Clock,
   ArrowUpRight,
   ArrowDownRight,
@@ -19,26 +17,18 @@ import {
   Share2,
   Settings,
   Eye,
-  Filter,
-  Calendar,
   Sparkles,
   Crown,
   Shield,
   CheckCircle2,
   AlertTriangle,
-  Info,
-  Bell,
   FileText,
-  PieChart,
-  LineChart as LineChartIcon,
-  MoreHorizontal
+  PieChart
 } from 'lucide-react';
 import {
-  LineChart,
   Line,
   AreaChart,
   Area,
-  BarChart,
   Bar,
   PieChart as RechartsPieChart,
   Pie,
@@ -52,6 +42,20 @@ import {
   ComposedChart
 } from 'recharts';
 import { format } from 'date-fns';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Lightweight clock component that updates itself every second. Placing
+// the clock in its own component prevents the parent `OverviewPage`
+// from re-rendering every second which would otherwise cause charts to
+// refresh unnecessarily.
+const ClockDisplay: React.FC = () => {
+  const [now, setNow] = React.useState<string>(() => new Date().toLocaleTimeString());
+  React.useEffect(() => {
+    const iv = setInterval(() => setNow(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  return <span className="text-sm text-blue-200">{now}</span>;
+};
 
 // Mock data for the overview dashboard
 const dashboardData = {
@@ -198,7 +202,7 @@ const dashboardData = {
   ]
 };
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
+
 
 const OverviewPage: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
@@ -207,19 +211,23 @@ const OverviewPage: React.FC = () => {
     try { return JSON.parse(localStorage.getItem('overview_auto_refresh') || 'false'); } catch { return false; }
   });
   const [refreshing, setRefreshing] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // Clock is rendered by a lightweight child component so the entire
+  // OverviewPage doesn't re-render every second (prevents charts from
+  // appearing to refresh continuously).
   const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState<number>(() => {
     try { return Number(localStorage.getItem('overview_refresh_interval') || '30'); } catch { return 30; }
   });
 
   // make dashboard data stateful so we can update charts dynamically on refresh
   const [dataState, setDataState] = useState(() => dashboardData);
+  // Revenue chart controls
+  const [showRevenueSeries, setShowRevenueSeries] = useState<boolean>(true);
+  const [showProfitSeries, setShowProfitSeries] = useState<boolean>(true);
+  const [chartMessage, setChartMessage] = useState<string | null>(null);
+  const [showUsersSeries, setShowUsersSeries] = useState<boolean>(true);
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(() => new Set());
 
-  // Update current time every second (UI clock only)
-  useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // ...existing code...
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -246,8 +254,52 @@ const OverviewPage: React.FC = () => {
       next.kpis = revenueKpi;
 
       // lightly perturb categoryData and performanceMetrics
-      next.categoryData = prev.categoryData.map((c: any) => ({ ...c, value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))) }));
-      next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({ ...m, value: Math.max(0, +(m.value + (Math.random() - 0.5) * 10).toFixed(1)) }));
+      next.categoryData = prev.categoryData.map((c: any) => ({
+        ...c,
+        // small percentage shifts
+        value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))),
+        revenue: Math.max(0, c.revenue + Math.round((Math.random() - 0.45) * 20000))
+      }));
+
+      next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({
+        ...m,
+        // nudge metrics toward their target slightly
+        value: Math.max(0, +(m.value + (Math.random() - 0.4) * (m.target ? (m.target * 0.05) : 5)).toFixed(1))
+      }));
+
+      // update recent activities: occasionally add a new activity and rotate older ones
+      const activityTypes = ['report', 'database', 'ai', 'export', 'login', 'query'];
+      const actionsByType: any = {
+        report: ['Generated Revenue Report', 'Scheduled Report Run', 'Exported PDF Report'],
+        database: ['Connected to Database', 'DB Backup Completed', 'DB Migration Started'],
+        ai: ['AI Query Executed', 'Model Training Job Finished', 'AI Analysis Completed'],
+        export: ['Data Export Started', 'Export Completed', 'Export Failed'],
+        login: ['User Logged In', 'User Session Started', 'User Logged Out'],
+        query: ['Ad-hoc Query Executed', 'Saved Query Run', 'Query Timeout']
+      };
+
+      const maybeNew = Math.random() < 0.6; // 60% chance to add an event on refresh
+      const newActivities = [...prev.recentActivities];
+      if (maybeNew) {
+        const t = activityTypes[Math.floor(Math.random() * activityTypes.length)];
+        const acts = actionsByType[t] || ['Performed Action'];
+        const action = acts[Math.floor(Math.random() * acts.length)];
+        const statusRand = Math.random();
+        const status = statusRand > 0.95 ? 'error' : 'success';
+        const userNames = ['João Silva','Maria Santos','Carlos Eduardo','Ana Paula','Luís Costa','Beatriz'];
+        const newAct = {
+          id: Date.now(),
+          user: userNames[Math.floor(Math.random() * userNames.length)],
+          action,
+          details: `${action} - ${Math.floor(Math.random()*1000)} items processed`,
+          timestamp: new Date().toISOString(),
+          type: t,
+          status
+        };
+        newActivities.unshift(newAct);
+      }
+      // keep max 10 recent activities
+  next.recentActivities = newActivities.slice(0, 10).map((a: any) => ({ ...a }));
 
       return next;
     });
@@ -258,9 +310,11 @@ const OverviewPage: React.FC = () => {
   // Auto-refresh effect (runs when isRealTime toggle is on)
   useEffect(() => {
     if (!isRealTime) return;
+    // enforce a sensible minimum interval to avoid excessive updates
+    const minIntervalMs = 5000; // 5s
     const iv = setInterval(() => {
       handleRefresh();
-    }, Math.max(1000, refreshIntervalSeconds * 1000));
+    }, Math.max(minIntervalMs, refreshIntervalSeconds * 1000));
     return () => clearInterval(iv);
   }, [isRealTime, refreshIntervalSeconds]);
 
@@ -328,7 +382,7 @@ const OverviewPage: React.FC = () => {
     </div>
   );
 
-  const ChartCard = ({ title, children, icon: Icon, actions = true }: { title: string; children: React.ReactNode; icon: any; actions?: boolean }) => (
+  const ChartCard = ({ title, children, icon: Icon, actions = true, actionsContent }: { title: string; children: React.ReactNode; icon: any; actions?: boolean; actionsContent?: React.ReactNode }) => (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
@@ -342,15 +396,19 @@ const OverviewPage: React.FC = () => {
         </div>
         {actions && (
           <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Download size={16} />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Share2 size={16} />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Settings size={16} />
-            </button>
+            {actionsContent ? actionsContent : (
+              <>
+                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <Download size={16} />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <Share2 size={16} />
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <Settings size={16} />
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -468,14 +526,12 @@ const OverviewPage: React.FC = () => {
               
               <div className="flex items-center space-x-4">
                 {/* Real-time Status */}
-                <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                  <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
                   <div className={`w-3 h-3 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
                   <span className="text-sm font-medium">
                     {isRealTime ? 'Live Data' : 'Paused'}
                   </span>
-                  <span className="text-sm text-blue-200">
-                    {currentTime.toLocaleTimeString()}
-                  </span>
+                  <ClockDisplay />
                 </div>
                 
                 {/* Actions */}
@@ -548,7 +604,55 @@ const OverviewPage: React.FC = () => {
       {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Revenue Trend */}
-        <ChartCard title="Revenue & Growth Analysis" icon={TrendingUp}>
+        <ChartCard
+          title="Revenue & Growth Analysis"
+          icon={TrendingUp}
+          actionsContent={(
+            <>
+              <button
+                onClick={() => {
+                  // export CSV
+                  const rows = dataState.revenueData.map((r: any) => `${r.month},${r.revenue},${r.profit}`);
+                  const csv = ['month,revenue,profit', ...rows].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'revenue.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                  setChartMessage('CSV exported');
+                  setTimeout(() => setChartMessage(null), 2500);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Download CSV"
+              >
+                <Download size={16} />
+              </button>
+              <button
+                onClick={() => {
+                  // share JSON (copy to clipboard)
+                  const payload = JSON.stringify(dataState.revenueData, null, 2);
+                  navigator.clipboard?.writeText(payload);
+                  setChartMessage('Chart JSON copied to clipboard');
+                  setTimeout(() => setChartMessage(null), 2500);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Copy JSON"
+              >
+                <Share2 size={16} />
+              </button>
+              <div className="p-2 flex items-center space-x-2">
+                <label className="text-xs text-gray-500 mr-1">Revenue</label>
+                <input type="checkbox" checked={showRevenueSeries} onChange={() => setShowRevenueSeries(s => !s)} />
+                <label className="text-xs text-gray-500 ml-2 mr-1">Profit</label>
+                <input type="checkbox" checked={showProfitSeries} onChange={() => setShowProfitSeries(s => !s)} />
+              </div>
+            </>
+          )}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={dataState.revenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -564,14 +668,64 @@ const OverviewPage: React.FC = () => {
                 }}
               />
               <Legend />
-              <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Revenue" radius={[4, 4, 0, 0]} />
-              <Line yAxisId="right" type="monotone" dataKey="profit" stroke="#10B981" strokeWidth={3} name="Profit" dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }} />
+              {showRevenueSeries && (
+                <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Revenue" radius={[4, 4, 0, 0]} />
+              )}
+              {showProfitSeries && (
+                <Line yAxisId="right" type="monotone" dataKey="profit" stroke="#10B981" strokeWidth={3} name="Profit" dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }} />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
+          {chartMessage && (
+            <div className="mt-2 text-sm text-green-600">{chartMessage}</div>
+          )}
         </ChartCard>
 
         {/* User Analytics */}
-        <ChartCard title="User Growth & Engagement" icon={Users}>
+        <ChartCard
+          title="User Growth & Engagement"
+          icon={Users}
+          actionsContent={(
+            <>
+              <button
+                onClick={() => {
+                  const rows = dataState.revenueData.map((r: any) => `${r.month},${r.users}`);
+                  const csv = ['month,users', ...rows].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'users.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                  setChartMessage('Users CSV exported');
+                  setTimeout(() => setChartMessage(null), 2500);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Download Users CSV"
+              >
+                <Download size={16} />
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(JSON.stringify(dataState.revenueData.map((r:any)=>({month:r.month,users:r.users})), null, 2));
+                  setChartMessage('Users JSON copied');
+                  setTimeout(() => setChartMessage(null), 2500);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Copy Users JSON"
+              >
+                <Share2 size={16} />
+              </button>
+              <div className="p-2 flex items-center space-x-2">
+                <label className="text-xs text-gray-500 mr-1">Active Users</label>
+                <input type="checkbox" checked={showUsersSeries} onChange={() => setShowUsersSeries(s=>!s)} />
+              </div>
+            </>
+          )}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={dataState.revenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -585,14 +739,16 @@ const OverviewPage: React.FC = () => {
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
                 }}
               />
-              <Area
-                type="monotone"
-                dataKey="users"
-                stroke="#8B5CF6"
-                fill="url(#userGradient)"
-                strokeWidth={3}
-                name="Active Users"
-              />
+              {showUsersSeries && (
+                <Area
+                  type="monotone"
+                  dataKey="users"
+                  stroke="#8B5CF6"
+                  fill="url(#userGradient)"
+                  strokeWidth={3}
+                  name="Active Users"
+                />
+              )}
               <defs>
                 <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
@@ -607,11 +763,71 @@ const OverviewPage: React.FC = () => {
       {/* Secondary Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         {/* Revenue Distribution */}
-        <ChartCard title="Revenue by Category" icon={PieChart}>
+        <ChartCard
+          title="Revenue by Category"
+          icon={PieChart}
+          actionsContent={(
+            <>
+              <button
+                onClick={() => {
+                  const rows = dataState.categoryData.map((c:any) => `${c.name},${c.value},${c.revenue}`);
+                  const csv = ['category,value,revenue', ...rows].join('\n');
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'categories.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                  setChartMessage('Categories CSV exported');
+                  setTimeout(() => setChartMessage(null), 2500);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Download Categories CSV"
+              >
+                <Download size={16} />
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(JSON.stringify(dataState.categoryData, null, 2));
+                  setChartMessage('Categories JSON copied');
+                  setTimeout(() => setChartMessage(null), 2500);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Copy Categories JSON"
+              >
+                <Share2 size={16} />
+              </button>
+              <button
+                onClick={() => {
+                  // shuffle category values slightly
+                  setDataState((prev:any) => {
+                    const nextCat = prev.categoryData.map((c:any) => ({
+                      ...c,
+                      value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 10)))
+                    }));
+                    return {
+                      ...prev,
+                      categoryData: nextCat
+                    };
+                  });
+                  setChartMessage('Categories updated');
+                  setTimeout(() => setChartMessage(null), 2500);
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Update Categories"
+              >
+                <RefreshCw size={16} />
+              </button>
+            </>
+          )}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <RechartsPieChart>
                 <Pie
-                data={dataState.categoryData}
+                  data={dataState.categoryData.filter((c:any)=>!hiddenCategories.has(c.name))}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -621,13 +837,28 @@ const OverviewPage: React.FC = () => {
                 label={({ name, percent }: any) => `${name} ${Math.round((percent || 0) * 100)}%`}
                 labelLine={false}
               >
-                {dataState.categoryData.map((entry, index) => (
+                {dataState.categoryData.filter((c:any)=>!hiddenCategories.has(c.name)).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
             </RechartsPieChart>
           </ResponsiveContainer>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {dataState.categoryData.map((c:any) => (
+              <label key={c.name} className="text-sm text-gray-700 dark:text-gray-300 flex items-center space-x-2">
+                <input type="checkbox" checked={!hiddenCategories.has(c.name)} onChange={() => {
+                  setHiddenCategories(prev => {
+                    const copy = new Set(prev);
+                    if (copy.has(c.name)) copy.delete(c.name); else copy.add(c.name);
+                    return copy;
+                  });
+                }} />
+                <span>{c.name}</span>
+              </label>
+            ))}
+          </div>
+          {chartMessage && (<div className="mt-2 text-sm text-green-600">{chartMessage}</div>)}
         </ChartCard>
 
         {/* Performance Metrics */}
