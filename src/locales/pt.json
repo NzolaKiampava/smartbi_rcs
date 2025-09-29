@@ -8,10 +8,8 @@
     "cancel": "Cancelar",
     "ok": "OK",
     "language": "Idioma",
-    "appearance": "Aparência",
-    "preferences": "Preferências"
-  }
-  ,
+    "appearance": "Aparência"
+  },
   "profile": {
     "title": "Perfil",
     "firstName": "Nome",

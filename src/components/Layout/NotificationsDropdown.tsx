@@ -11,6 +11,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { Avatar } from '../ui';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -134,17 +135,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
                   return '';
                 })();
 
-                return (
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden">
-                    {preview ? (
-                      <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : initials ? (
-                      <div className="text-white font-medium">{initials}</div>
-                    ) : (
-                      <Bell size={20} className="text-white" />
-                    )}
-                  </div>
-                );
+                return <Avatar src={preview} size="sm" name={`${user?.firstName || ''} ${user?.lastName || ''}`} />;
               })()}
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>

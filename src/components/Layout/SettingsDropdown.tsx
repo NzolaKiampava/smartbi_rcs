@@ -8,7 +8,7 @@ import {
   Building2,
   Link,
   FileText,
-  Sliders,
+  // Sliders removed (preferences panel removed)
   Layout as LayoutIcon,
   CreditCard,
   X,
@@ -29,7 +29,7 @@ type PanelKey =
   | 'organization'
   | 'integrations'
   | 'reports'
-  | 'preferences'
+  // preferences removed
   | 'layout'
   | 'billing';
 
@@ -270,7 +270,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
               <MenuItem icon={Building2} label="Organization" keyName="organization" />
               <MenuItem icon={Link} label="Integrations" keyName="integrations" />
               <MenuItem icon={FileText} label="Reports" keyName="reports" />
-              <MenuItem icon={Sliders} label="Preferences" keyName="preferences" />
+              {/* Preferences removed per request */}
               <MenuItem icon={LayoutIcon} label="Layout" keyName="layout" />
               <MenuItem icon={CreditCard} label="Billing" keyName="billing" />
             </div>
@@ -287,7 +287,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                 { icon: Building2, keyName: 'organization', label: 'Organization' },
                 { icon: Link, keyName: 'integrations', label: 'Integrations' },
                 { icon: FileText, keyName: 'reports', label: 'Reports' },
-                { icon: Sliders, keyName: 'preferences', label: 'Preferences' },
+                // preferences removed
                 { icon: LayoutIcon, keyName: 'layout', label: 'Layout' },
                 { icon: CreditCard, keyName: 'billing', label: 'Billing' }
               ].map((it) => {
@@ -321,7 +321,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                 {panel === 'organization' && 'Organization'}
                 {panel === 'integrations' && 'Integrations'}
                 {panel === 'reports' && 'Reports'}
-                {panel === 'preferences' && 'Preferences'}
+                {/* preferences panel removed */}
                 {panel === 'layout' && 'Layout'}
                 {panel === 'billing' && 'Billing'}
               </h3>
@@ -584,24 +584,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                 </div>
               )}
 
-              {panel === 'preferences' && (
-                <div>
-                  <div className="mb-4">
-                    <label className="text-sm text-gray-600 dark:text-gray-300">Language</label>
-                    <select value={state.language} onChange={(e) => setState({ ...state, language: e.target.value })} className="w-full rounded-lg border px-3 py-2 mt-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white">
-                      <option value="en">English</option>
-                      <option value="pt">Português</option>
-                    </select>
-                  </div>
-                  <div className="mb-4">
-                    <label className="text-sm text-gray-600 dark:text-gray-300">Default dashboard</label>
-                    <select value={state.defaultDashboard} onChange={(e) => setState({ ...state, defaultDashboard: e.target.value })} className="w-full rounded-lg border px-3 py-2 mt-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white">
-                      <option value="overview">Overview</option>
-                      <option value="analytics">Analytics</option>
-                    </select>
-                  </div>
-                </div>
-              )}
+              {/* Preferences panel removed */}
 
               {panel === 'layout' && (
                 <div>

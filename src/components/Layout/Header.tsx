@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, Search, User, Menu, Sun, Moon, ChevronRight, Settings } from 'lucide-react';
+import { Avatar } from '../ui';
 import UserProfileModal from './UserProfileModal';
 import NotificationsDropdown from './NotificationsDropdown';
 import { useAuth } from '../../contexts/AuthContext';
@@ -231,28 +232,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
             className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md p-2 sm:p-2 transition-colors flex-col sm:flex-row items-center"
             onClick={() => setProfileModalOpen(true)}
           >
-            {(() => {
-              const preview = (typeof window !== 'undefined' && localStorage.getItem('smartbi_avatar_preview')) || user?.avatar || null;
-              const initials = (() => {
-                const a = user?.firstName || '';
-                const b = user?.lastName || '';
-                if (a && b) return (a[0] + b[0]).toUpperCase();
-                if (a) return a[0].toUpperCase();
-                return '';
-              })();
-
-              return (
-                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden">
-                  {preview ? (
-                    <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : initials ? (
-                    <div className="text-white font-medium">{initials}</div>
-                  ) : (
-                    <User size={20} className="text-white" />
-                  )}
-                </div>
-              );
-            })()}
+            <Avatar src={(typeof window !== 'undefined' && localStorage.getItem('smartbi_avatar_preview')) || user?.avatar || null} name={`${user?.firstName || ''} ${user?.lastName || ''}`} />
             <div className="hidden md:block">
               <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.firstName || 'User'}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>

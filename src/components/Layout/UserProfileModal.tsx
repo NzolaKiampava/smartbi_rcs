@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { User, Settings, LogOut, Shield, Bell, HelpCircle, X } from 'lucide-react';
+import { Avatar } from '../ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
 
@@ -66,17 +67,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                   return '';
                 })();
 
-                return (
-                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden">
-                    {preview ? (
-                      <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : initials ? (
-                      <div className="text-white font-medium">{initials}</div>
-                    ) : (
-                      <User size={20} className="text-white" />
-                    )}
-                  </div>
-                );
+                return <Avatar src={preview} name={`${user?.firstName || ''} ${user?.lastName || ''}`} />;
               })()}
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">{user?.firstName || 'User'}</h3>

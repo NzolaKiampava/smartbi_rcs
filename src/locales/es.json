@@ -8,8 +8,7 @@
     "cancel": "Cancelar",
     "ok": "OK",
     "language": "Idioma",
-    "appearance": "Apariencia",
-    "preferences": "Preferencias"
+  "appearance": "Apariencia"
   }
   ,
   "profile": {
@@ -30,7 +29,6 @@
       "24h": "Últimas 24 horas",
       "7d": "Últimos 7 días",
       "30d": "Últimos 30 días",
-      "90d": "Últimos 90 días",
       "1y": "Último año"
     },
     "progress_to_target": "Progreso hacia la meta",
