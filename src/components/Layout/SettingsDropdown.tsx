@@ -16,7 +16,8 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useSettings } from '../../contexts/SettingsContext';
+import { useSettings, SUPPORTED_LANGUAGES } from '../../contexts/SettingsContext';
+import { useTranslation } from 'react-i18next';
 
 type PanelKey =
   | 'main'
@@ -60,6 +61,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   const { settings, updateSettings, setMenuPosition } = useSettings();
   const [panel, setPanel] = useState<PanelKey>('main');
   const [visible, setVisible] = useState(isOpen);
+  const { t } = useTranslation();
 
   // local working copy and persisted settings
   const [state, setState] = useState<SettingsState>(() => ({ ...settings }));
@@ -203,8 +205,8 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
               <Settings size={22} />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Settings</h2>
-              <p className="text-sm text-white/80">Manage account, integrations and appearance</p>
+              <h2 className="text-xl font-bold">{t('app.settings')}</h2>
+                <p className="text-sm text-white/80">{t('app.subtitle')}</p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2">
@@ -275,7 +277,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                 </button>
               )}
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-                {panel === 'main' && 'Main Settings'}
+                {panel === 'main' && t('app.settings')}
                 {panel === 'profile' && 'Profile'}
                 {panel === 'password' && 'Change Password'}
                 {panel === 'notifications' && 'Notifications'}
@@ -331,12 +333,15 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                   <div className="p-4 rounded-lg border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800">
                     <h4 className="text-sm font-medium mb-2 text-gray-800 dark:text-white">Preferences</h4>
                     <div className="space-y-2">
-                      <label className="text-xs text-gray-500 dark:text-gray-300">Language</label>
-                      <select value={state.language} onChange={(e) => setState({ ...state, language: e.target.value })} className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white">
-                        <option value="en">English</option>
-                        <option value="pt">Português</option>
-                        <option value="es">Español</option>
-                        <option value="fr">Français</option>
+                      <label className="text-xs text-gray-500 dark:text-gray-300">{t('app.language')}</label>
+                      <select value={state.language} onChange={(e) => {
+                        const nextLang = e.target.value;
+                        setState({ ...state, language: nextLang });
+                        // persist immediately
+                        updateSettings({ language: nextLang });
+                        try { localStorage.setItem('smartbi_settings', JSON.stringify({ ...(JSON.parse(localStorage.getItem('smartbi_settings') || '{}')), language: nextLang })); } catch (e) {}
+                      }} className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white">
+                        {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
                       </select>
 
                       <label className="text-xs text-gray-500 dark:text-gray-300">Default dashboard</label>

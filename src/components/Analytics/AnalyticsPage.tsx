@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-// Lista de meses para filtro
+// Months list for filters
 const monthsList = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-// Lista de meses para filtro
+  // Lista de meses para filtro
 
 import {
   BarChart3,
@@ -29,6 +29,8 @@ import {
   Play,
   Pause
 } from 'lucide-react';
+
+import UniversalModal from '../Common/UniversalModal';
 
 import {
   Line,
@@ -137,7 +139,7 @@ const analyticsData = {
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
 
 const AnalyticsPage: React.FC = () => {
-  // Filtros avançados (agora dentro do componente)
+  // Advanced filters (now inside component)
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterPeriod, setFilterPeriod] = useState({ start: '', end: '' });
   const [filterCategory, setFilterCategory] = useState('');
@@ -146,10 +148,10 @@ const AnalyticsPage: React.FC = () => {
   const [filterRevenueMax, setFilterRevenueMax] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   
-  // Badge de filtros ativos
+  // Active filters badge
   const activeFilters = useMemo(() => [filterPeriod.start, filterPeriod.end, filterCategory, filterSegment, filterRevenueMin, filterRevenueMax, filterStatus].filter(Boolean).length, [filterPeriod, filterCategory, filterSegment, filterRevenueMin, filterRevenueMax, filterStatus]);
   
-  // Limpar filtros
+  // Clear filters
   const clearFilters = () => {
     setFilterPeriod({ start: '', end: '' });
     setFilterCategory('');
@@ -175,7 +177,7 @@ const AnalyticsPage: React.FC = () => {
     if (filterRevenueMax) {
       data = data.filter(row => row.revenue <= Number(filterRevenueMax));
     }
-    // Categoria, Segmento, Status: exemplos para expansão futura
+  // Category, Segment, Status: examples for future expansion
     return data;
   }, [filterPeriod, filterRevenueMin, filterRevenueMax]);
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
@@ -224,10 +226,20 @@ const AnalyticsPage: React.FC = () => {
     </div>
   );
 
-  // Estado para fullscreen
-  const [fullscreenContent, setFullscreenContent] = useState<null | { title: string; content: React.ReactNode }>(null);
+  // Estado para fullscreen (allow optional exportRef)
+  const [fullscreenContent, setFullscreenContent] = useState<null | { title: string; content: React.ReactNode; exportRef?: React.RefObject<HTMLElement | null> }>(null);
   // Estado para menu de download
   const [downloadMenu, setDownloadMenu] = useState<{ open: boolean; anchor: HTMLElement | null; data: any[]; title: string } | null>(null);
+  // Export modal state
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportOptions, setExportOptions] = useState({
+    format: 'pdf' as 'pdf' | 'csv',
+    includeKPIs: true,
+    includeRevenue: true,
+    includeChannels: true,
+    includePerformance: true,
+    includeGeo: true,
+  });
   // Estado para menu de compartilhamento
   const [shareMenu, setShareMenu] = useState<{ open: boolean; anchor: HTMLElement | null; data: any[]; title: string } | null>(null);
   // Estado para menu de configurações
@@ -236,6 +248,12 @@ const AnalyticsPage: React.FC = () => {
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar');
   const [chartColor, setChartColor] = useState<string>('#3B82F6');
   const [showMetric, setShowMetric] = useState<'revenue' | 'orders' | 'users'>('revenue');
+  const [showLegend, setShowLegend] = useState<boolean>(true);
+  const [showGrid, setShowGrid] = useState<boolean>(true);
+  const [showValues, setShowValues] = useState<boolean>(false);
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
+  const [refreshInterval, setRefreshInterval] = useState<number>(30);
+  const [yAxisScale, setYAxisScale] = useState<'auto' | 'fixed'>('auto');
   // Estado para tema/densidade global do Analytics
   const [analyticsTheme, setAnalyticsTheme] = useState<'default' | 'compact' | 'spacious'>('default');
 
@@ -278,8 +296,184 @@ const AnalyticsPage: React.FC = () => {
     win.print();
   }
 
+  // Utility: find nearest chart container (the .h-80 element) starting from an anchor button
+  function findChartContainerFromAnchor(anchor: HTMLElement | null): HTMLElement | null {
+    try {
+      if (!anchor) return null;
+      let el: HTMLElement | null = anchor as HTMLElement;
+      // climb up to chart card root
+      while (el && !el.classList.contains('h-80')) {
+        if (!el.parentElement) break;
+        el = el.parentElement as HTMLElement;
+      }
+      // If we found the .h-80 use it, otherwise try to find an .h-80 inside closest card
+      if (el && el.classList.contains('h-80')) return el;
+      // fallback: search parent for .h-80 descendant
+      let parent = anchor.parentElement;
+      for (let i = 0; i < 6 && parent; i++, parent = parent.parentElement) {
+        const found = parent.querySelector<HTMLElement>('.h-80');
+        if (found) return found;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  // Serialize an SVG element and draw it to a canvas to produce a PNG download
+  async function exportSvgElementAsPng(svgEl: SVGElement, filename = 'chart.png') {
+    const serializer = new XMLSerializer();
+    let source = serializer.serializeToString(svgEl);
+    // add name spaces
+    if(!source.match(/^<svg[^>]+xmlns="http:\/\/www.w3.org\/2000\/svg"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    if(!source.match(/^<svg[^>]+xmlns:xlink="http:\/\/www.w3.org\/1999\/xlink"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    }
+    const svgBlob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    return new Promise<void>((resolve, reject) => {
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas context not available');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0,0,canvas.width,canvas.height);
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob(blob => {
+            if (!blob) return reject(new Error('Failed to convert canvas to blob'));
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            URL.revokeObjectURL(url);
+            resolve();
+          });
+        } catch (err) {
+          URL.revokeObjectURL(url);
+          reject(err);
+        }
+      };
+      img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+      img.src = url;
+    });
+  }
+
+  // Export chart PNG using the anchor stored in downloadMenu
+  async function exportChartPNGFromAnchor(title: string, anchor: HTMLElement | null) {
+    try {
+      const container = findChartContainerFromAnchor(anchor);
+      if (!container) {
+        // fallback: try to find any svg on the page
+        const svg = document.querySelector<SVGElement>('svg');
+        if (svg) await exportSvgElementAsPng(svg, `${title.replace(/\s+/g,'_').toLowerCase()}.png`);
+        return;
+      }
+      const svg = container.querySelector<SVGElement>('svg');
+      if (!svg) {
+        // no svg, try to rasterize the container via HTML2Canvas style approach is not available here
+        alert('PNG export not available for this chart (no SVG found)');
+        return;
+      }
+      await exportSvgElementAsPng(svg, `${title.replace(/\s+/g,'_').toLowerCase()}.png`);
+    } catch (err) {
+      console.error('Export PNG error', err);
+      alert('Failed to export PNG: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  }
+
+  // Map common chart/table titles to the data they should export
+  function getDataForTitle(title: string, fallback: any[] = []) {
+    switch ((title || '').toLowerCase()) {
+      case 'revenue trend analysis':
+      case 'monthly data breakdown':
+      case 'user growth & engagement':
+        return filteredRevenueData;
+      case 'traffic sources distribution':
+        return analyticsData.channelData;
+      case 'system performance metrics':
+        return analyticsData.performanceData;
+      case 'geographic distribution':
+        return analyticsData.geographicData;
+      default:
+        return fallback;
+    }
+  }
+
+  // Build combined data based on exportOptions and current visible data
+  function buildExportSections() {
+    const sections: { title: string; rows: any[] }[] = [];
+    if (exportOptions.includeKPIs) {
+      sections.push({ title: 'KPIs', rows: analyticsData.kpis.map(k => ({ title: k.title, value: k.value, change: k.change })) });
+    }
+    if (exportOptions.includeRevenue) {
+      sections.push({ title: 'Revenue Trend', rows: filteredRevenueData.map(r => ({ month: r.month, revenue: r.revenue, orders: r.orders, users: r.users })) });
+    }
+    if (exportOptions.includeChannels) {
+      sections.push({ title: 'Traffic Channels', rows: analyticsData.channelData.map(c => ({ channel: c.channel, value: c.value })) });
+    }
+    if (exportOptions.includePerformance) {
+      sections.push({ title: 'Performance Metrics', rows: analyticsData.performanceData.map(p => ({ metric: p.metric, score: p.score, target: p.target })) });
+    }
+    if (exportOptions.includeGeo) {
+      sections.push({ title: 'Geographic Distribution', rows: analyticsData.geographicData.map(g => ({ country: g.country, users: g.users, percentage: g.percentage })) });
+    }
+    return sections;
+  }
+
+  // Export combined CSV
+  function doExportCSV() {
+    const sections = buildExportSections();
+    if (!sections.length) return;
+    // For CSV, concatenate sections with headers
+    const parts: string[] = [];
+    sections.forEach(sec => {
+      if (!sec.rows || !sec.rows.length) return;
+      parts.push(sec.title);
+      const keys = Object.keys(sec.rows[0]);
+      parts.push(keys.join(','));
+      sec.rows.forEach(r => {
+        parts.push(keys.map(k => String((r as any)[k] ?? '')).join(','));
+      });
+      parts.push('');
+    });
+    const csv = parts.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'analytics_report.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Export combined PDF-like HTML (uses exportToPDF util to print)
+  function doExportPDF() {
+    const sections = buildExportSections();
+    if (!sections.length) return;
+    // Build a simple table-based HTML structure
+    const rows: any[] = [];
+    sections.forEach(sec => {
+      if (!sec.rows || !sec.rows.length) return;
+      // Add a header row for section
+      rows.push({ Section: sec.title });
+      const keys = Object.keys(sec.rows[0]);
+      // Add header keys
+      rows.push(keys.reduce((acc: any, k: string) => ({ ...acc, [k]: k }), {}));
+      // Add rows
+      sec.rows.forEach(r => rows.push(r));
+      // spacer
+      rows.push({});
+    });
+    exportToPDF('Analytics Report', rows);
+  }
+
   // Para cada ChartCard, passar os dados relevantes para download
-  const ChartCard = ({ title, children, actions = true, dataForExport }: { title: string; children: React.ReactNode; actions?: boolean; dataForExport?: any[] }) => (
+  const ChartCard = ({ title, children, actions = true, dataForExport, exportRef }: { title: string; children: React.ReactNode; actions?: boolean; dataForExport?: any[]; exportRef?: React.RefObject<HTMLElement | null> }) => (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
@@ -295,14 +489,14 @@ const AnalyticsPage: React.FC = () => {
             <button
               className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
               title="Download chart"
-              onClick={e => setDownloadMenu({ open: true, anchor: e.currentTarget, data: dataForExport || [], title })}
+              onClick={e => setDownloadMenu({ open: true, anchor: e.currentTarget, data: dataForExport && dataForExport.length ? dataForExport : getDataForTitle(title, []), title })}
             >
               <Download size={16} />
             </button>
             <button
               className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
               title="Share chart"
-              onClick={e => setShareMenu({ open: true, anchor: e.currentTarget, data: dataForExport || [], title })}
+              onClick={e => setShareMenu({ open: true, anchor: e.currentTarget, data: dataForExport && dataForExport.length ? dataForExport : getDataForTitle(title, []), title })}
             >
               <Share2 size={16} />
             </button>
@@ -311,7 +505,7 @@ const AnalyticsPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-30" onClick={() => setShareMenu(null)}></div>
           <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 min-w-[260px] flex flex-col items-center border border-gray-200 dark:border-gray-700">
-            <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">Compartilhar "{shareMenu.title}"</h4>
+            <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">Share "{shareMenu.title}"</h4>
             <a
               className="w-full px-4 py-2 mb-2 bg-green-600 text-white rounded hover:bg-green-700 text-center"
               href={`https://wa.me/?text=${encodeURIComponent(getShareText(shareMenu.title, shareMenu.data))}`}
@@ -320,18 +514,19 @@ const AnalyticsPage: React.FC = () => {
             >WhatsApp</a>
             <a
               className="w-full px-4 py-2 mb-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-center"
-              href={`mailto:?subject=${encodeURIComponent('Compartilhando: ' + shareMenu.title)}&body=${encodeURIComponent(getShareText(shareMenu.title, shareMenu.data))}`}
+              href={`mailto:?subject=${encodeURIComponent('Sharing: ' + shareMenu.title)}&body=${encodeURIComponent(getShareText(shareMenu.title, shareMenu.data))}`}
               target="_blank"
               rel="noopener noreferrer"
             >E-mail</a>
-            <button className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 mt-2" onClick={() => setShareMenu(null)}>Cancelar</button>
+            <button className="w-full px-4 py-2 mb-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600" onClick={() => { navigator.clipboard?.writeText(getShareText(shareMenu.title, shareMenu.data)); setShareMenu(null); }}>Copy to clipboard</button>
+            <button className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 mt-2" onClick={() => setShareMenu(null)}>Cancel</button>
           </div>
         </div>
       )}
             <button
               className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="Fullscreen"
-              onClick={() => setFullscreenContent({ title, content: children })}
+              onClick={() => setFullscreenContent({ title, content: children, exportRef: exportRef })}
             >
               <Maximize2 size={16} />
             </button>
@@ -343,31 +538,47 @@ const AnalyticsPage: React.FC = () => {
       </div>
     </div>
   );
+
+  // ref for revenue chart export
+  const revenueExportRef = React.useRef<HTMLDivElement | null>(null);
       {/* Menu de Download Chart */}
       {downloadMenu && downloadMenu.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-30" onClick={() => setDownloadMenu(null)}></div>
           <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 min-w-[220px] flex flex-col items-center border border-gray-200 dark:border-gray-700">
-            <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">Download de "{downloadMenu.title}"</h4>
+            <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">Download "{downloadMenu.title}"</h4>
             <button className="w-full px-4 py-2 mb-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={() => { exportToCSV(downloadMenu.data, `${downloadMenu.title.replace(/\s/g,'_').toLowerCase()}.csv`); setDownloadMenu(null); }}>CSV</button>
             <button className="w-full px-4 py-2 mb-2 bg-purple-600 text-white rounded hover:bg-purple-700" onClick={() => { exportToPDF(downloadMenu.title, downloadMenu.data); setDownloadMenu(null); }}>PDF</button>
-            <button className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 mt-2" onClick={() => setDownloadMenu(null)}>Cancelar</button>
+            <button className="w-full px-4 py-2 mb-2 bg-gray-800 text-white rounded hover:bg-gray-900" onClick={async () => { await exportChartPNGFromAnchor(downloadMenu.title, downloadMenu.anchor); setDownloadMenu(null); }}>PNG</button>
+            <button className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 mt-2" onClick={() => setDownloadMenu(null)}>Cancel</button>
           </div>
         </div>
       )}
-      {/* Fullscreen Overlay para gráficos/tabelas */}
+      {/* Dropdown-style fullscreen panel for charts/tables */}
       {fullscreenContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-6">
+          {/* backdrop */}
           <div className="fixed inset-0 bg-black bg-opacity-30" onClick={() => setFullscreenContent(null)}></div>
-          <div className="relative w-full max-w-lg mx-auto bg-white dark:bg-gray-900 shadow-xl rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col items-center animate-fadeIn p-0">
-            <div className="w-full flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-800 rounded-t-2xl bg-gradient-to-br from-blue-50/80 to-purple-100/80 dark:from-gray-800 dark:to-gray-900">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">{fullscreenContent.title}</h2>
-              <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" onClick={() => setFullscreenContent(null)} title="Fechar">
-                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+          <div className="relative w-[calc(100%-2rem)] max-w-[1200px] bg-white dark:bg-gray-900 shadow-xl rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col animate-slideDown overflow-hidden">
+            <div className="w-full flex items-center justify-between px-4 md:px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-br from-blue-50/60 to-purple-100/60 dark:from-gray-800 dark:to-gray-900">
+              <div className="flex items-center space-x-3">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{fullscreenContent.title}</h2>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" onClick={(e) => setDownloadMenu({ open: true, anchor: e.currentTarget as HTMLElement, data: getDataForTitle(fullscreenContent.title, []), title: fullscreenContent.title })} title="Download">
+                  <Download size={16} />
+                </button>
+                <button className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" onClick={(e) => setShareMenu({ open: true, anchor: e.currentTarget as HTMLElement, data: getDataForTitle(fullscreenContent.title, []), title: fullscreenContent.title })} title="Share">
+                  <Share2 size={16} />
+                </button>
+                <button className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded" onClick={() => setFullscreenContent(null)} title="Close">
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
             </div>
-            <div className="w-full flex flex-col items-center justify-center px-6 py-8">
-              <div className="w-full h-[50vh] flex items-center justify-center">
+            <div className="p-4 md:p-6">
+              {/* content wrapper: give exportable container class so PNG export can find SVG */}
+              <div className="w-full h-[calc(100vh-12rem)] overflow-auto exportable-chart">
                 {fullscreenContent.content}
               </div>
             </div>
@@ -437,124 +648,310 @@ const AnalyticsPage: React.FC = () => {
                   <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full px-2 py-0.5">{activeFilters}</span>
                 )}
               </button>
-      {/* Dropdown centralizado de Filtros */}
-      {filtersOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black bg-opacity-30" onClick={() => setFiltersOpen(false)}></div>
-          <div className="relative w-full max-w-md mx-auto bg-white dark:bg-gray-900 shadow-2xl rounded-2xl p-8 border border-gray-200 dark:border-gray-700 flex flex-col items-center animate-fadeIn">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white text-center">Filtros Avançados</h2>
-            <div className="mb-4 w-full">
-              <label className="block text-sm font-medium mb-1">Período (mês)</label>
-              <div className="flex space-x-2">
-                <select value={filterPeriod.start} onChange={e => setFilterPeriod(f => ({ ...f, start: e.target.value }))} className="w-1/2 px-2 py-1 rounded border">
-                  <option value="">Início</option>
-                  {monthsList.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <select value={filterPeriod.end} onChange={e => setFilterPeriod(f => ({ ...f, end: e.target.value }))} className="w-1/2 px-2 py-1 rounded border">
-                  <option value="">Fim</option>
-                  {monthsList.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+            <UniversalModal
+              isOpen={filtersOpen}
+              onClose={() => setFiltersOpen(false)}
+              title="Filters & Settings"
+              description="Detailed filters and Analytics section settings in one place"
+              Icon={Filter}
+              actions={[
+                { label: 'Apply', variant: 'primary', onClick: () => setFiltersOpen(false) },
+                { label: 'Clear', variant: 'ghost', onClick: clearFilters }
+              ]}
+            >
+              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left: Filters */}
+                <div>
+                        <h4 className="text-sm font-semibold mb-3 text-gray-800 dark:text-white">Advanced Filters</h4>
+                  <div className="mb-4 w-full">
+                          <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Period (month)</label>
+                    <div className="flex space-x-2">
+                      <select value={filterPeriod.start} onChange={e => setFilterPeriod(f => ({ ...f, start: e.target.value }))} className="w-1/2 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                              <option value="">Start</option>
+                        {monthsList.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <select value={filterPeriod.end} onChange={e => setFilterPeriod(f => ({ ...f, end: e.target.value }))} className="w-1/2 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                              <option value="">End</option>
+                        {monthsList.map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 w-full">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Category</label>
+                    <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                      <option value="">All</option>
+                      <option value="canal">Sales Channel</option>
+                      <option value="regiao">Region</option>
+                      <option value="produto">Product</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-4 w-full">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">User Segment</label>
+                    <select value={filterSegment} onChange={e => setFilterSegment(e.target.value)} className="w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                      <option value="">All</option>
+                      <option value="novos">New</option>
+                      <option value="recorrentes">Returning</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-4 w-full">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Revenue Range</label>
+                    <div className="flex space-x-2">
+                      <input type="number" placeholder="Min" value={filterRevenueMin} onChange={e => setFilterRevenueMin(e.target.value)} className="w-1/2 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                      <input type="number" placeholder="Max" value={filterRevenueMax} onChange={e => setFilterRevenueMax(e.target.value)} className="w-1/2 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                    </div>
+                  </div>
+
+                  <div className="mb-4 w-full">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Status</label>
+                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                      <option value="">All</option>
+                      <option value="concluido">Completed</option>
+                      <option value="pendente">Pending</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Right: Settings (same as Configure modal) */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 text-gray-800 dark:text-white">Section Settings</h4>
+                  <div className="mb-3">
+                      <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Chart Type</label>
+                    <select value={chartType} onChange={e => setChartType(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                      <option value="bar">Bar</option>
+                      <option value="line">Line</option>
+                      <option value="area">Area</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Primary Color</label>
+                    <input type="color" value={chartColor} onChange={e => setChartColor(e.target.value)} className="w-20 h-10 p-0 border rounded-xl" />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Displayed Metric</label>
+                    <select value={showMetric} onChange={e => setShowMetric(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                      <option value="revenue">Revenue</option>
+                      <option value="orders">Orders</option>
+                      <option value="users">Users</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Show legend</span>
+                    <input type="checkbox" checked={showLegend} onChange={e => setShowLegend(e.target.checked)} className="h-4 w-4" />
+                  </div>
+
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Show grid</span>
+                    <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="h-4 w-4" />
+                  </div>
+
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Show values on points</span>
+                    <input type="checkbox" checked={showValues} onChange={e => setShowValues(e.target.checked)} className="h-4 w-4" />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Y-axis Scale</label>
+                    <select value={yAxisScale} onChange={e => setYAxisScale(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                      <option value="auto">Auto</option>
+                      <option value="fixed">Fixed</option>
+                    </select>
+                  </div>
+
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Auto refresh</span>
+                    <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="h-4 w-4" />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Interval (seconds)</label>
+                    <input type="number" value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))} min={5} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="mb-4 w-full">
-              <label className="block text-sm font-medium mb-1">Categoria</label>
-              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full px-2 py-1 rounded border">
-                <option value="">Todas</option>
-                <option value="canal">Canal de Venda</option>
-                <option value="regiao">Região</option>
-                <option value="produto">Produto</option>
-              </select>
-            </div>
-            <div className="mb-4 w-full">
-              <label className="block text-sm font-medium mb-1">Segmento de Usuário</label>
-              <select value={filterSegment} onChange={e => setFilterSegment(e.target.value)} className="w-full px-2 py-1 rounded border">
-                <option value="">Todos</option>
-                <option value="novos">Novos</option>
-                <option value="recorrentes">Recorrentes</option>
-              </select>
-            </div>
-            <div className="mb-4 w-full">
-              <label className="block text-sm font-medium mb-1">Faixa de Receita</label>
-              <div className="flex space-x-2">
-                <input type="number" placeholder="Mín" value={filterRevenueMin} onChange={e => setFilterRevenueMin(e.target.value)} className="w-1/2 px-2 py-1 rounded border" />
-                <input type="number" placeholder="Máx" value={filterRevenueMax} onChange={e => setFilterRevenueMax(e.target.value)} className="w-1/2 px-2 py-1 rounded border" />
-              </div>
-            </div>
-            <div className="mb-4 w-full">
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full px-2 py-1 rounded border">
-                <option value="">Todos</option>
-                <option value="concluido">Concluído</option>
-                <option value="pendente">Pendente</option>
-              </select>
-            </div>
-            <div className="flex space-x-2 mt-6 w-full">
-              <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors" onClick={() => setFiltersOpen(false)}>Aplicar</button>
-              <button className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" onClick={clearFilters}>Limpar</button>
-            </div>
-          </div>
-        </div>
-      )}
+            </UniversalModal>
               <button
                 className="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                onClick={e => setConfigMenu({ open: true, anchor: e.currentTarget, title: 'Configurações do Gráfico' })}
+                onClick={e => setConfigMenu({ open: true, anchor: e.currentTarget, title: 'Chart Settings' })}
               >
                 <Settings size={16} className="mr-2" />
                 Configure
               </button>
       {/* Menu de Configurações Chart */}
-      {configMenu && configMenu.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black bg-opacity-30" onClick={() => setConfigMenu(null)}></div>
-          <div className="relative w-full max-w-md mx-auto bg-white dark:bg-gray-900 shadow-xl rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col items-center animate-fadeIn p-0">
-            <div className="w-full flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-800 rounded-t-2xl bg-gradient-to-br from-blue-50/80 to-purple-100/80 dark:from-gray-800 dark:to-gray-900">
-              <h4 className="font-semibold text-gray-900 dark:text-white">{configMenu.title}</h4>
-              <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" onClick={() => setConfigMenu(null)} title="Fechar">
-                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+      <UniversalModal
+        isOpen={!!configMenu && configMenu.open}
+        onClose={() => setConfigMenu(null)}
+        title={configMenu?.title || 'Settings'}
+        description="Adjust chart and Analytics section view settings"
+        Icon={Settings}
+        hideHeaderClose={true}
+        actions={[{ label: 'Cancel', variant: 'ghost', onClick: () => setConfigMenu(null) }, { label: 'Save', variant: 'primary', onClick: () => setConfigMenu(null) }]}
+      >
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Chart basics */}
+          <div>
+            <h4 className="text-sm font-semibold mb-2 text-gray-800 dark:text-white">Chart View</h4>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Chart Type</label>
+            <select value={chartType} onChange={e => setChartType(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+              <option value="bar">Bar</option>
+              <option value="line">Line</option>
+              <option value="area">Area</option>
+            </select>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Primary Color</label>
+              <input type="color" value={chartColor} onChange={e => setChartColor(e.target.value)} className="w-20 h-10 p-0 border rounded-xl" />
             </div>
-            <form className="w-full flex flex-col items-center px-6 py-8 gap-4">
-              <div className="w-full">
-                <label className="block text-sm font-medium mb-1">Tipo de Gráfico</label>
-                <select value={chartType} onChange={e => setChartType(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <option value="bar">Barra</option>
-                  <option value="line">Linha</option>
-                  <option value="area">Área</option>
-                </select>
-              </div>
-              <div className="w-full">
-                <label className="block text-sm font-medium mb-1">Cor Principal</label>
-                <input type="color" value={chartColor} onChange={e => setChartColor(e.target.value)} className="w-16 h-8 p-0 border rounded-xl" />
-              </div>
-              <div className="w-full">
-                <label className="block text-sm font-medium mb-1">Métrica Exibida</label>
-                <select value={showMetric} onChange={e => setShowMetric(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <option value="revenue">Receita</option>
-                  <option value="orders">Pedidos</option>
-                  <option value="users">Usuários</option>
-                </select>
-              </div>
-              <hr className="my-2 w-full border-gray-200 dark:border-gray-700" />
-              <div className="w-full">
-                <label className="block text-sm font-medium mb-1">Densidade</label>
-                <select value={analyticsTheme} onChange={e => setAnalyticsTheme(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <option value="default">Padrão</option>
-                  <option value="compact">Compacto</option>
-                  <option value="spacious">Espaçado</option>
-                </select>
-              </div>
-              <div className="flex w-full gap-2 mt-4">
-                <button type="button" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors" onClick={() => setConfigMenu(null)}>Salvar</button>
-                <button type="button" className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" onClick={() => setConfigMenu(null)}>Cancelar</button>
-              </div>
-            </form>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Displayed Metric</label>
+              <select value={showMetric} onChange={e => setShowMetric(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option value="revenue">Revenue</option>
+                <option value="orders">Orders</option>
+                <option value="users">Users</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Chart behavior & extras */}
+          <div>
+            <h4 className="text-sm font-semibold mb-2 text-gray-800 dark:text-white">Behavior & Extras</h4>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Show legend</span>
+              <input type="checkbox" checked={showLegend} onChange={e => setShowLegend(e.target.checked)} className="h-4 w-4" />
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Show grid</span>
+              <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="h-4 w-4" />
+            </div>
+
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Show values on points</span>
+              <input type="checkbox" checked={showValues} onChange={e => setShowValues(e.target.checked)} className="h-4 w-4" />
+            </div>
+
+            <div className="mt-2">
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Y-axis Scale</label>
+              <select value={yAxisScale} onChange={e => setYAxisScale(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option value="auto">Auto</option>
+                <option value="fixed">Fixed</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Analytics-wide settings */}
+          <div>
+            <h4 className="text-sm font-semibold mb-2 text-gray-800 dark:text-white">Analytics Section</h4>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Auto refresh</span>
+              <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="h-4 w-4" />
+            </div>
+
+            <div className="mt-2">
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Interval (seconds)</label>
+              <input type="number" value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))} min={5} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Density</label>
+              <select value={analyticsTheme} onChange={e => setAnalyticsTheme(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option value="default">Default</option>
+                <option value="compact">Compact</option>
+                <option value="spacious">Spacious</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Advanced / Export options */}
+          <div>
+            <h4 className="text-sm font-semibold mb-2 text-gray-800 dark:text-white">Export & Extras</h4>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">Enable quick export</span>
+              <input type="checkbox" checked={true} onChange={() => {}} className="h-4 w-4" disabled />
+            </div>
+
+            <div className="mt-2">
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Timezone (display)</label>
+              <select className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                <option>Local</option>
+                <option>UTC</option>
+              </select>
+            </div>
           </div>
         </div>
-      )}
-              <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
+              </UniversalModal>
+              <button
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                onClick={() => setExportModalOpen(true)}
+              >
                 <Download size={16} className="mr-2" />
                 Export Report
               </button>
+
+              {/* Export Modal (dynamic export of selected sections) */}
+              <UniversalModal
+                isOpen={exportModalOpen}
+                onClose={() => setExportModalOpen(false)}
+                title="Export Report"
+                description="Select which sections to include and the export format"
+                Icon={Download}
+                actions={[
+                  { label: 'Cancel', variant: 'ghost', onClick: () => setExportModalOpen(false) },
+                  { label: 'Export', variant: 'primary', onClick: () => {
+                    // perform export based on options
+                    if (exportOptions.format === 'csv') doExportCSV(); else doExportPDF();
+                    setExportModalOpen(false);
+                  } }
+                ]}
+              >
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Format</label>
+                    <div className="flex items-center space-x-4">
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="radio" name="exportFormat" checked={exportOptions.format === 'pdf'} onChange={() => setExportOptions(o => ({ ...o, format: 'pdf' }))} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">PDF</span>
+                      </label>
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="radio" name="exportFormat" checked={exportOptions.format === 'csv'} onChange={() => setExportOptions(o => ({ ...o, format: 'csv' }))} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">CSV</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Include Sections</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="checkbox" checked={exportOptions.includeKPIs} onChange={() => setExportOptions(o => ({ ...o, includeKPIs: !o.includeKPIs }))} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">KPIs</span>
+                      </label>
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="checkbox" checked={exportOptions.includeRevenue} onChange={() => setExportOptions(o => ({ ...o, includeRevenue: !o.includeRevenue }))} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Revenue Trend</span>
+                      </label>
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="checkbox" checked={exportOptions.includeChannels} onChange={() => setExportOptions(o => ({ ...o, includeChannels: !o.includeChannels }))} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Traffic Channels</span>
+                      </label>
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="checkbox" checked={exportOptions.includePerformance} onChange={() => setExportOptions(o => ({ ...o, includePerformance: !o.includePerformance }))} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Performance Metrics</span>
+                      </label>
+                      <label className="inline-flex items-center space-x-2">
+                        <input type="checkbox" checked={exportOptions.includeGeo} onChange={() => setExportOptions(o => ({ ...o, includeGeo: !o.includeGeo }))} />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Geographic Distribution</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </UniversalModal>
             </div>
           </div>
         </div>
@@ -570,8 +967,9 @@ const AnalyticsPage: React.FC = () => {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Revenue Trend */}
-  <ChartCard title="Revenue Trend Analysis" dataForExport={filteredRevenueData}>
-    <ResponsiveContainer width="100%" height="100%">
+  <ChartCard title="Revenue Trend Analysis" dataForExport={filteredRevenueData} exportRef={revenueExportRef}>
+    <div ref={revenueExportRef} className="w-full h-full">
+      <ResponsiveContainer width="100%" height="100%">
       {chartType === 'bar' ? (
         <ComposedChart data={filteredRevenueData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -601,7 +999,8 @@ const AnalyticsPage: React.FC = () => {
           <Area type="monotone" dataKey={showMetric} stroke={chartColor} fill={chartColor + '33'} strokeWidth={2} name={showMetric.charAt(0).toUpperCase() + showMetric.slice(1)} />
         </AreaChart>
       )}
-    </ResponsiveContainer>
+      </ResponsiveContainer>
+    </div>
   </ChartCard>
 
         {/* User Growth */}
@@ -725,7 +1124,7 @@ const AnalyticsPage: React.FC = () => {
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
             onClick={() => {
               const csvRows = [
-                ['Mês', 'Receita', 'Pedidos', 'Usuários'],
+                ['Month', 'Revenue', 'Orders', 'Users'],
                 ...analyticsData.revenueData.map(row => [row.month, row.revenue, row.orders, row.users])
               ];
               const csvContent = csvRows.map(e => e.join(',')).join('\n');
@@ -733,7 +1132,7 @@ const AnalyticsPage: React.FC = () => {
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = 'dados_analytics.csv';
+              a.download = 'analytics_data.csv';
               a.click();
               URL.revokeObjectURL(url);
             }}

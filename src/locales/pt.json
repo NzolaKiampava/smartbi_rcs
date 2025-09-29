@@ -1,0 +1,14 @@
+{
+  "app": {
+    "title": "Business Analytics",
+    "subtitle": "Painel de inteligência empresarial",
+    "filters": "Filtros",
+    "settings": "Configurações",
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "ok": "OK",
+    "language": "Idioma",
+    "appearance": "Aparência",
+    "preferences": "Preferências"
+  }
+}

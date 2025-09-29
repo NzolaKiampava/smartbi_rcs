@@ -1,0 +1,14 @@
+{
+  "app": {
+    "title": "Business Analytics",
+    "subtitle": "Comprehensive business intelligence dashboard",
+    "filters": "Filters",
+    "settings": "Settings",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "language": "Language",
+    "appearance": "Appearance",
+    "preferences": "Preferences"
+  }
+}

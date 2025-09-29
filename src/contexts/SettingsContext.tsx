@@ -20,6 +20,14 @@ const DEFAULTS: SettingsState = {
   currency: 'USD'
 };
 
+// supported languages (code, label)
+export const SUPPORTED_LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'pt', label: 'Português' },
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' }
+];
+
 interface SettingsContextType {
   settings: SettingsState;
   updateSettings: (next: Partial<SettingsState>) => void;
@@ -51,6 +59,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // ensure the document <html lang> matches current language
+  useEffect(() => {
+    try {
+      if (settings && settings.language) {
+        document.documentElement.lang = settings.language || DEFAULTS.language;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [settings.language]);
 
   useEffect(() => {
     try {

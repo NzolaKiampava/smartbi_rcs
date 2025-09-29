@@ -202,24 +202,76 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'
 
 const OverviewPage: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
-  const [isRealTime, setIsRealTime] = useState(true);
+  // auto-refresh disabled by default so charts don't update every second
+  const [isRealTime, setIsRealTime] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('overview_auto_refresh') || 'false'); } catch { return false; }
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState<number>(() => {
+    try { return Number(localStorage.getItem('overview_refresh_interval') || '30'); } catch { return 30; }
+  });
 
-  // Update current time every second
+  // make dashboard data stateful so we can update charts dynamically on refresh
+  const [dataState, setDataState] = useState(() => dashboardData);
+
+  // Update current time every second (UI clock only)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Create new dynamic data by applying small random deltas to numeric series
+    setDataState(prev => {
+      const next = { ...prev } as any;
+      // tweak revenue data points
+      next.revenueData = prev.revenueData.map((r: any) => {
+        const delta = Math.round((Math.random() - 0.45) * 20000); // -20k..+20k bias
+        return { ...r, revenue: Math.max(0, r.revenue + delta), profit: Math.max(0, r.profit + Math.round(delta * 0.18)) };
+      });
+      // recompute KPIs (simple derivation)
+      const totalRevenue = next.revenueData.reduce((s: number, x: any) => s + x.revenue, 0);
+      const revenueKpi = next.kpis.map((k: any) => ({ ...k }));
+      revenueKpi.forEach((k: any) => {
+        if (k.id === 'revenue') {
+          k.value = '$' + totalRevenue.toLocaleString();
+          k.change = +(Math.random() * 5).toFixed(1);
+        }
+      });
+      next.kpis = revenueKpi;
+
+      // lightly perturb categoryData and performanceMetrics
+      next.categoryData = prev.categoryData.map((c: any) => ({ ...c, value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))) }));
+      next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({ ...m, value: Math.max(0, +(m.value + (Math.random() - 0.5) * 10).toFixed(1)) }));
+
+      return next;
+    });
+
     setRefreshing(false);
   };
+
+  // Auto-refresh effect (runs when isRealTime toggle is on)
+  useEffect(() => {
+    if (!isRealTime) return;
+    const iv = setInterval(() => {
+      handleRefresh();
+    }, Math.max(1000, refreshIntervalSeconds * 1000));
+    return () => clearInterval(iv);
+  }, [isRealTime, refreshIntervalSeconds]);
+
+  // persist auto-refresh preferences
+  useEffect(() => {
+    try { localStorage.setItem('overview_auto_refresh', JSON.stringify(!!isRealTime)); } catch (e) {}
+  }, [isRealTime]);
+
+  useEffect(() => {
+    try { localStorage.setItem('overview_refresh_interval', String(refreshIntervalSeconds)); } catch (e) {}
+  }, [refreshIntervalSeconds]);
 
   const KPICard = ({ kpi }: { kpi: any }) => (
     <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 group relative overflow-hidden`}>
@@ -436,6 +488,14 @@ const OverviewPage: React.FC = () => {
                   >
                     <RefreshCw size={20} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
                   </button>
+                  <div className="flex items-center space-x-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
+                    <label className="text-sm text-white/90 mr-2">Auto</label>
+                    <button onClick={() => setIsRealTime((r: boolean) => !r)} className={`px-2 py-1 rounded ${isRealTime ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
+                      <span className="text-sm">{isRealTime ? 'On' : 'Off'}</span>
+                    </button>
+                    <input type="number" value={refreshIntervalSeconds} onChange={e => setRefreshIntervalSeconds(Math.max(1, Number(e.target.value || 1)))} className="w-20 ml-2 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600" />
+                    <span className="text-sm text-white/80 ml-1">s</span>
+                  </div>
                   <button className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20">
                     <Download size={20} className="text-white" />
                   </button>
@@ -480,7 +540,7 @@ const OverviewPage: React.FC = () => {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {dashboardData.kpis.map((kpi) => (
+        {dataState.kpis.map((kpi) => (
           <KPICard key={kpi.id} kpi={kpi} />
         ))}
       </div>
@@ -490,7 +550,7 @@ const OverviewPage: React.FC = () => {
         {/* Revenue Trend */}
         <ChartCard title="Revenue & Growth Analysis" icon={TrendingUp}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={dashboardData.revenueData}>
+            <ComposedChart data={dataState.revenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
               <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
@@ -513,7 +573,7 @@ const OverviewPage: React.FC = () => {
         {/* User Analytics */}
         <ChartCard title="User Growth & Engagement" icon={Users}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dashboardData.revenueData}>
+            <AreaChart data={dataState.revenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
               <YAxis stroke="#6b7280" fontSize={12} />
@@ -550,18 +610,18 @@ const OverviewPage: React.FC = () => {
         <ChartCard title="Revenue by Category" icon={PieChart}>
           <ResponsiveContainer width="100%" height="100%">
             <RechartsPieChart>
-              <Pie
-                data={dashboardData.categoryData}
+                <Pie
+                data={dataState.categoryData}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
                 outerRadius={120}
                 paddingAngle={5}
                 dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }: any) => `${name} ${Math.round((percent || 0) * 100)}%`}
                 labelLine={false}
               >
-                {dashboardData.categoryData.map((entry, index) => (
+                {dataState.categoryData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -585,7 +645,7 @@ const OverviewPage: React.FC = () => {
           </div>
           
           <div className="space-y-4">
-            {dashboardData.performanceMetrics.map((metric, index) => (
+            {dataState.performanceMetrics.map((metric, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
@@ -642,7 +702,7 @@ const OverviewPage: React.FC = () => {
           </div>
           
           <div className="space-y-2">
-            {dashboardData.recentActivities.map((activity) => (
+            {dataState.recentActivities.map((activity) => (
               <ActivityItem key={activity.id} activity={activity} />
             ))}
           </div>
@@ -668,7 +728,7 @@ const OverviewPage: React.FC = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {dashboardData.topInsights.map((insight) => (
+          {dataState.topInsights.map((insight) => (
             <InsightCard key={insight.id} insight={insight} />
           ))}
         </div>

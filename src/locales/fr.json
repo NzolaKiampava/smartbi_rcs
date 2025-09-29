@@ -1,0 +1,14 @@
+{
+  "app": {
+    "title": "Business Analytics",
+    "subtitle": "Tableau de bord d'intelligence d'affaires",
+    "filters": "Filtres",
+    "settings": "Paramètres",
+    "apply": "Appliquer",
+    "cancel": "Annuler",
+    "ok": "OK",
+    "language": "Langue",
+    "appearance": "Apparence",
+    "preferences": "Préférences"
+  }
+}

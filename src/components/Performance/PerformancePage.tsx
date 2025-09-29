@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Activity, 
   TrendingUp, 
@@ -15,6 +15,7 @@ import {
   Settings
 } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PerformanceWebSocket } from '../../services/performanceWebSocket';
 
 const PerformancePage: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | '90d'>('7d');
@@ -27,6 +28,19 @@ const PerformancePage: React.FC = () => {
   const [queryPerformanceData, setQueryPerformanceData] = useState<any[]>([]);
   const [resourceUtilizationData, setResourceUtilizationData] = useState<any[]>([]);
   const [userActivityData, setUserActivityData] = useState<any[]>([]);
+  const [wsConnected, setWsConnected] = useState<boolean>(false);
+  const wsRef = useRef<PerformanceWebSocket | null>(null);
+  const [alerts, setAlerts] = useState<any[]>(() => {
+    try {
+      const raw = sessionStorage.getItem('performance_alerts');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+  const [networkStats, setNetworkStats] = useState<any[]>([]);
+  const [reconnectAttempts, setReconnectAttempts] = useState<number>(0);
 
   function fetchPerformanceData() {
     setSystemMetrics([
@@ -131,9 +145,112 @@ const PerformancePage: React.FC = () => {
   }
 
   useEffect(() => {
+    // Start with mock data so UI isn't empty while we try to connect
     fetchPerformanceData();
-    const interval = setInterval(fetchPerformanceData, 5000);
-    return () => clearInterval(interval);
+
+    // Try to connect to a WebSocket endpoint for live updates
+    const url = (import.meta.env.VITE_PERFORMANCE_WS_URL as string) || 'ws://localhost:4000/performance';
+    const pws = new PerformanceWebSocket();
+    wsRef.current = pws;
+
+      pws.onData = (data: any) => {
+      if (!data) return;
+
+      // Expected message shapes: { type: 'response_time', payload: [...] } or full object
+        switch (data.type) {
+        case 'system_metrics':
+        case 'metrics':
+          if (Array.isArray(data.payload)) {
+            setSystemMetrics(data.payload);
+            // extract cpu value if present
+            const cpuMetric = data.payload.find((m: any) => m.id === 'cpu' || m.id === 'response_time' || m.title?.toLowerCase().includes('cpu'));
+            if (cpuMetric) {
+              const cpuVal = parseFloat(String(cpuMetric.value).replace('%','')) || null;
+              if (cpuVal !== null) {
+                setCpuHistory(h => [...h.slice(-59), Math.round(cpuVal)]);
+              }
+            }
+          }
+          break;
+        case 'response_time':
+        case 'response_time_data':
+          if (Array.isArray(data.payload)) setResponseTimeData(data.payload);
+          break;
+        case 'query_performance':
+          if (Array.isArray(data.payload)) setQueryPerformanceData(data.payload);
+          break;
+        case 'resource_utilization':
+          if (Array.isArray(data.payload)) setResourceUtilizationData(data.payload);
+          break;
+        case 'user_activity':
+          if (Array.isArray(data.payload)) setUserActivityData(data.payload);
+          break;
+          case 'alert':
+          case 'alerts':
+            // normalize alert shape: { severity: 'info'|'warn'|'critical', title, message, timestamp }
+            if (data.payload) {
+              const newAlert = Array.isArray(data.payload) ? data.payload : [data.payload];
+              setAlerts((prev) => {
+                const merged = [...newAlert, ...prev].slice(0, 50); // keep recent 50
+                try { sessionStorage.setItem('performance_alerts', JSON.stringify(merged)); } catch (e) {}
+                return merged;
+              });
+            }
+            break;
+        case 'network_stats':
+          if (Array.isArray(data.payload)) setNetworkStats(data.payload);
+          break;
+
+        default:
+          if (data.systemMetrics) setSystemMetrics(data.systemMetrics);
+          if (data.responseTimeData) setResponseTimeData(data.responseTimeData);
+          if (data.queryPerformanceData) setQueryPerformanceData(data.queryPerformanceData);
+          if (data.resourceUtilizationData) setResourceUtilizationData(data.resourceUtilizationData);
+          if (data.userActivityData) setUserActivityData(data.userActivityData);
+      }
+    };
+
+    try {
+  pws.onReconnectAttempt = (attempt) => setReconnectAttempts(attempt);
+  pws.onOpen = () => setReconnectAttempts(0);
+  pws.onOpen = () => setWsConnected(true);
+  pws.onClose = () => setWsConnected(false);
+  pws.onError = () => setWsConnected(false);
+
+  // Pass optional token from Vite env to the websocket client. Supports
+  // VITE_PERFORMANCE_WS_TOKEN and optional flag VITE_PERFORMANCE_WS_AUTH_AS_QUERY
+  const token = (import.meta.env.VITE_PERFORMANCE_WS_TOKEN as string) || (import.meta.env.VITE_WS_TOKEN as string) || '';
+  const authAsQuery = (import.meta.env.VITE_PERFORMANCE_WS_AUTH_AS_QUERY as string) === 'true';
+  pws.connect(url, { authToken: token || undefined, authAsQuery });
+
+      const socketWait = setInterval(() => {
+        if (!pws.ws) return;
+        pws.ws.onopen = () => setWsConnected(true);
+        pws.ws.onclose = () => setWsConnected(false);
+        pws.ws.onerror = () => setWsConnected(false);
+        clearInterval(socketWait);
+      }, 100);
+
+      // Poll mock data only while disconnected
+      const interval = setInterval(() => {
+        if (!wsRef.current || !wsConnected) fetchPerformanceData();
+      }, 5000);
+
+      return () => {
+        clearInterval(interval);
+        clearInterval(socketWait);
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+      };
+    } catch (e) {
+      // If connection fails, fallback to periodic mock updates
+      // eslint-disable-next-line no-console
+      console.error('Failed to connect performance websocket', e);
+      const interval = setInterval(fetchPerformanceData, 5000);
+      return () => clearInterval(interval);
+    }
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -200,9 +317,15 @@ const PerformancePage: React.FC = () => {
         
         <div className="mt-4 flex items-center space-x-6 text-sm text-blue-100">
           <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span>All Systems Operational</span>
+            <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span>{wsConnected ? 'Live' : 'Disconnected (using mock data)'}</span>
           </div>
+          {reconnectAttempts > 0 && (
+            <div className="flex items-center space-x-2 text-sm text-yellow-100">
+              <span>•</span>
+              <span>Reconnecting (attempt {reconnectAttempts})</span>
+            </div>
+          )}
           <span>•</span>
           <span>Last Updated: {new Date().toLocaleTimeString()}</span>
           <span>•</span>
@@ -379,12 +502,45 @@ const PerformancePage: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-2 gap-4 mt-4">
-            {resourceUtilizationData.map((resource, index) => (
-              <div key={index} className="text-center">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{resource.value}%</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">{resource.name}</div>
+            <div>
+              {resourceUtilizationData.map((resource, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{resource.value}%</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{resource.name}</div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">CPU (recent)</h4>
+              <div className="h-16">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={cpuHistory.map((v,i)=>({i, v}))}>
+                    <Line type="monotone" dataKey="v" stroke="#3B82F6" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
-            ))}
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white mt-3 mb-2">Network</h4>
+              <div className="text-xs text-gray-600 dark:text-gray-400">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr>
+                      <th>Iface</th>
+                      <th>rx/sec</th>
+                      <th>tx/sec</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {networkStats.slice(0,5).map((n, idx) => (
+                      <tr key={idx}>
+                        <td className="pr-4">{n.iface}</td>
+                        <td className="pr-4">{Math.round(n.rx_sec || 0)}</td>
+                        <td>{Math.round(n.tx_sec || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -449,32 +605,53 @@ const PerformancePage: React.FC = () => {
         </div>
         
         <div className="space-y-3">
-          <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
-            <CheckCircle size={20} className="text-green-500 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-green-800 dark:text-green-400">System Performance Optimized</p>
-              <p className="text-xs text-green-600 dark:text-green-300 mt-1">Response time improved by 15% after cache optimization</p>
-              <p className="text-xs text-green-500 dark:text-green-400 mt-1">2 minutes ago</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-            <Activity size={20} className="text-blue-500 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-400">High Query Volume Detected</p>
-              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">Query throughput increased by 25% - system handling load well</p>
-              <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">15 minutes ago</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-            <AlertTriangle size={20} className="text-yellow-500 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">Memory Usage Above 70%</p>
-              <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">Consider scaling resources if usage continues to increase</p>
-              <p className="text-xs text-yellow-500 dark:text-yellow-400 mt-1">1 hour ago</p>
-            </div>
-          </div>
+          {alerts.length === 0 ? (
+            // fallback static examples
+            <>
+              <div className="flex items-start space-x-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                <CheckCircle size={20} className="text-green-500 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-800 dark:text-green-400">System Performance Optimized</p>
+                  <p className="text-xs text-green-600 dark:text-green-300 mt-1">Response time improved by 15% after cache optimization</p>
+                  <p className="text-xs text-green-500 dark:text-green-400 mt-1">2 minutes ago</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <Activity size={20} className="text-blue-500 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-400">High Query Volume Detected</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">Query throughput increased by 25% - system handling load well</p>
+                  <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">15 minutes ago</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                <AlertTriangle size={20} className="text-yellow-500 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">Memory Usage Above 70%</p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">Consider scaling resources if usage continues to increase</p>
+                  <p className="text-xs text-yellow-500 dark:text-yellow-400 mt-1">1 hour ago</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            alerts.map((a, i) => {
+              const severity = (a.severity || a.level || a.type || 'info').toLowerCase();
+              const Icon = severity === 'critical' ? AlertTriangle : severity === 'warn' ? Activity : CheckCircle;
+              const bg = severity === 'critical' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-800' : severity === 'warn' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700 text-yellow-800' : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-800';
+              return (
+                <div key={i} className={`flex items-start space-x-3 p-4 ${bg} rounded-lg border`}>
+                  <Icon size={20} className="mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{a.title || a.message || 'Performance Alert'}</p>
+                    {a.message && <p className="text-xs mt-1">{a.message}</p>}
+                    <p className="text-xs mt-1 text-gray-500">{a.timestamp ? new Date(a.timestamp).toLocaleString() : 'Just now'}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
