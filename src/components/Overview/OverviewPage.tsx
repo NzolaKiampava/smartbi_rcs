@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -205,6 +206,7 @@ const dashboardData = {
 
 
 const OverviewPage: React.FC = () => {
+  const { t } = useTranslation();
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
   // auto-refresh disabled by default so charts don't update every second
   const [isRealTime, setIsRealTime] = useState(() => {
@@ -354,7 +356,7 @@ const OverviewPage: React.FC = () => {
         <div className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
-              {kpi.title}
+              {t(kpi.titleKey || `kpi.${kpi.id}.title`, { defaultValue: String(kpi.title) })}
             </h3>
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
               {kpi.value}
@@ -364,7 +366,7 @@ const OverviewPage: React.FC = () => {
           {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
-              <span>Progress to Target</span>
+              <span>{t('overview.progress_to_target', 'Progress to Target')}</span>
               <span>{kpi.progress}%</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -386,7 +388,7 @@ const OverviewPage: React.FC = () => {
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-lg transition-shadow">
             <Icon size={24} className="text-white" />
           </div>
           <div>
@@ -519,8 +521,8 @@ const OverviewPage: React.FC = () => {
                   <BarChart3 size={32} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold text-white mb-2">Business Intelligence Overview</h1>
-                  <p className="text-xl text-blue-100">Real-time insights and comprehensive analytics dashboard</p>
+                  <h1 className="text-4xl font-bold text-white mb-2">{t('app.title', 'Business Intelligence Overview')}</h1>
+                  <p className="text-xl text-blue-100">{t('app.subtitle', 'Real-time insights and comprehensive analytics dashboard')}</p>
                 </div>
               </div>
               
@@ -529,7 +531,7 @@ const OverviewPage: React.FC = () => {
                   <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
                   <div className={`w-3 h-3 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
                   <span className="text-sm font-medium">
-                    {isRealTime ? 'Live Data' : 'Paused'}
+                    {isRealTime ? t('overview.live', 'Live Data') : t('overview.paused', 'Paused')}
                   </span>
                   <ClockDisplay />
                 </div>
@@ -562,16 +564,16 @@ const OverviewPage: React.FC = () => {
             {/* Time Range Selector */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <select
+                  <select
                   value={selectedTimeRange}
                   onChange={(e) => setSelectedTimeRange(e.target.value)}
                   className="px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-white/50 focus:border-white/50"
                 >
-                  <option value="24h" className="text-gray-900">Last 24 Hours</option>
-                  <option value="7d" className="text-gray-900">Last 7 Days</option>
-                  <option value="30d" className="text-gray-900">Last 30 Days</option>
-                  <option value="90d" className="text-gray-900">Last 90 Days</option>
-                  <option value="1y" className="text-gray-900">Last Year</option>
+                  <option value="24h" className="text-gray-900">{t('overview.range.24h', 'Last 24 Hours')}</option>
+                  <option value="7d" className="text-gray-900">{t('overview.range.7d', 'Last 7 Days')}</option>
+                  <option value="30d" className="text-gray-900">{t('overview.range.30d', 'Last 30 Days')}</option>
+                  <option value="90d" className="text-gray-900">{t('overview.range.90d', 'Last 90 Days')}</option>
+                  <option value="1y" className="text-gray-900">{t('overview.range.1y', 'Last Year')}</option>
                 </select>
               </div>
               
@@ -869,8 +871,8 @@ const OverviewPage: React.FC = () => {
                 <Activity size={24} className="text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">System Performance</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Key performance indicators</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('overview.system_performance', 'System Performance')}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('overview.kpi_description', 'Key performance indicators')}</p>
               </div>
             </div>
           </div>
@@ -948,8 +950,8 @@ const OverviewPage: React.FC = () => {
               <Sparkles size={24} className="text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Powered Insights</h2>
-              <p className="text-gray-600 dark:text-gray-400">Intelligent recommendations based on your data</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('overview.ai_insights', 'AI-Powered Insights')}</h2>
+              <p className="text-gray-600 dark:text-gray-400">{t('overview.ai_description', 'Intelligent recommendations based on your data')}</p>
             </div>
           </div>
           <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl">
@@ -968,8 +970,8 @@ const OverviewPage: React.FC = () => {
       {/* Quick Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Quick Actions</h3>
-          <span className="text-sm text-gray-500 dark:text-gray-400">Frequently used features</span>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{t('overview.quick_actions', 'Quick Actions')}</h3>
+          <span className="text-sm text-gray-500 dark:text-gray-400">{t('overview.quick_actions_sub', 'Frequently used features')}</span>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -986,11 +988,11 @@ const OverviewPage: React.FC = () => {
               <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
                 <action.icon size={24} className="text-white" />
               </div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                {action.label}
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                {t(`quick.${index}.label`, action.label)}
               </h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {action.description}
+                {t(`quick.${index}.desc`, action.description)}
               </p>
             </button>
           ))}

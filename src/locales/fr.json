@@ -11,4 +11,41 @@
     "appearance": "Apparence",
     "preferences": "Préférences"
   }
+  ,
+  "profile": {
+    "title": "Profil",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "email": "Email",
+    "uploadAvatar": "Téléverser avatar",
+    "saveProfile": "Enregistrer le profil",
+    "revert": "Annuler",
+    "role": "Rôle"
+  }
+  ,
+  "overview": {
+    "live": "Données en direct",
+    "paused": "En pause",
+    "range": {
+      "24h": "Dernières 24 heures",
+      "7d": "Derniers 7 jours",
+      "30d": "Derniers 30 jours",
+      "90d": "Derniers 90 jours",
+      "1y": "Dernière année"
+    },
+    "progress_to_target": "Progrès vers l'objectif",
+    "system_performance": "Performance du système",
+    "kpi_description": "Indicateurs clés de performance",
+    "ai_insights": "Insights pilotés par l'IA",
+    "ai_description": "Recommandations intelligentes basées sur vos données",
+    "quick_actions": "Actions rapides",
+    "quick_actions_sub": "Fonctionnalités fréquemment utilisées"
+  },
+  "kpi": {},
+  "quick": {
+    "0": { "label": "Générer Rapport", "desc": "Créer un nouveau rapport analytique" },
+    "1": { "label": "Connecter BD", "desc": "Ajouter une nouvelle source de données" },
+    "2": { "label": "Analyse IA", "desc": "Exécuter une analyse pilotée par l'IA" },
+    "3": { "label": "Exporter Données", "desc": "Exporter le jeu de données actuel" }
+  }
 }

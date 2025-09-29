@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { User, Settings, LogOut, Shield, Bell, HelpCircle, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface UserProfileModalProps {
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
+  const { openSettings } = useSettings();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -35,10 +37,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   };
 
   const menuItems = [
-    { icon: User, label: 'Edit Profile', action: () => console.log('Edit Profile') },
-    { icon: Settings, label: 'Account Settings', action: () => console.log('Settings') },
-    { icon: Shield, label: 'Privacy & Security', action: () => console.log('Privacy') },
-    { icon: Bell, label: 'Notifications', action: () => console.log('Notifications') },
+    { icon: User, label: 'Edit Profile', action: () => { onClose(); openSettings('profile'); } },
+    { icon: Settings, label: 'Account Settings', action: () => { onClose(); openSettings('main'); } },
+    { icon: Shield, label: 'Privacy & Security', action: () => { onClose(); openSettings('security'); } },
+    { icon: Bell, label: 'Notifications', action: () => { onClose(); openSettings('notifications'); } },
     { icon: HelpCircle, label: 'Help & Support', action: () => console.log('Help') },
   ];
 
@@ -54,9 +56,28 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         <div className="p-6 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                <User size={20} className="text-white" />
-              </div>
+              {(() => {
+                const preview = (typeof window !== 'undefined' && localStorage.getItem('smartbi_avatar_preview')) || user?.avatar || null;
+                const initials = (() => {
+                  const a = user?.firstName || '';
+                  const b = user?.lastName || '';
+                  if (a && b) return (a[0] + b[0]).toUpperCase();
+                  if (a) return a[0].toUpperCase();
+                  return '';
+                })();
+
+                return (
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden">
+                    {preview ? (
+                      <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : initials ? (
+                      <div className="text-white font-medium">{initials}</div>
+                    ) : (
+                      <User size={20} className="text-white" />
+                    )}
+                  </div>
+                );
+              })()}
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">{user?.firstName || 'User'}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>

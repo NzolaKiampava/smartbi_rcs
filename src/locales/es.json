@@ -11,4 +11,41 @@
     "appearance": "Apariencia",
     "preferences": "Preferencias"
   }
+  ,
+  "profile": {
+    "title": "Perfil",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "email": "Correo",
+    "uploadAvatar": "Subir avatar",
+    "saveProfile": "Guardar perfil",
+    "revert": "Revertir",
+    "role": "Rol"
+  }
+  ,
+  "overview": {
+    "live": "Datos en vivo",
+    "paused": "Pausado",
+    "range": {
+      "24h": "Últimas 24 horas",
+      "7d": "Últimos 7 días",
+      "30d": "Últimos 30 días",
+      "90d": "Últimos 90 días",
+      "1y": "Último año"
+    },
+    "progress_to_target": "Progreso hacia la meta",
+    "system_performance": "Rendimiento del sistema",
+    "kpi_description": "Indicadores clave de rendimiento",
+    "ai_insights": "Insights por IA",
+    "ai_description": "Recomendaciones inteligentes basadas en sus datos",
+    "quick_actions": "Acciones rápidas",
+    "quick_actions_sub": "Funciones usadas con frecuencia"
+  },
+  "kpi": {},
+  "quick": {
+    "0": { "label": "Generar Informe", "desc": "Crear nuevo informe analítico" },
+    "1": { "label": "Conectar BD", "desc": "Agregar nueva fuente de datos" },
+    "2": { "label": "Análisis IA", "desc": "Ejecutar análisis con IA" },
+    "3": { "label": "Exportar Datos", "desc": "Exportar el conjunto de datos actual" }
+  }
 }

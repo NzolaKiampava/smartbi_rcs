@@ -34,8 +34,11 @@ interface SettingsContextType {
   setMenuPosition: (pos: MenuPosition) => void;
   // modal control
   isSettingsOpen: boolean;
-  openSettings: () => void;
+  openSettings: (panel?: string) => void;
   closeSettings: () => void;
+  // optional: allow opening settings to a specific panel (e.g. 'profile')
+  settingsPanel?: string | null;
+  setSettingsPanel: (panel: string | null) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -59,6 +62,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsPanel, setSettingsPanel] = useState<string | null>(null);
 
   // ensure the document <html lang> matches current language
   useEffect(() => {
@@ -66,7 +70,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (settings && settings.language) {
         document.documentElement.lang = settings.language || DEFAULTS.language;
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, [settings.language]);
@@ -74,9 +78,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     try {
       // Persist settings but intentionally omit menuPosition so layout returns to default on page reload
-      const { menuPosition, ...toPersist } = settings as any;
-      localStorage.setItem('smartbi_settings', JSON.stringify(toPersist));
-    } catch (e) {
+  const copy: Partial<SettingsState> = { ...settings };
+  delete copy.menuPosition;
+      localStorage.setItem('smartbi_settings', JSON.stringify(copy));
+    } catch {
       // ignore
     }
   }, [settings]);
@@ -89,11 +94,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSettings(prev => ({ ...prev, menuPosition: pos }));
   };
 
-  const openSettings = () => setIsSettingsOpen(true);
-  const closeSettings = () => setIsSettingsOpen(false);
+  const openSettings = (panel?: string) => {
+    if (panel) setSettingsPanel(panel);
+    setIsSettingsOpen(true);
+  };
+  const closeSettings = () => {
+    setIsSettingsOpen(false);
+    setSettingsPanel(null);
+  };
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings, setMenuPosition, isSettingsOpen, openSettings, closeSettings }}>
+    <SettingsContext.Provider value={{ settings, updateSettings, setMenuPosition, isSettingsOpen, openSettings, closeSettings, settingsPanel, setSettingsPanel }}>
       {children}
     </SettingsContext.Provider>
   );

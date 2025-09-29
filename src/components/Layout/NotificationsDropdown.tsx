@@ -1,17 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Bell, 
-  X, 
-  Check, 
-  AlertTriangle, 
-  Info, 
-  CheckCircle, 
+import React, { useRef, useEffect } from 'react';
+import {
+  Bell,
+  X,
+  Check,
+  AlertTriangle,
+  Info,
+  CheckCircle,
   Clock,
-  Eye,
   Settings,
-  Trash2,
-  MoreVertical
+  Trash2
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -77,15 +76,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
     }
   };
 
-  const getNotificationBg = (type: string, read: boolean) => {
-    const opacity = read ? '10' : '20';
-    switch (type) {
-      case 'success': return `bg-green-${opacity} border-green-200 dark:border-green-700`;
-      case 'warning': return `bg-yellow-${opacity} border-yellow-200 dark:border-yellow-700`;
-      case 'error': return `bg-red-${opacity} border-red-200 dark:border-red-700`;
-      default: return `bg-blue-${opacity} border-blue-200 dark:border-blue-700`;
-    }
-  };
+  // (removed unused getNotificationBg helper)
 
   const getPriorityIndicator = (priority: string) => {
     switch (priority) {
@@ -110,6 +101,17 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
     onClose();
   };
 
+  const { user } = useAuth();
+
+  const initialsFor = (u?: { firstName?: string; lastName?: string } | null) => {
+    if (!u) return '';
+    const a = (u.firstName || '').trim();
+    const b = (u.lastName || '').trim();
+    if (a && b) return (a[0] + b[0]).toUpperCase();
+    if (a) return a[0].toUpperCase();
+    return '';
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end pt-16 pr-4">
       <div className="fixed inset-0 bg-black bg-opacity-20" onClick={onClose} />
@@ -122,9 +124,28 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                <Bell size={20} className="text-white" />
-              </div>
+              {(() => {
+                const preview = (typeof window !== 'undefined' && localStorage.getItem('smartbi_avatar_preview')) || user?.avatar || null;
+                const initials = (() => {
+                  const a = user?.firstName || '';
+                  const b = user?.lastName || '';
+                  if (a && b) return (a[0] + b[0]).toUpperCase();
+                  if (a) return a[0].toUpperCase();
+                  return '';
+                })();
+
+                return (
+                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden">
+                    {preview ? (
+                      <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : initials ? (
+                      <div className="text-white font-medium">{initials}</div>
+                    ) : (
+                      <Bell size={20} className="text-white" />
+                    )}
+                  </div>
+                );
+              })()}
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

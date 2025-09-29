@@ -1,11 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bell, Search, User, Menu, Sun, Moon, ChevronRight, Settings } from 'lucide-react';
 import UserProfileModal from './UserProfileModal';
 import NotificationsDropdown from './NotificationsDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import SettingsDropdown from './SettingsDropdown';
-import { useSettings } from '../../contexts/SettingsContext';
+import { useSettings, SUPPORTED_LANGUAGES } from '../../contexts/SettingsContext';
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -16,11 +17,12 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveSection }) => {
   const [profileModalOpen, setProfileModalOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
-  const { isSettingsOpen, openSettings, closeSettings } = useSettings();
+  const { isSettingsOpen, openSettings, closeSettings, settings, updateSettings } = useSettings();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [showSuggestions, setShowSuggestions] = React.useState(false);
   const { user } = useAuth();
   const { toggleTheme, isDark } = useTheme();
+  const { t } = useTranslation();
 
   // Pages available in the system
   const pages = [
@@ -136,7 +138,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
               onChange={handleSearchChange}
               onFocus={() => searchQuery.length > 0 && setShowSuggestions(true)}
               onBlur={handleSearchBlur}
-              placeholder="Search pages..."
+              placeholder={t('app.search_placeholder', 'Search pages...')}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all"
             />
             
@@ -206,14 +208,51 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
             <Settings size={20} />
             <span className="text-[10px] mt-1 sm:hidden text-gray-700 dark:text-gray-200">Settings</span>
           </button>
+          {/* Quick language selector */}
+          <div className="hidden sm:flex items-center ml-2">
+            <select
+              value={settings?.language || 'en'}
+              onChange={(e) => {
+                const next = e.target.value;
+                updateSettings({ language: next });
+                try { document.documentElement.lang = next; } catch (err) {}
+                try { import('../../i18n').then(i18n => i18n.default.changeLanguage(next)); } catch (err) {}
+              }}
+              className="text-sm rounded-lg border px-2 py-1 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white"
+              aria-label="Language"
+            >
+              {SUPPORTED_LANGUAGES.map(l => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
+          </div>
           
-          <div 
+          <div
             className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md p-2 sm:p-2 transition-colors flex-col sm:flex-row items-center"
             onClick={() => setProfileModalOpen(true)}
           >
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <User size={16} className="text-white" />
-            </div>
+            {(() => {
+              const preview = (typeof window !== 'undefined' && localStorage.getItem('smartbi_avatar_preview')) || user?.avatar || null;
+              const initials = (() => {
+                const a = user?.firstName || '';
+                const b = user?.lastName || '';
+                if (a && b) return (a[0] + b[0]).toUpperCase();
+                if (a) return a[0].toUpperCase();
+                return '';
+              })();
+
+              return (
+                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden">
+                  {preview ? (
+                    <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : initials ? (
+                    <div className="text-white font-medium">{initials}</div>
+                  ) : (
+                    <User size={20} className="text-white" />
+                  )}
+                </div>
+              );
+            })()}
             <div className="hidden md:block">
               <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.firstName || 'User'}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>

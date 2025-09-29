@@ -11,4 +11,41 @@
     "appearance": "Appearance",
     "preferences": "Preferences"
   }
+  ,
+  "profile": {
+    "title": "Profile",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "uploadAvatar": "Upload avatar",
+    "saveProfile": "Save profile",
+    "revert": "Revert",
+    "role": "Role"
+  }
+  ,
+  "overview": {
+    "live": "Live Data",
+    "paused": "Paused",
+    "range": {
+      "24h": "Last 24 Hours",
+      "7d": "Last 7 Days",
+      "30d": "Last 30 Days",
+      "90d": "Last 90 Days",
+      "1y": "Last Year"
+    },
+    "progress_to_target": "Progress to Target",
+    "system_performance": "System Performance",
+    "kpi_description": "Key performance indicators",
+    "ai_insights": "AI-Powered Insights",
+    "ai_description": "Intelligent recommendations based on your data",
+    "quick_actions": "Quick Actions",
+    "quick_actions_sub": "Frequently used features"
+  },
+  "kpi": {},
+  "quick": {
+    "0": { "label": "Generate Report", "desc": "Create new analytics report" },
+    "1": { "label": "Connect Database", "desc": "Add new data source" },
+    "2": { "label": "AI Analysis", "desc": "Run AI-powered analysis" },
+    "3": { "label": "Export Data", "desc": "Export current dataset" }
+  }
 }

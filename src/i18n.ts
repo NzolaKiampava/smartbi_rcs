@@ -12,11 +12,23 @@ const resources = {
   fr: { translation: fr }
 };
 
+// Determine initial language preference: prefer persisted settings, then <html lang>, then 'en'
+const getInitialLanguage = () => {
+  try {
+    const raw = localStorage.getItem('smartbi_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.language) return parsed.language;
+    }
+  } catch (e) {}
+  try { return typeof document !== 'undefined' ? document.documentElement.lang || 'en' : 'en'; } catch { return 'en'; }
+};
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: typeof document !== 'undefined' ? document.documentElement.lang || 'en' : 'en',
+    lng: getInitialLanguage(),
     fallbackLng: 'en',
     interpolation: { escapeValue: false }
   });

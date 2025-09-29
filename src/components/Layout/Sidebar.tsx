@@ -1,10 +1,9 @@
 import React from 'react';
-import { 
-  Users, 
-  ShoppingCart, 
-  TrendingUp, 
-  Settings, 
-  FileText, 
+import { motion } from 'framer-motion';
+import {
+  Users,
+  TrendingUp,
+  Settings,
   PieChart,
   Activity,
   Database,
@@ -18,6 +17,8 @@ import {
 } from 'lucide-react';
 
 import { useSettings } from '../../contexts/SettingsContext';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface SidebarProps {
@@ -27,22 +28,23 @@ interface SidebarProps {
   setActiveSection: (section: string) => void;
 }
 
-const navigation = [
-  { name: 'Overview', icon: BarChart3, section: 'overview' },
-  { name: 'Analytics', icon: PieChart, section: 'analytics' },
-  { name: 'Users', icon: Users, section: 'users' },
-  { name: 'Performance', icon: TrendingUp, section: 'performance' },
-  { name: 'AI Analysis', icon: Upload, section: 'file-upload' },
-  { name: 'Natural Query', icon: MessageSquare, section: 'natural-query' },
-  { name: 'Query History', icon: Clock, section: 'query-history' },
- // { name: 'Reports', icon: FileText, section: 'reports' },
-  { name: 'Activity', icon: Activity, section: 'activity' },
-  { name: 'Database', icon: Database, section: 'database' }
+const navigation = (t: TFunction): Array<{ name: string; icon: React.ElementType; section: string }> => [
+  { name: t('nav.overview', 'Overview'), icon: BarChart3, section: 'overview' },
+  { name: t('nav.analytics', 'Analytics'), icon: PieChart, section: 'analytics' },
+  { name: t('nav.users', 'Users'), icon: Users, section: 'users' },
+  { name: t('nav.performance', 'Performance'), icon: TrendingUp, section: 'performance' },
+  { name: t('nav.ai', 'AI Analysis'), icon: Upload, section: 'file-upload' },
+  { name: t('nav.natural_query', 'Natural Query'), icon: MessageSquare, section: 'natural-query' },
+  { name: t('nav.query_history', 'Query History'), icon: Clock, section: 'query-history' },
+  { name: t('nav.activity', 'Activity'), icon: Activity, section: 'activity' },
+  { name: t('nav.database', 'Database'), icon: Database, section: 'database' }
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSection, setActiveSection }) => {
   const { settings, openSettings } = useSettings();
   const { isDark } = useTheme();
+  const { t } = useTranslation();
+  const nav = navigation(t);
   const menuPosition = settings.menuPosition || 'left';
   const isTop = menuPosition === 'top';
   const isRight = menuPosition === 'right';
@@ -63,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
               </button>
 
               <nav className="hidden lg:flex items-center h-16 space-x-4 overflow-x-auto">
-                {navigation.map((item) => {
+                {nav.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeSection === item.section;
                   return (
@@ -87,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
               <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
               <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }} transition={{ duration: 0.24 }} className="absolute top-16 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
                 <nav className="flex flex-col space-y-2">
-                  {navigation.map((item) => {
+                  {nav.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeSection === item.section;
                     return (
@@ -137,7 +139,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
 
           <nav className="flex-1 overflow-y-auto mt-6 px-3 bg-white dark:bg-gray-800">
             <div className="space-y-1">
-              {navigation.map((item) => {
+              {nav.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeSection === item.section;
                 return (
@@ -156,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
             <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
               <button onClick={() => openSettings()} className="w-full flex items-center px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors">
                 <Settings size={20} className="mr-3 text-gray-400 dark:text-gray-500" />
-                Settings
+                {t('nav.settings', 'Settings')}
               </button>
             </div>
           </nav>
@@ -179,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
           </button>
         </div>
 
-  <div className={`hidden lg:flex items-center p-6 border-b border-gray-200 dark:border-gray-700 ${isDark ? 'bg-white dark:bg-gray-800' : 'bg-white'}`}>
+        <div className={`hidden lg:flex items-center p-6 border-b border-gray-200 dark:border-gray-700 ${isDark ? 'bg-white dark:bg-gray-800' : 'bg-white'}`}>
           <div className="flex items-center space-x-3">
             <img src="/LOGOTIPO-IT-DATA-1943x2048.png" alt="IT Data Logo" className="w-8 h-8 object-contain" />
             <div>
@@ -191,7 +193,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
 
         <nav className="flex-1 overflow-y-auto mt-6 px-3 bg-white dark:bg-gray-800">
           <div className="space-y-1">
-            {navigation.map((item) => {
+            {nav.map((item) => {
               const Icon = item.icon;
               const isActive = activeSection === item.section;
               return (
@@ -210,13 +212,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button onClick={() => openSettings()} className="w-full flex items-center px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors">
               <Settings size={20} className="mr-3 text-gray-400 dark:text-gray-500" />
-              Settings
+              {t('nav.settings', 'Settings')}
             </button>
           </div>
         </nav>
 
         {/* Cool SaaS Banner */}
-  <div className={`p-4 ${isDark ? 'bg-white dark:bg-gray-800' : 'bg-white'}`}>
+        <div className={`p-4 ${isDark ? 'bg-white dark:bg-gray-800' : 'bg-white'}`}>
           <div className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 rounded-xl p-4 overflow-hidden group hover:shadow-lg transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 animate-pulse" />
             <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10 group-hover:scale-110 transition-transform duration-500" />

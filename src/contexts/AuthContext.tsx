@@ -7,6 +7,7 @@ interface User {
   firstName: string;
   lastName: string;
   role: string;
+  avatar?: string;
 }
 
 interface Company {
@@ -23,6 +24,7 @@ interface AuthContextType {
   login: (email: string, password: string, companySlug: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
+  updateProfile: (patch: Partial<User>) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -355,6 +357,48 @@ mutation LoginUser($input: LoginInput!) {
     }
   }, [REFRESH_TOKEN_MUTATION, logout, graphqlRequest]);
 
+  // Update profile function (partial update)
+  const UPDATE_PROFILE_MUTATION = `
+    mutation UpdateUser($input: UpdateUserInput!) {
+      updateUser(input: $input) {
+        success
+        message
+        data {
+          user {
+            id
+            email
+            firstName
+            lastName
+            role
+          }
+        }
+        errors
+      }
+    }
+  `;
+
+  const updateProfile = useCallback(async (patch: Partial<User>): Promise<boolean> => {
+    try {
+      // If GraphQL is available, try to persist the change
+      const data = await graphqlRequest(UPDATE_PROFILE_MUTATION, { input: patch }, true).catch(() => null);
+      if (data && data.updateUser && data.updateUser.success) {
+        const userData = data.updateUser.data.user;
+        setUser((prev) => (prev ? { ...prev, ...userData } : userData));
+        showSuccess('Perfil atualizado com sucesso.');
+        return true;
+      }
+
+      // Fallback: local update
+      setUser((prev) => (prev ? { ...prev, ...patch } as User : prev));
+      showSuccess('Perfil atualizado (modo offline).');
+      return true;
+    } catch (error) {
+      console.error('Update profile error:', error);
+      showError('Não foi possível atualizar o perfil.');
+      return false;
+    }
+  }, [UPDATE_PROFILE_MUTATION, graphqlRequest, showError, showSuccess]);
+
   // Check if user is authenticated
   const checkAuth = useCallback(async () => {
     setIsLoading(true);
@@ -427,6 +471,7 @@ mutation LoginUser($input: LoginInput!) {
     login,
     logout,
     refreshToken,
+    updateProfile,
   };
 
   return (

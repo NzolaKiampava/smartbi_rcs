@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSettings, SUPPORTED_LANGUAGES } from '../../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 type PanelKey =
@@ -58,7 +59,8 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   useOutsideClose(panelRef, onClose, isOpen);
   const { toggleTheme, isDark } = useTheme();
 
-  const { settings, updateSettings, setMenuPosition } = useSettings();
+  const { settings, updateSettings, setMenuPosition, settingsPanel, setSettingsPanel } = useSettings();
+  const { updateProfile, user } = useAuth();
   const [panel, setPanel] = useState<PanelKey>('main');
   const [visible, setVisible] = useState(isOpen);
   const { t } = useTranslation();
@@ -69,13 +71,47 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   // keep a snapshot to allow cancel/revert
   const [snapshot, setSnapshot] = useState(state);
 
+  // temporary profile edit state (separate from settings)
+  const [profileTemp, setProfileTemp] = useState<{ firstName?: string; lastName?: string; email?: string; role?: string; avatarPreview?: string }>(() => ({
+    firstName: user?.firstName,
+    lastName: user?.lastName,
+    email: user?.email,
+    role: user?.role,
+    avatarPreview: localStorage.getItem('smartbi_avatar_preview') || undefined,
+  }));
+
+  const [profileSnapshot, setProfileSnapshot] = useState(profileTemp);
+  const [profileErrors, setProfileErrors] = useState<{ firstName?: string; email?: string }>({});
+
+  // initialize the dialog when it opens. Keep dependencies minimal so
+  // user interactions (changing inputs, theme, etc.) don't force the
+  // panel back to 'main' unexpectedly.
   useEffect(() => {
     setVisible(isOpen);
-    if (isOpen) {
+    if (!isOpen) return;
+
+    // if a specific panel is requested via SettingsContext, open that panel
+    if (settingsPanel) {
+      setPanel(settingsPanel as PanelKey);
+      // clear requested panel after using it
+      setSettingsPanel(null);
+    } else {
       setPanel('main');
-      setSnapshot(state);
     }
-  }, [isOpen]);
+
+    setSnapshot(state);
+
+    // initialize profile temp from user and stored avatar preview
+    const initialProfile = {
+      firstName: user?.firstName,
+      lastName: user?.lastName,
+      email: user?.email,
+      role: user?.role,
+      avatarPreview: localStorage.getItem('smartbi_avatar_preview') || undefined,
+    };
+    setProfileTemp(initialProfile);
+    setProfileSnapshot(initialProfile);
+  }, [isOpen, settingsPanel, setSettingsPanel]);
 
   // when theme changes at global level, keep state in sync
   useEffect(() => {
@@ -130,7 +166,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
 
   if (!visible) return null;
 
-  const MenuItem: React.FC<{ icon: any; label: string; keyName: PanelKey }> = ({ icon: Icon, label, keyName }) => (
+  const MenuItem: React.FC<{ icon: React.ComponentType<Record<string, unknown>>; label: string; keyName: PanelKey }> = ({ icon: Icon, label, keyName }) => (
     <button
       onClick={() => setPanel(keyName)}
       className="w-full flex items-center px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-lg"
@@ -184,13 +220,13 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+  <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div onClick={onClose} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50" />
 
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl bg-white/95 dark:bg-gray-800/95 rounded-t-2xl sm:rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in-0 duration-200"
+  className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-4xl bg-white/95 dark:bg-gray-800/95 rounded-t-2xl sm:rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in-0 duration-200 z-[99999] pointer-events-auto"
         role="dialog"
         aria-modal="true"
       >
@@ -255,7 +291,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                 { icon: LayoutIcon, keyName: 'layout', label: 'Layout' },
                 { icon: CreditCard, keyName: 'billing', label: 'Billing' }
               ].map((it) => {
-                const Icon = it.icon as any;
+                const Icon = it.icon as React.ComponentType<{ size?: number }>;
                 return (
                   <button key={it.keyName} onClick={() => setPanel(it.keyName as PanelKey)} className="flex-shrink-0 min-w-[110px] px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-white whitespace-nowrap">
                     <div className="flex items-center gap-2">
@@ -339,7 +375,12 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                         setState({ ...state, language: nextLang });
                         // persist immediately
                         updateSettings({ language: nextLang });
-                        try { localStorage.setItem('smartbi_settings', JSON.stringify({ ...(JSON.parse(localStorage.getItem('smartbi_settings') || '{}')), language: nextLang })); } catch (e) {}
+                        try { localStorage.setItem('smartbi_settings', JSON.stringify({ ...(JSON.parse(localStorage.getItem('smartbi_settings') || '{}')), language: nextLang })); } catch (err) { console.error(err); }
+                        // change i18n language at runtime
+                        try {
+                          // dynamic import to avoid direct dependency in this module
+                          import('../../i18n').then(i18n => i18n.default.changeLanguage(nextLang));
+                        } catch (err) { console.error(err); }
                       }} className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white">
                         {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
                       </select>
@@ -387,13 +428,96 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
 
               {panel === 'profile' && (
                 <div>
-                  <div className="mb-4">
-                    <label className="block text-sm text-gray-600 dark:text-gray-300">Full name</label>
-                    <input className="w-full rounded-lg border px-3 py-2 mt-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100" placeholder="Your name" />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start mb-4">
+                    <div className="col-span-1 flex flex-col items-center">
+                      <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-gray-400">{profileTemp.avatarPreview ? <img src={profileTemp.avatarPreview} alt="avatar" className="w-full h-full object-cover" /> : 'Avatar'}</div>
+                      <label className="mt-3 text-sm text-gray-600 dark:text-gray-300">Upload avatar</label>
+                      <input type="file" accept="image/*" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        // first try to upload to dev upload server
+                        try {
+                          const form = new FormData();
+                          form.append('avatar', file);
+                          const resp = await fetch('http://localhost:5174/upload', { method: 'POST', body: form });
+                          if (resp.ok) {
+                            const json = await resp.json();
+                            if (json && json.url) {
+                              const url = json.url as string;
+                              // store the returned url in localStorage and set preview
+                              try { localStorage.setItem('smartbi_avatar_preview', url); } catch (err) { console.error(err); }
+                              setProfileTemp(prev => ({ ...prev, avatarPreview: url }));
+                              return;
+                            }
+                          }
+                        } catch (uploadErr) {
+                          console.error('Upload server not available or upload failed, falling back to base64 preview', uploadErr);
+                        }
+
+                        // fallback to base64 preview
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const result = reader.result as string | null;
+                          if (result) {
+                            setProfileTemp(prev => ({ ...prev, avatarPreview: result }));
+                            try { localStorage.setItem('smartbi_avatar_preview', result); } catch (err) { console.error(err); }
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }} className="mt-2 text-xs text-gray-500 dark:text-gray-400" />
+                    </div>
+
+                    <div className="sm:col-span-2 col-span-1">
+                      <div className="mb-3">
+                        <label className="block text-sm text-gray-600 dark:text-gray-300">{t('profile.firstName')}</label>
+                        <input value={profileTemp.firstName || ''} onChange={(e) => setProfileTemp({ ...profileTemp, firstName: e.target.value })} className="w-full rounded-lg border px-3 py-2 mt-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100" />
+                        {profileErrors.firstName && <div className="text-xs text-red-600 mt-1">{profileErrors.firstName}</div>}
+                      </div>
+                      <div className="mb-3">
+                        <label className="block text-sm text-gray-600 dark:text-gray-300">{t('profile.lastName')}</label>
+                        <input value={profileTemp.lastName || ''} onChange={(e) => setProfileTemp({ ...profileTemp, lastName: e.target.value })} className="w-full rounded-lg border px-3 py-2 mt-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100" />
+                      </div>
+                      <div className="mb-3">
+                        <label className="block text-sm text-gray-600 dark:text-gray-300">{t('profile.email')}</label>
+                        <input value={profileTemp.email || ''} onChange={(e) => setProfileTemp({ ...profileTemp, email: e.target.value })} className="w-full rounded-lg border px-3 py-2 mt-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100" />
+                        {profileErrors.email && <div className="text-xs text-red-600 mt-1">{profileErrors.email}</div>}
+                      </div>
+                      <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{t('profile.role')}: <span className="font-medium">{profileTemp.role || 'User'}</span></div>
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <label className="block text-sm text-gray-600 dark:text-gray-300">Email</label>
-                    <input className="w-full rounded-lg border px-3 py-2 mt-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-gray-100" placeholder="you@company.com" />
+
+                  <div className="flex items-center gap-3 mt-2">
+                    <button onClick={async () => {
+                      // validate
+                      const errors: { firstName?: string; email?: string } = {};
+                      if (!profileTemp.firstName || profileTemp.firstName.trim().length === 0) errors.firstName = t('profile.firstName') + ' is required';
+                      const emailVal = profileTemp.email || '';
+                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                      if (!emailVal || !emailRegex.test(emailVal)) errors.email = 'Please enter a valid email';
+                      setProfileErrors(errors);
+                      if (Object.keys(errors).length > 0) return;
+
+                      const patch = {
+                        firstName: profileTemp.firstName,
+                        lastName: profileTemp.lastName,
+                        email: profileTemp.email,
+                      };
+
+                      try {
+                        await updateProfile(patch);
+                      } catch (err) {
+                        console.error('Update profile failed', err);
+                      }
+
+                      try { updateSettings({ ...settings, ...(patch as Partial<SettingsState>) }); } catch (err) { console.error(err); }
+                      setProfileSnapshot({ ...profileTemp });
+                      handleApply();
+                    }} className="px-4 py-2 rounded-lg bg-blue-600 text-white">{t('profile.saveProfile')}</button>
+                    <button onClick={() => {
+                      // revert changes from snapshot if any
+                      setProfileTemp(profileSnapshot);
+                    }} className="px-4 py-2 rounded-lg border">Revert</button>
                   </div>
                 </div>
               )}

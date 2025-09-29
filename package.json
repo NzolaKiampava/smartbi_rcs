@@ -7,6 +7,7 @@
     "dev": "vite",
     "perf-server": "node scripts/performance-server.cjs",
     "backend-perf-server": "node './backend files/perf-server.cjs'",
+  "upload-server": "node scripts/upload-server.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
