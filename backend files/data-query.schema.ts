@@ -3,6 +3,7 @@ export const dataQueryTypeDefs = `#graphql
     MYSQL
     POSTGRESQL
     SUPABASE
+    FIREBASE
     API_REST
     API_GRAPHQL
   }

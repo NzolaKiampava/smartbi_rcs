@@ -54,23 +54,21 @@ const DatabasePage: React.FC = () => {
   const { showSuccess, showError } = useNotification();
 
   // Load database connections from API
-  useEffect(() => {
-    const loadDatabases = async () => {
-      setIsLoading(true);
-      try {
-        const connections = await graphqlService.getConnections();
-        setDatabases(connections);
-        // Removendo notificação aqui para evitar duplicação
-        // showSuccess(`${connections.length} conexões carregadas com sucesso`);
-      } catch (error) {
-        console.error('Failed to load database connections:', error);
-        showError('Erro ao carregar conexões de banco de dados');
-        setDatabases([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadDatabases = async () => {
+    setIsLoading(true);
+    try {
+      const connections = await graphqlService.getConnections();
+      setDatabases(connections);
+    } catch (error) {
+      console.error('Failed to load database connections:', error);
+      showError('Erro ao carregar conexões de banco de dados');
+      setDatabases([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadDatabases();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Carregamento inicial apenas
@@ -970,27 +968,56 @@ const DatabasePage: React.FC = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    // Here you would typically validate and submit the form
-                    console.log('Form data:', formData);
-                    console.log('Connection mode:', connectionMode);
-                    showSuccess(`${connectionMode === 'database' ? 'Database' : 'API'} connection will be added soon!`);
-                    setShowAddModal(false);
-                    setFormData({
-                      name: '',
-                      type: connectionMode === 'database' ? 'postgresql' : 'rest',
-                      host: '',
-                      port: '',
-                      database: '',
-                      username: '',
-                      password: '',
-                      description: '',
-                      baseUrl: '',
-                      apiKey: '',
-                      authType: 'none',
-                      headers: ''
-                    });
-                    setShowPassword(false);
+                  onClick={async () => {
+                    try {
+                      if (connectionMode === 'api') {
+                        // Parse headers from textarea
+                        const headersArr = formData.headers
+                          .split('\n')
+                          .map(line => line.trim())
+                          .filter(line => line && line.includes(':'))
+                          .map(line => {
+                            const [key, ...rest] = line.split(':');
+                            return { key: key.trim(), value: rest.join(':').trim() };
+                          });
+                        const apiInput = {
+                          name: formData.name,
+                          type: 'API_REST',
+                          config: {
+                            apiUrl: formData.baseUrl,
+                            apiKey: formData.apiKey,
+                            username: formData.username,
+                            password: formData.password,
+                            headers: headersArr,
+                          },
+                          isDefault: false,
+                        };
+                        await graphqlService.createApiConnection(apiInput);
+                        showSuccess('API connection criada com sucesso!');
+                        await loadDatabases();
+                      } else {
+                        // Database connection logic (not implemented here)
+                        showSuccess('Database connection will be added soon!');
+                      }
+                      setShowAddModal(false);
+                      setFormData({
+                        name: '',
+                        type: connectionMode === 'database' ? 'postgresql' : 'rest',
+                        host: '',
+                        port: '',
+                        database: '',
+                        username: '',
+                        password: '',
+                        description: '',
+                        baseUrl: '',
+                        apiKey: '',
+                        authType: 'none',
+                        headers: ''
+                      });
+                      setShowPassword(false);
+                    } catch (err) {
+                      showError('Erro ao criar conexão API: ' + (err?.message || err));
+                    }
                   }}
                   disabled={
                     !formData.name || 

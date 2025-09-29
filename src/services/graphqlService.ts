@@ -517,6 +517,39 @@ class GraphQLService {
     const response = await this.makeRequest<{ deleteFileUpload: boolean }>(mutation, variables);
     return response.deleteFileUpload;
   }
+
+    async createApiConnection(input: {
+      name: string;
+      type: string;
+      config: {
+        host?: string;
+        port?: number;
+        database?: string;
+        username?: string;
+        password?: string;
+        apiUrl?: string;
+        apiKey?: string;
+        headers?: { key: string; value: string }[];
+        timeout?: number;
+      };
+      isDefault?: boolean;
+    }): Promise<Connection> {
+      const mutation = `
+        mutation CreateApiConnection($input: DataConnectionInput!) {
+          createDataConnectionPublic(input: $input) {
+            id
+            name
+            type
+            status
+            isDefault
+            createdAt
+          }
+        }
+      `;
+      const variables = { input };
+      const response = await this.makeRequest<{ createDataConnectionPublic: Connection }>(mutation, variables);
+      return response.createDataConnectionPublic;
+    }
 }
 
 export const graphqlService = new GraphQLService();
