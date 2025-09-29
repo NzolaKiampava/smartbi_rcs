@@ -135,6 +135,50 @@ interface ListFileUploadsResponse {
 }
 
 class GraphQLService {
+  async updateApiConnection(id: string, input: {
+    name: string;
+    type: string;
+    config: {
+      host?: string;
+      port?: number;
+      database?: string;
+      username?: string;
+      password?: string;
+      apiUrl?: string;
+      apiKey?: string;
+      headers?: { key: string; value: string }[];
+      timeout?: number;
+    };
+    isDefault?: boolean;
+  }): Promise<Connection> {
+    const mutation = `
+      mutation UpdateApiConnection($id: ID!, $input: DataConnectionInput!) {
+        updateDataConnection(id: $id, input: $input) {
+          id
+          name
+          type
+          status
+          isDefault
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+    const variables = { id, input };
+    const response = await this.makeRequest<{ updateDataConnection: Connection }>(mutation, variables);
+    return response.updateDataConnection;
+  }
+
+  async deleteConnection(id: string): Promise<boolean> {
+    const mutation = `
+      mutation DeleteConnection($id: ID!) {
+        deleteDataConnection(id: $id)
+      }
+    `;
+    const variables = { id };
+    const response = await this.makeRequest<{ deleteDataConnection: boolean }>(mutation, variables);
+    return response.deleteDataConnection;
+  }
   private endpoint: string;
 
   constructor() {
@@ -198,7 +242,6 @@ class GraphQLService {
         }
       }
     `;
-
     const response = await this.makeRequest<GetConnectionsResponse>(query);
     return response.getDataConnectionsPublic;
   }

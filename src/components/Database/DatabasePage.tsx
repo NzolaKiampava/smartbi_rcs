@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 import { 
   Database, 
   Plus, 
@@ -27,6 +28,9 @@ import { graphqlService, Connection } from '../../services/graphqlService';
 import { useNotification } from '../../contexts/NotificationContext';
 
 const DatabasePage: React.FC = () => {
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; connection: Connection | null; loading: boolean }>({ open: false, connection: null, loading: false });
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editConnection, setEditConnection] = useState<Connection | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'connected' | 'disconnected' | 'error'>('all');
   const [filterType, setFilterType] = useState<'all' | string>('all');
@@ -329,15 +333,42 @@ const DatabasePage: React.FC = () => {
           <button 
             className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
             title="Editar conexão"
+            onClick={() => {
+              setEditConnection(database);
+              setEditModalOpen(true);
+            }}
           >
             <Edit size={14} />
           </button>
           <button 
             className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
             title="Excluir conexão"
+            onClick={() => setDeleteModal({ open: true, connection: database, loading: false })}
           >
             <Trash2 size={14} />
           </button>
+  {/* Delete Confirmation Modal */}
+  <DeleteConfirmationModal
+    isOpen={deleteModal.open}
+    title="Excluir conexão"
+    message={`Tem certeza que deseja excluir a conexão "${deleteModal.connection?.name}"?`}
+    isLoading={deleteModal.loading}
+    onClose={() => setDeleteModal({ open: false, connection: null, loading: false })}
+    onConfirm={async () => {
+      if (!deleteModal.connection) return;
+      setDeleteModal((prev) => ({ ...prev, loading: true }));
+      try {
+        await graphqlService.deleteConnection(deleteModal.connection.id);
+        showSuccess('Conexão excluída com sucesso!');
+        await loadDatabases();
+        setDeleteModal({ open: false, connection: null, loading: false });
+      } catch (err) {
+        const errorMsg = typeof err === 'object' && err !== null && 'message' in err ? (err as any).message : String(err);
+        showError('Erro ao excluir conexão: ' + errorMsg);
+        setDeleteModal((prev) => ({ ...prev, loading: false }));
+      }
+    }}
+  />
         </div>
       </div>
     </div>
@@ -1016,7 +1047,8 @@ const DatabasePage: React.FC = () => {
                       });
                       setShowPassword(false);
                     } catch (err) {
-                      showError('Erro ao criar conexão API: ' + (err?.message || err));
+                      const errorMsg = typeof err === 'object' && err !== null && 'message' in err ? (err as any).message : String(err);
+                      showError('Erro ao criar conexão API: ' + errorMsg);
                     }
                   }}
                   disabled={
