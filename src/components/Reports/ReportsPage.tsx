@@ -1,28 +1,21 @@
 import React, { useState } from 'react';
 import { 
   FileText, 
-  File, 
   Download, 
   Share2, 
   MoreVertical, 
   Search, 
-  Filter, 
   Grid, 
   List, 
   Plus,
   Clock,
   Star,
   Trash2,
-  Eye,
-  Edit,
-  Copy,
-  FolderPlus,
-  Upload,
-  SortAsc,
-  Calendar
+  Upload
 } from 'lucide-react';
 import { format } from 'date-fns';
 import FilePreviewModal from './FilePreviewModal';
+import { graphqlService } from '../../services/graphqlService';
 
 interface Document {
   id: string;
@@ -43,6 +36,8 @@ const ReportsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'name' | 'modified' | 'size'>('modified');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewReportOpen, setIsNewReportOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Mock data for documents
   const documents: Document[] = [
@@ -125,7 +120,7 @@ const ReportsPage: React.FC = () => {
       case 'pptx':
         return <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">PPT</div>;
       default:
-        return <File {...iconProps} className="text-gray-500" />;
+        return <FileText {...iconProps} className="text-gray-500" />;
     }
   };
 
@@ -280,15 +275,63 @@ const ReportsPage: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex items-center space-x-3">
-            <button className="inline-flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-medium rounded-lg transition-colors">
+          <div className="flex items-center space-x-3 relative">
+            <input id="reports-file-input" type="file" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                setUploading(true);
+                // Optionally call backend upload API (graphqlService.uploadAndAnalyzeFile)
+                // We create a minimal FileUploadInput object to match the service signature
+                const input = { file, description: `Uploaded via Reports UI: ${file.name}` } as any;
+                await graphqlService.uploadAndAnalyzeFile(input);
+                // simple UX feedback
+                alert('Upload enviado com sucesso');
+              } catch (err) {
+                console.error('Upload failed', err);
+                alert('Falha no upload — o servidor pode estar offline.');
+              } finally {
+                setUploading(false);
+                // clear the input so same file can be reselected
+                (document.getElementById('reports-file-input') as HTMLInputElement).value = '';
+              }
+            }} />
+
+            <label htmlFor="reports-file-input" className={`inline-flex items-center px-4 py-2 ${uploading ? 'bg-white/30' : 'bg-white bg-opacity-20 hover:bg-opacity-30'} text-white font-medium rounded-lg transition-colors cursor-pointer`}>
               <Upload size={20} className="mr-2" />
-              Upload
-            </button>
-            <button className="inline-flex items-center px-4 py-2 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-100 transition-colors">
-              <Plus size={20} className="mr-2" />
-              New Report
-            </button>
+              {uploading ? 'Uploading...' : 'Upload'}
+            </label>
+
+            <div className="relative">
+              <button onClick={() => setIsNewReportOpen(s => !s)} className="inline-flex items-center px-4 py-2 bg-white text-blue-600 font-medium rounded-lg hover:bg-gray-100 transition-colors">
+                <Plus size={20} className="mr-2" />
+                New Report
+              </button>
+
+              {isNewReportOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                  <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                        <FileText size={18} className="text-gray-700 dark:text-gray-200" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 dark:text-white">Create New Report</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Choose a report template or start from scratch</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <button onClick={() => { alert('Template: Executive Summary'); setIsNewReportOpen(false); }} className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Executive Summary</button>
+                    <button onClick={() => { alert('Template: Sales Dashboard'); setIsNewReportOpen(false); }} className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Sales Dashboard</button>
+                    <button onClick={() => { alert('Blank report'); setIsNewReportOpen(false); }} className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Start from Blank</button>
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                      <button onClick={() => { navigator.clipboard?.writeText('https://example.com/report-template'); setIsNewReportOpen(false); }} className="w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">Import template URL</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

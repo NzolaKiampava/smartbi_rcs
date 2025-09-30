@@ -44,6 +44,7 @@ import {
   ComposedChart
 } from 'recharts';
 import { format } from 'date-fns';
+import { graphqlService } from '../../services/graphqlService';
 import { useNavigate } from 'react-router-dom';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -226,6 +227,7 @@ const OverviewPage: React.FC = () => {
 
   // make dashboard data stateful so we can update charts dynamically on refresh
   const [dataState, setDataState] = useState(() => dashboardData);
+  const [isLoadingOverview, setIsLoadingOverview] = useState<boolean>(false);
   // Revenue chart controls
   const [showRevenueSeries, setShowRevenueSeries] = useState<boolean>(true);
   const [showProfitSeries, setShowProfitSeries] = useState<boolean>(true);
@@ -237,80 +239,99 @@ const OverviewPage: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // Create new dynamic data by applying small random deltas to numeric series
-    setDataState(prev => {
-      const next = { ...prev } as any;
-      // tweak revenue data points
-      next.revenueData = prev.revenueData.map((r: any) => {
-        const delta = Math.round((Math.random() - 0.45) * 20000); // -20k..+20k bias
-        return { ...r, revenue: Math.max(0, r.revenue + delta), profit: Math.max(0, r.profit + Math.round(delta * 0.18)) };
-      });
-      // recompute KPIs (simple derivation)
-      const totalRevenue = next.revenueData.reduce((s: number, x: any) => s + x.revenue, 0);
-      const revenueKpi = next.kpis.map((k: any) => ({ ...k }));
-      revenueKpi.forEach((k: any) => {
-        if (k.id === 'revenue') {
-          k.value = '$' + totalRevenue.toLocaleString();
-          k.change = +(Math.random() * 5).toFixed(1);
-        }
-      });
-      next.kpis = revenueKpi;
-
-      // lightly perturb categoryData and performanceMetrics
-      next.categoryData = prev.categoryData.map((c: any) => ({
-        ...c,
-        // small percentage shifts
-        value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))),
-        revenue: Math.max(0, c.revenue + Math.round((Math.random() - 0.45) * 20000))
-      }));
-
-      next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({
-        ...m,
-        // nudge metrics toward their target slightly
-        value: Math.max(0, +(m.value + (Math.random() - 0.4) * (m.target ? (m.target * 0.05) : 5)).toFixed(1))
-      }));
-
-      // update recent activities: occasionally add a new activity and rotate older ones
-      const activityTypes = ['report', 'database', 'ai', 'export', 'login', 'query'];
-      const actionsByType: any = {
-        report: ['Generated Revenue Report', 'Scheduled Report Run', 'Exported PDF Report'],
-        database: ['Connected to Database', 'DB Backup Completed', 'DB Migration Started'],
-        ai: ['AI Query Executed', 'Model Training Job Finished', 'AI Analysis Completed'],
-        export: ['Data Export Started', 'Export Completed', 'Export Failed'],
-        login: ['User Logged In', 'User Session Started', 'User Logged Out'],
-        query: ['Ad-hoc Query Executed', 'Saved Query Run', 'Query Timeout']
-      };
-
-      const maybeNew = Math.random() < 0.6; // 60% chance to add an event on refresh
-      const newActivities = [...prev.recentActivities];
-      if (maybeNew) {
-        const t = activityTypes[Math.floor(Math.random() * activityTypes.length)];
-        const acts = actionsByType[t] || ['Performed Action'];
-        const action = acts[Math.floor(Math.random() * acts.length)];
-        const statusRand = Math.random();
-        const status = statusRand > 0.95 ? 'error' : 'success';
-        const userNames = ['João Silva','Maria Santos','Carlos Eduardo','Ana Paula','Luís Costa','Beatriz'];
-        const newAct = {
-          id: Date.now(),
-          user: userNames[Math.floor(Math.random() * userNames.length)],
-          action,
-          details: `${action} - ${Math.floor(Math.random()*1000)} items processed`,
-          timestamp: new Date().toISOString(),
-          type: t,
-          status
-        };
-        newActivities.unshift(newAct);
+    // Try to fetch fresh overview from backend first
+    try {
+      setIsLoadingOverview(true);
+      const remote = await graphqlService.getOverview();
+      if (remote) {
+        setDataState((prev: any) => {
+          const next = { ...prev } as any;
+          if (remote.revenueData) next.revenueData = remote.revenueData;
+          if (remote.categoryData) next.categoryData = remote.categoryData;
+          if (remote.performanceMetrics) next.performanceMetrics = remote.performanceMetrics;
+          if (remote.recentActivities) next.recentActivities = remote.recentActivities.slice(0, 10);
+          if (remote.topInsights) next.topInsights = remote.topInsights;
+          if (remote.kpis) {
+            // merge remote KPIs while preserving local display fields
+            next.kpis = remote.kpis.map((rk: any, idx: number) => ({ ...prev.kpis[idx], ...rk }));
+          }
+          return next;
+        });
       }
-      // keep max 10 recent activities
-  next.recentActivities = newActivities.slice(0, 10).map((a: any) => ({ ...a }));
+    } catch (err) {
+      // backend unavailable — fallback to local simulated delta update
+      setDataState(prev => {
+        const next = { ...prev } as any;
+        // tweak revenue data points
+        next.revenueData = prev.revenueData.map((r: any) => {
+          const delta = Math.round((Math.random() - 0.45) * 20000); // -20k..+20k bias
+          return { ...r, revenue: Math.max(0, r.revenue + delta), profit: Math.max(0, r.profit + Math.round(delta * 0.18)) };
+        });
+        // recompute KPIs (simple derivation)
+        const totalRevenue = next.revenueData.reduce((s: number, x: any) => s + x.revenue, 0);
+        const revenueKpi = next.kpis.map((k: any) => ({ ...k }));
+        revenueKpi.forEach((k: any) => {
+          if (k.id === 'revenue') {
+            k.value = '$' + totalRevenue.toLocaleString();
+            k.change = +(Math.random() * 5).toFixed(1);
+          }
+        });
+        next.kpis = revenueKpi;
 
-      return next;
-    });
+        // lightly perturb categoryData and performanceMetrics
+        next.categoryData = prev.categoryData.map((c: any) => ({
+          ...c,
+          // small percentage shifts
+          value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))),
+          revenue: Math.max(0, c.revenue + Math.round((Math.random() - 0.45) * 20000))
+        }));
 
-    setRefreshing(false);
+        next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({
+          ...m,
+          // nudge metrics toward their target slightly
+          value: Math.max(0, +(m.value + (Math.random() - 0.4) * (m.target ? (m.target * 0.05) : 5)).toFixed(1))
+        }));
+
+        // update recent activities: occasionally add a new activity and rotate older ones
+        const activityTypes = ['report', 'database', 'ai', 'export', 'login', 'query'];
+        const actionsByType: any = {
+          report: ['Generated Revenue Report', 'Scheduled Report Run', 'Exported PDF Report'],
+          database: ['Connected to Database', 'DB Backup Completed', 'DB Migration Started'],
+          ai: ['AI Query Executed', 'Model Training Job Finished', 'AI Analysis Completed'],
+          export: ['Data Export Started', 'Export Completed', 'Export Failed'],
+          login: ['User Logged In', 'User Session Started', 'User Logged Out'],
+          query: ['Ad-hoc Query Executed', 'Saved Query Run', 'Query Timeout']
+        };
+
+        const maybeNew = Math.random() < 0.6; // 60% chance to add an event on refresh
+        const newActivities = [...prev.recentActivities];
+        if (maybeNew) {
+          const t = activityTypes[Math.floor(Math.random() * activityTypes.length)];
+          const acts = actionsByType[t] || ['Performed Action'];
+          const action = acts[Math.floor(Math.random() * acts.length)];
+          const statusRand = Math.random();
+          const status = statusRand > 0.95 ? 'error' : 'success';
+          const userNames = ['João Silva','Maria Santos','Carlos Eduardo','Ana Paula','Luís Costa','Beatriz'];
+          const newAct = {
+            id: Date.now(),
+            user: userNames[Math.floor(Math.random() * userNames.length)],
+            action,
+            details: `${action} - ${Math.floor(Math.random()*1000)} items processed`,
+            timestamp: new Date().toISOString(),
+            type: t,
+            status
+          };
+          newActivities.unshift(newAct);
+        }
+        // keep max 10 recent activities
+        next.recentActivities = newActivities.slice(0, 10).map((a: any) => ({ ...a }));
+
+        return next;
+      });
+    } finally {
+      setIsLoadingOverview(false);
+      setRefreshing(false);
+    }
   };
 
   const changeTo = async (lang: string) => {
@@ -328,6 +349,47 @@ const OverviewPage: React.FC = () => {
     }, Math.max(minIntervalMs, refreshIntervalSeconds * 1000));
     return () => clearInterval(iv);
   }, [isRealTime, refreshIntervalSeconds]);
+
+  // Fetch dynamic overview data on mount and when selectedTimeRange changes
+  useEffect(() => {
+    let mounted = true;
+
+    const loadOverview = async () => {
+      try {
+        // set a conservative timeout so the UI remains responsive if backend is unreachable
+        const timeoutMs = 1500;
+        const p = graphqlService.getOverview();
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs));
+        const result = await Promise.race([p, timeout]) as any;
+
+        if (!mounted || !result) return;
+
+        // Merge remote overview fields into our local state shape where present
+        setDataState((prev: any) => {
+          const next = { ...prev } as any;
+          if (result.kpis) {
+            // map remote KPIs to keep existing UI fields like icon/color/bgColor when possible
+            next.kpis = result.kpis.map((rk: any, idx: number) => ({
+              ...prev.kpis[idx],
+              ...rk
+            }));
+          }
+          if (result.revenueData) next.revenueData = result.revenueData;
+          if (result.categoryData) next.categoryData = result.categoryData;
+          if (result.performanceMetrics) next.performanceMetrics = result.performanceMetrics;
+          if (result.recentActivities) next.recentActivities = result.recentActivities;
+          if (result.topInsights) next.topInsights = result.topInsights;
+          return next;
+        });
+      } catch (err) {
+        // keep mock data if remote fetch fails; log for debugging
+        // console.debug('Overview fetch failed, using local mock data', err);
+      }
+    };
+
+    loadOverview();
+    return () => { mounted = false; };
+  }, [selectedTimeRange]);
 
   // persist auto-refresh preferences
   useEffect(() => {
@@ -566,6 +628,16 @@ const OverviewPage: React.FC = () => {
                   <button className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20">
                     <Download size={20} className="text-white" />
                   </button>
+                  {/* Loading indicator when overview is being refreshed from backend */}
+                  {isLoadingOverview && (
+                    <div className="ml-2 px-3 py-2 bg-white/10 text-white rounded-xl flex items-center space-x-2">
+                      <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4"></circle>
+                        <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round"></path>
+                      </svg>
+                      <span className="text-sm">Loading</span>
+                    </div>
+                  )}
                 </div>
                 {/* Language switcher for quick testing */}
                 <div className="flex items-center space-x-2">

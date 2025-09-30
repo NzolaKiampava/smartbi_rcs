@@ -549,6 +549,65 @@ class GraphQLService {
     return response.listFileUploads;
   }
 
+  // Fetch overview/dashboard data (KPIs, revenue series, categories, performance, recent activities, insights)
+  // This endpoint may not exist on all backends; callers should handle errors and fall back to local mocks.
+  async getOverview(): Promise<any> {
+    const query = `
+      query GetOverview {
+        getOverviewPublic {
+          kpis {
+            id
+            title
+            value
+            change
+            trend
+            target
+            progress
+          }
+          revenueData {
+            month
+            revenue
+            orders
+            users
+            profit
+          }
+          categoryData {
+            name
+            value
+            revenue
+            color
+          }
+          performanceMetrics {
+            metric
+            value
+            target
+            status
+          }
+          recentActivities {
+            id
+            user
+            action
+            details
+            timestamp
+            type
+            status
+          }
+          topInsights {
+            id
+            title
+            description
+            impact
+            category
+            confidence
+          }
+        }
+      }
+    `;
+
+    const response = await this.makeRequest<{ getOverviewPublic: any }>(query);
+    return response.getOverviewPublic;
+  }
+
   async deleteFileUpload(id: string): Promise<boolean> {
     const mutation = `
       mutation DeleteFileUpload($id: ID!) {
