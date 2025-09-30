@@ -179,6 +179,18 @@ class GraphQLService {
     const response = await this.makeRequest<{ deleteDataConnection: boolean }>(mutation, variables);
     return response.deleteDataConnection;
   }
+
+  // Public delete for demo/dev connections (no auth required on backend)
+  async deleteConnectionPublic(id: string): Promise<boolean> {
+    const mutation = `
+      mutation DeleteConnectionPublic($id: ID!) {
+        deleteDataConnectionPublic(id: $id)
+      }
+    `;
+    const variables = { id };
+    const response = await this.makeRequest<{ deleteDataConnectionPublic: boolean }>(mutation, variables);
+    return response.deleteDataConnectionPublic;
+  }
   private endpoint: string;
 
   constructor() {

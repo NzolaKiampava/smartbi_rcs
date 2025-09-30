@@ -429,6 +429,31 @@ export const dataQueryResolvers = {
         throw new Error(`Failed to create connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     },
+    // Delete connection without authentication (development only)
+    deleteDataConnectionPublic: async (_: any, { id }: { id: string }) : Promise<boolean> => {
+      // Only available in development mode
+      if (process.env.NODE_ENV !== 'development') {
+        throw new Error('This endpoint is only available in development mode');
+      }
+
+      try {
+        // Get Demo Company
+        const { data: companies, error: companyError } = await (global as any).supabase
+          .from('companies')
+          .select('id')
+          .eq('slug', 'demo')
+          .single();
+
+        if (companyError || !companies) {
+          throw new Error('Demo company not found');
+        }
+
+        const service = new DataQueryService((global as any).supabase, getGeminiConfig());
+        return await service.deleteDataConnection(companies.id, id);
+      } catch (error) {
+        throw new Error(`Failed to delete connection publicly: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
 
     executeAIQuery: async (
       _: any, 

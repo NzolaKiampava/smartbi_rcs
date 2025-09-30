@@ -358,7 +358,8 @@ const DatabasePage: React.FC = () => {
       if (!deleteModal.connection) return;
       setDeleteModal((prev) => ({ ...prev, loading: true }));
       try {
-        await graphqlService.deleteConnection(deleteModal.connection.id);
+        // Use the public delete endpoint for demo/dev connections
+        await graphqlService.deleteConnectionPublic(deleteModal.connection.id);
         showSuccess('Conexão excluída com sucesso!');
         await loadDatabases();
         setDeleteModal({ open: false, connection: null, loading: false });
