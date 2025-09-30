@@ -10,6 +10,7 @@ import {
   X,
   Upload,
   MessageSquare,
+  FileText,
   BarChart3,
   Sparkles,
   Crown,
@@ -30,6 +31,7 @@ interface SidebarProps {
 
 const navigation = (t: TFunction): Array<{ name: string; icon: React.ElementType; section: string }> => [
   { name: t('nav.overview', 'Overview'), icon: BarChart3, section: 'overview' },
+  { name: t('nav.reports', 'Reports'), icon: FileText, section: 'reports' },
   { name: t('nav.analytics', 'Analytics'), icon: PieChart, section: 'analytics' },
   { name: t('nav.users', 'Users'), icon: Users, section: 'users' },
   { name: t('nav.performance', 'Performance'), icon: TrendingUp, section: 'performance' },

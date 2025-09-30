@@ -44,6 +44,7 @@ import {
   ComposedChart
 } from 'recharts';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Lightweight clock component that updates itself every second. Placing
@@ -208,6 +209,7 @@ const dashboardData = {
 
 const OverviewPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [currentLang, setCurrentLang] = useState(() => getLanguage());
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
   // auto-refresh disabled by default so charts don't update every second
@@ -619,7 +621,8 @@ const OverviewPage: React.FC = () => {
       {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Revenue Trend */}
-        <ChartCard
+        <div id="section-revenue">
+          <ChartCard
           title="Revenue & Growth Analysis"
           icon={TrendingUp}
           actionsContent={(
@@ -695,6 +698,7 @@ const OverviewPage: React.FC = () => {
             <div className="mt-2 text-sm text-green-600">{chartMessage}</div>
           )}
         </ChartCard>
+      </div>
 
         {/* User Analytics */}
         <ChartCard
@@ -930,8 +934,8 @@ const OverviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+  {/* Recent Activity */}
+  <div id="section-recent-activity" className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-sm">
@@ -955,8 +959,8 @@ const OverviewPage: React.FC = () => {
         </div>
       </div>
 
-      {/* AI Insights Section */}
-      <div className="mb-8">
+  {/* AI Insights Section */}
+  <div id="section-ai" className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -989,13 +993,18 @@ const OverviewPage: React.FC = () => {
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { icon: FileText, label: 'Generate Report', color: 'from-blue-500 to-cyan-600', description: 'Create new analytics report' },
-            { icon: Database, label: 'Connect Database', color: 'from-green-500 to-emerald-600', description: 'Add new data source' },
-            { icon: Sparkles, label: 'AI Analysis', color: 'from-purple-500 to-violet-600', description: 'Run AI-powered analysis' },
-            { icon: Download, label: 'Export Data', color: 'from-orange-500 to-red-600', description: 'Export current dataset' }
+            { icon: FileText, label: 'Generate Report', color: 'from-blue-500 to-cyan-600', description: 'Create new analytics report', route: '/reports' },
+            { icon: Database, label: 'Connect Database', color: 'from-green-500 to-emerald-600', description: 'Add new data source', route: '/database' },
+            { icon: Sparkles, label: 'AI Analysis', color: 'from-purple-500 to-violet-600', description: 'Run AI-powered analysis', route: '/analytics' },
+            { icon: Download, label: 'Export Data', color: 'from-orange-500 to-red-600', description: 'Export current dataset', route: '/reports' }
           ].map((action, index) => (
             <button
               key={index}
+              onClick={() => {
+                try {
+                  navigate(action.route);
+                } catch (e) {}
+              }}
               className="group p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-lg hover:scale-105 transition-all duration-300"
             >
               <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
