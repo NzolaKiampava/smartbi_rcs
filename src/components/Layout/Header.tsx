@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Search, User, Menu, Sun, Moon, ChevronRight, Settings } from 'lucide-react';
+import { Bell, Search, Menu, Sun, Moon, ChevronRight, Settings } from 'lucide-react';
 import { Avatar } from '../ui';
 import UserProfileModal from './UserProfileModal';
 import NotificationsDropdown from './NotificationsDropdown';
@@ -25,18 +25,18 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
   const { toggleTheme, isDark } = useTheme();
   const { t } = useTranslation();
 
-  // Pages available in the system
+  // Pages available in the system (translated)
   const pages = [
-    { id: 'overview', title: 'Overview', description: 'Dashboard overview with key metrics' },
-    { id: 'analytics', title: 'Analytics', description: 'Business intelligence and data analysis' },
-    { id: 'file-upload', title: 'File Upload', description: 'Upload and manage data files' },
-    { id: 'natural-query', title: 'Natural Language Query', description: 'Query data using natural language' },
+    { id: 'overview', title: t('nav.overview'), description: t('nav.overview_desc', 'Dashboard overview with key metrics') },
+    { id: 'analytics', title: t('nav.analytics'), description: t('nav.analytics_desc', 'Business intelligence and data analysis') },
+    { id: 'file-upload', title: t('nav.file_upload'), description: t('nav.file_upload_desc', 'Upload and manage data files') },
+    { id: 'natural-query', title: t('nav.natural_query'), description: t('nav.natural_query_desc', 'Query data using natural language') },
    // { id: 'reports', title: 'Reports', description: 'Generate and view reports' },
-    { id: 'performance', title: 'Performance', description: 'System performance monitoring' },
-    { id: 'notifications', title: 'Notifications', description: 'View system notifications' },
-    { id: 'query-history', title: 'Query History', description: 'History of executed queries' },
-    { id: 'users', title: 'Users', description: 'User management and administration' },
-    { id: 'database', title: 'Database', description: 'Database connections and management' }
+    { id: 'performance', title: t('nav.performance'), description: t('nav.performance_desc', 'System performance monitoring') },
+    { id: 'notifications', title: t('nav.notifications'), description: t('nav.notifications_desc', 'View system notifications') },
+    { id: 'query-history', title: t('nav.query_history'), description: t('nav.query_history_desc', 'History of executed queries') },
+    { id: 'users', title: t('nav.users'), description: t('nav.users_desc', 'User management and administration') },
+    { id: 'database', title: t('nav.database'), description: t('nav.database_desc', 'Database connections and management') }
   ];
 
   // Filter pages based on search query
@@ -125,8 +125,8 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
           </button>
           
           <div className="hidden md:flex items-center space-x-2">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">SmartBI</h1>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Dashboard</span>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('app.title')}</h1>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{t('app.subtitle')}</span>
           </div>
         </div>
 
@@ -217,7 +217,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, setActiveS
                 const next = e.target.value;
                 updateSettings({ language: next });
                 try { document.documentElement.lang = next; } catch (err) {}
-                try { import('../../i18n').then(i18n => i18n.default.changeLanguage(next)); } catch (err) {}
+                try { import('../../utils/i18nHelpers').then(mod => mod.setLanguage(next)).catch(() => {}); } catch (err) {}
               }}
               className="text-sm rounded-lg border px-2 py-1 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white"
               aria-label="Language"

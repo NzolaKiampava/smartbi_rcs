@@ -46,4 +46,41 @@
     "2": { "label": "Análise IA", "desc": "Executar análise com IA" },
     "3": { "label": "Exportar Dados", "desc": "Exportar o conjunto de dados atual" }
   }
+  ,
+  "settings": {
+    "profile": "Perfil",
+    "password": "Senha",
+    "changePassword": "Alterar Senha",
+    "notifications": "Notificações",
+    "security": "Segurança",
+    "organization": "Organização",
+    "integrations": "Integrações",
+    "reports": "Relatórios",
+    "layout": "Layout",
+    "billing": "Faturamento"
+  },
+  "nav": {
+    "overview": "Visão Geral",
+    "analytics": "Análises",
+    "ai": "Análise por IA",
+    "file_upload": "Envio de Arquivos",
+    "natural_query": "Consulta em Linguagem Natural",
+    "performance": "Desempenho",
+    "notifications": "Notificações",
+    "query_history": "Histórico de Consultas",
+    "users": "Usuários",
+    "database": "Base de Dados"
+  }
+  ,
+  "nav_desc": {
+    "overview": "Visão geral do painel com métricas principais",
+    "analytics": "Inteligência de negócios e análise de dados",
+    "file_upload": "Enviar e gerenciar ficheiros de dados",
+    "natural_query": "Consultar dados usando linguagem natural",
+    "performance": "Monitoramento de desempenho do sistema",
+    "notifications": "Ver notificações do sistema",
+    "query_history": "Histórico de consultas executadas",
+    "users": "Gestão de utilizadores e administração",
+    "database": "Conexões e gestão de bancos de dados"
+  }
 }

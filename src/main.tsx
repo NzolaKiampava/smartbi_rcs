@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import './i18n';
+// Ensure persisted language is applied on startup (non-blocking)
+try {
+  import('./utils/i18nHelpers').then(mod => mod.initLanguage().catch(() => {})).catch(() => {});
+} catch {}
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

@@ -104,14 +104,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
 
   const { user } = useAuth();
 
-  const initialsFor = (u?: { firstName?: string; lastName?: string } | null) => {
-    if (!u) return '';
-    const a = (u.firstName || '').trim();
-    const b = (u.lastName || '').trim();
-    if (a && b) return (a[0] + b[0]).toUpperCase();
-    if (a) return a[0].toUpperCase();
-    return '';
-  };
+  // using Avatar component directly; initials computed inside Avatar when needed
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end pt-16 pr-4">
@@ -127,14 +120,6 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
             <div className="flex items-center space-x-3">
               {(() => {
                 const preview = (typeof window !== 'undefined' && localStorage.getItem('smartbi_avatar_preview')) || user?.avatar || null;
-                const initials = (() => {
-                  const a = user?.firstName || '';
-                  const b = user?.lastName || '';
-                  if (a && b) return (a[0] + b[0]).toUpperCase();
-                  if (a) return a[0].toUpperCase();
-                  return '';
-                })();
-
                 return <Avatar src={preview} size="sm" name={`${user?.firstName || ''} ${user?.lastName || ''}`} />;
               })()}
               <div>

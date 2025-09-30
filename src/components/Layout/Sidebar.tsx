@@ -121,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
 
         <div className={`fixed top-0 right-0 z-50 h-full bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out w-64 flex flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
           <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 lg:hidden bg-white dark:bg-gray-800">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">SmartBI</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('app.title')}</h2>
             <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-gray-600 dark:text-gray-300">
               <X size={20} />
             </button>
@@ -130,9 +130,9 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
           <div className={`hidden lg:flex items-center p-6 border-b border-gray-200 dark:border-gray-700 ${isDark ? 'bg-white dark:bg-gray-800' : 'bg-white'}`}>
             <div className="flex items-center space-x-3">
               <img src="/LOGOTIPO-IT-DATA-1943x2048.png" alt="IT Data Logo" className="w-8 h-8 object-contain" />
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">SmartBI</h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Business Intelligence</p>
+                <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('app.title')}</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('app.subtitle')}</p>
               </div>
             </div>
           </div>

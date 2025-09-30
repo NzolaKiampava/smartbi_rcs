@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   BarChart3, 
   Brain, 
@@ -46,17 +47,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
     };
   }, [isVideoModalOpen]);
 
+  const { t: translate } = useTranslation();
+
   const features = [
     {
       icon: Brain,
-      title: 'AI-Powered Analytics',
-      description: 'Advanced machine learning algorithms provide predictive insights and automated data analysis.',
+  title: translate('landing.features.0.title', 'AI-Powered Analytics'),
+  description: translate('landing.features.0.desc', 'Advanced machine learning algorithms provide predictive insights and automated data analysis.'),
       color: 'bg-purple-500'
     },
     {
       icon: BarChart3,
-      title: 'Real-Time Dashboards',
-      description: 'Interactive dashboards with live data visualization and customizable KPI tracking.',
+  title: translate('landing.features.1.title', 'Real-Time Dashboards'),
+  description: translate('landing.features.1.desc', 'Interactive dashboards with live data visualization and customizable KPI tracking.'),
       color: 'bg-blue-500'
     },
     {
@@ -197,7 +200,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                   alt="IT Data Logo" 
                   className="w-8 h-8 object-contain"
                 />
-                <span className="text-2xl font-bold text-gray-900 dark:text-white">SmartBI</span>
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">{translate('app.title')}</span>
               </button>
             </div>
             
@@ -556,7 +559,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 <li><a href="#" className="hover:text-white transition-colors">About</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Careers</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
+                <li><a href="#" className="hover:text-white transition-colors">{translate('footer.support')}</a></li>
               </ul>
             </div>
           </div>
@@ -566,8 +569,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               © 2024 SmartBI. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy Policy</a>
-              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Terms of Service</a>
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">{translate('footer.privacy')}</a>
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">{translate('footer.terms')}</a>
               <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Cookie Policy</a>
             </div>
           </div>

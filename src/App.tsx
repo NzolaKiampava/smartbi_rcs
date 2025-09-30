@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import SettingsProvider from './contexts/SettingsContext';
+import { GamificationProvider } from './contexts/GamificationContext';
 import LandingPage from './components/Landing/LandingPage';
 import LoginPage from './components/Auth/LoginPage';
 import Header from './components/Layout/Header';
@@ -18,11 +20,13 @@ import NotificationsPage from './components/Notifications/NotificationsPage';
 import QueryHistoryPage from './components/QueryHistory/QueryHistoryPage';
 import UsersPage from './components/Users/UsersPage';
 import AnalyticsPage from './components/Analytics/AnalyticsPage';
+import InstantInsight from './components/InstantInsight/InstantInsight';
 import ChatbaseWidget from './components/Chatbase/ChatbaseWidget';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const location = useLocation();
   const sectionFromUrl = location.pathname.replace('/', '') || 'overview';
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -68,6 +72,8 @@ const Dashboard: React.FC = () => {
       
       case 'analytics':
         return <AnalyticsPage />;
+      case 'instant-insight':
+        return <InstantInsight />;
       
       case 'users':
         return <UsersPage />;
@@ -78,7 +84,7 @@ const Dashboard: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
             </h2>
-            <p className="text-gray-600">This section is under development. More features coming soon!</p>
+            <p className="text-gray-600">{t('app.sectionComingSoon', 'This section is under development. More features coming soon!')}</p>
           </div>
         );
     }
@@ -108,12 +114,12 @@ const Dashboard: React.FC = () => {
             <div className="max-w-7xl mx-auto">
               <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {activeSection === 'notifications' ? 'Notifications' : `${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Dashboard`}
+                  {activeSection === 'notifications' ? t('nav.notifications') : `${t(`nav.${activeSection}`) || activeSection.charAt(0).toUpperCase() + activeSection.slice(1)} Dashboard`}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 mt-2">
                   {activeSection === 'notifications' 
-                    ? 'Manage your system notifications and alerts'
-                    : 'Welcome to SmartBI - Your comprehensive business intelligence platform'
+                    ? t('app.manageNotifications', 'Manage your system notifications and alerts')
+                    : t('app.welcome', 'Welcome to SmartBI - Your comprehensive business intelligence platform')
                   }
                 </p>
               </div>
@@ -127,14 +133,14 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center space-x-4">
               <p className="text-sm text-gray-600">© {new Date().getFullYear()}. All rights reserved.</p>
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
               <span>Version 2.1.0</span>
               <span>•</span>
-              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Privacy</button>
+              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{t('footer.privacy')}</button>
               <span>•</span>
-              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Terms</button>
+              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{t('footer.terms')}</button>
               <span>•</span>
-              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">Support</button>
+              <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{t('footer.support')}</button>
             </div>
           </footer>
         </div>
@@ -189,11 +195,13 @@ function App() {
     <ThemeProvider>
       <NotificationProvider>
         <AuthProvider>
-          <SettingsProvider>
-            <Router>
-              <AppContent />
-            </Router>
-          </SettingsProvider>
+          <GamificationProvider>
+            <SettingsProvider>
+              <Router>
+                <AppContent />
+              </Router>
+            </SettingsProvider>
+          </GamificationProvider>
         </AuthProvider>
       </NotificationProvider>
     </ThemeProvider>

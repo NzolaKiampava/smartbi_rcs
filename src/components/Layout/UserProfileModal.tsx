@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { User, Settings, LogOut, Shield, Bell, HelpCircle, X } from 'lucide-react';
 import { Avatar } from '../ui';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,6 +12,7 @@ interface UserProfileModalProps {
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { openSettings } = useSettings();
 
@@ -38,11 +40,11 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   };
 
   const menuItems = [
-    { icon: User, label: 'Edit Profile', action: () => { onClose(); openSettings('profile'); } },
-    { icon: Settings, label: 'Account Settings', action: () => { onClose(); openSettings('main'); } },
-    { icon: Shield, label: 'Privacy & Security', action: () => { onClose(); openSettings('security'); } },
-    { icon: Bell, label: 'Notifications', action: () => { onClose(); openSettings('notifications'); } },
-    { icon: HelpCircle, label: 'Help & Support', action: () => console.log('Help') },
+    { icon: User, label: t('profile.title') || 'Edit Profile', action: () => { onClose(); openSettings('profile'); } },
+    { icon: Settings, label: t('settings.profile') || 'Account Settings', action: () => { onClose(); openSettings('main'); } },
+    { icon: Shield, label: t('settings.security') || 'Privacy & Security', action: () => { onClose(); openSettings('security'); } },
+    { icon: Bell, label: t('settings.notifications') || 'Notifications', action: () => { onClose(); openSettings('notifications'); } },
+    { icon: HelpCircle, label: t('profile.helpSupport') || 'Help & Support', action: () => console.log('Help') },
   ];
 
   return (
@@ -59,14 +61,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
             <div className="flex items-center space-x-3">
               {(() => {
                 const preview = (typeof window !== 'undefined' && localStorage.getItem('smartbi_avatar_preview')) || user?.avatar || null;
-                const initials = (() => {
-                  const a = user?.firstName || '';
-                  const b = user?.lastName || '';
-                  if (a && b) return (a[0] + b[0]).toUpperCase();
-                  if (a) return a[0].toUpperCase();
-                  return '';
-                })();
-
                 return <Avatar src={preview} name={`${user?.firstName || ''} ${user?.lastName || ''}`} />;
               })()}
               <div>
@@ -108,7 +102,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           >
             <LogOut size={18} className="text-gray-400 dark:text-gray-500 group-hover:text-red-500 dark:group-hover:text-red-400 mr-3 transition-colors" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
-              Sign Out
+              {t('profile.signOut', 'Sign Out')}
             </span>
           </button>
         </div>
@@ -116,7 +110,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 rounded-b-xl">
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            SmartBI Dashboard v2.1.0
+            {`SmartBI Dashboard v2.1.0`}
           </p>
         </div>
       </div>

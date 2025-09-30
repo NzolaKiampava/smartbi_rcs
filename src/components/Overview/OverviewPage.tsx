@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { setLanguage, getLanguage } from '../../utils/i18nHelpers';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -207,6 +208,7 @@ const dashboardData = {
 
 const OverviewPage: React.FC = () => {
   const { t } = useTranslation();
+  const [currentLang, setCurrentLang] = useState(() => getLanguage());
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
   // auto-refresh disabled by default so charts don't update every second
   const [isRealTime, setIsRealTime] = useState(() => {
@@ -307,6 +309,11 @@ const OverviewPage: React.FC = () => {
     });
 
     setRefreshing(false);
+  };
+
+  const changeTo = async (lang: string) => {
+    await setLanguage(lang);
+    try { setCurrentLang(getLanguage()); } catch {}
   };
 
   // Auto-refresh effect (runs when isRealTime toggle is on)
@@ -557,6 +564,12 @@ const OverviewPage: React.FC = () => {
                   <button className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20">
                     <Download size={20} className="text-white" />
                   </button>
+                </div>
+                {/* Language switcher for quick testing */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-white/90 mr-2">Lang: {currentLang}</span>
+                  <button onClick={() => { changeTo('pt'); }} className="px-2 py-1 rounded bg-white/10 text-white">PT</button>
+                  <button onClick={() => { changeTo('en'); }} className="px-2 py-1 rounded bg-white/10 text-white">EN</button>
                 </div>
               </div>
             </div>

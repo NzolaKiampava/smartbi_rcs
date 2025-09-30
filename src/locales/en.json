@@ -7,9 +7,11 @@
     "apply": "Apply",
     "cancel": "Cancel",
     "ok": "OK",
-    "language": "Language"
-  }
-  ,
+    "language": "Language",
+    "sectionComingSoon": "This section is under development. More features coming soon!",
+    "manageNotifications": "Manage your system notifications and alerts",
+    "welcome": "Welcome to SmartBI - Your comprehensive business intelligence platform"
+  },
   "profile": {
     "title": "Profile",
     "firstName": "First name",
@@ -18,9 +20,10 @@
     "uploadAvatar": "Upload avatar",
     "saveProfile": "Save profile",
     "revert": "Revert",
-    "role": "Role"
-  }
-  ,
+    "role": "Role",
+    "signOut": "Sign Out",
+    "helpSupport": "Help & Support"
+  },
   "overview": {
     "live": "Live Data",
     "paused": "Paused",
@@ -45,5 +48,52 @@
     "1": { "label": "Connect Database", "desc": "Add new data source" },
     "2": { "label": "AI Analysis", "desc": "Run AI-powered analysis" },
     "3": { "label": "Export Data", "desc": "Export current dataset" }
+  },
+  "settings": {
+    "profile": "Profile",
+    "password": "Password",
+    "changePassword": "Change Password",
+    "notifications": "Notifications",
+    "security": "Security",
+    "organization": "Organization",
+    "integrations": "Integrations",
+    "reports": "Reports",
+    "layout": "Layout",
+    "billing": "Billing"
+  },
+  "nav": {
+    "overview": "Overview",
+    "analytics": "Analytics",
+    "ai": "AI Analysis",
+    "file_upload": "File Upload",
+    "natural_query": "Natural Language Query",
+    "performance": "Performance",
+    "notifications": "Notifications",
+    "query_history": "Query History",
+    "users": "Users",
+    "database": "Database",
+    "settings": "Settings"
+  },
+  "nav_desc": {
+    "overview": "Dashboard overview with key metrics",
+    "analytics": "Business intelligence and data analysis",
+    "file_upload": "Upload and manage data files",
+    "natural_query": "Query data using natural language",
+    "performance": "System performance monitoring",
+    "notifications": "View system notifications",
+    "query_history": "History of executed queries",
+    "users": "User management and administration",
+    "database": "Database connections and management"
+  },
+  "footer": {
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "support": "Support"
+  },
+  "landing": {
+    "features": [
+      { "title": "AI-Powered Analytics", "desc": "Advanced machine learning algorithms provide predictive insights and automated data analysis." },
+      { "title": "Real-Time Dashboards", "desc": "Interactive dashboards with live data visualization and customizable KPI tracking." }
+    ]
   }
 }

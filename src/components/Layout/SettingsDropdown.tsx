@@ -263,13 +263,13 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
           {/* Left menu (vertical on lg, hidden on small screens) */}
           <div className="col-span-1 hidden sm:block">
             <div className="space-y-2">
-              <MenuItem icon={User} label="Profile" keyName="profile" />
-              <MenuItem icon={Lock} label="Password" keyName="password" />
-              <MenuItem icon={Bell} label="Notifications" keyName="notifications" />
-              <MenuItem icon={Lock} label="Security" keyName="security" />
-              <MenuItem icon={Building2} label="Organization" keyName="organization" />
-              <MenuItem icon={Link} label="Integrations" keyName="integrations" />
-              <MenuItem icon={FileText} label="Reports" keyName="reports" />
+              <MenuItem icon={User} label={t('settings.profile') || 'Profile'} keyName="profile" />
+              <MenuItem icon={Lock} label={t('settings.password') || 'Password'} keyName="password" />
+              <MenuItem icon={Bell} label={t('settings.notifications') || 'Notifications'} keyName="notifications" />
+              <MenuItem icon={Lock} label={t('settings.security') || 'Security'} keyName="security" />
+              <MenuItem icon={Building2} label={t('settings.organization') || 'Organization'} keyName="organization" />
+              <MenuItem icon={Link} label={t('settings.integrations') || 'Integrations'} keyName="integrations" />
+              <MenuItem icon={FileText} label={t('settings.reports') || 'Reports'} keyName="reports" />
               {/* Preferences removed per request */}
               <MenuItem icon={LayoutIcon} label="Layout" keyName="layout" />
               <MenuItem icon={CreditCard} label="Billing" keyName="billing" />
@@ -314,16 +314,16 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
               )}
               <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
                 {panel === 'main' && t('app.settings')}
-                {panel === 'profile' && 'Profile'}
-                {panel === 'password' && 'Change Password'}
-                {panel === 'notifications' && 'Notifications'}
-                {panel === 'security' && 'Security'}
-                {panel === 'organization' && 'Organization'}
-                {panel === 'integrations' && 'Integrations'}
-                {panel === 'reports' && 'Reports'}
+                {panel === 'profile' && (t('settings.profile') || 'Profile')}
+                {panel === 'password' && (t('settings.changePassword') || 'Change Password')}
+                {panel === 'notifications' && (t('settings.notifications') || 'Notifications')}
+                {panel === 'security' && (t('settings.security') || 'Security')}
+                {panel === 'organization' && (t('settings.organization') || 'Organization')}
+                {panel === 'integrations' && (t('settings.integrations') || 'Integrations')}
+                {panel === 'reports' && (t('settings.reports') || 'Reports')}
                 {/* preferences panel removed */}
-                {panel === 'layout' && 'Layout'}
-                {panel === 'billing' && 'Billing'}
+                {panel === 'layout' && (t('settings.layout') || 'Layout')}
+                {panel === 'billing' && (t('settings.billing') || 'Billing')}
               </h3>
             </div>
 
@@ -373,13 +373,10 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                       <select value={state.language} onChange={(e) => {
                         const nextLang = e.target.value;
                         setState({ ...state, language: nextLang });
-                        // persist immediately
+                        // update SettingsContext and let the helper persist & apply language
                         updateSettings({ language: nextLang });
-                        try { localStorage.setItem('smartbi_settings', JSON.stringify({ ...(JSON.parse(localStorage.getItem('smartbi_settings') || '{}')), language: nextLang })); } catch (err) { console.error(err); }
-                        // change i18n language at runtime
                         try {
-                          // dynamic import to avoid direct dependency in this module
-                          import('../../i18n').then(i18n => i18n.default.changeLanguage(nextLang));
+                          import('../../utils/i18nHelpers').then(mod => mod.setLanguage(nextLang)).catch(() => {});
                         } catch (err) { console.error(err); }
                       }} className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-800 dark:text-white">
                         {SUPPORTED_LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
@@ -431,7 +428,7 @@ const SettingsDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start mb-4">
                     <div className="col-span-1 flex flex-col items-center">
                       <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-gray-400">{profileTemp.avatarPreview ? <img src={profileTemp.avatarPreview} alt="avatar" className="w-full h-full object-cover" /> : 'Avatar'}</div>
-                      <label className="mt-3 text-sm text-gray-600 dark:text-gray-300">Upload avatar</label>
+                      <label className="mt-3 text-sm text-gray-600 dark:text-gray-300">{t('profile.uploadAvatar')}</label>
                       <input type="file" accept="image/*" onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
