@@ -29,6 +29,7 @@ import {
   Tablet
 } from 'lucide-react';
 import { format } from 'date-fns';
+import SectionHeader from '../Common/SectionHeader';
 
 interface ActivityLog {
   id: number;
@@ -277,7 +278,7 @@ const ActivityPage: React.FC = () => {
     filterFn(act, ['user', 'activity', 'details', 'timestamp'])
   );
 
-  const getDeviceIcon = (device: string) => {
+  const getDeviceIcon = (device?: string) => {
     switch (device?.toLowerCase()) {
       case 'mobile': return <Smartphone size={14} className="text-gray-500" />;
       case 'tablet': return <Tablet size={14} className="text-gray-500" />;
@@ -550,15 +551,7 @@ const ActivityPage: React.FC = () => {
       {/* Authentication Logs */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-200">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Shield size={24} className="text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Authentication Logs</h3>
-              <p className="text-gray-600 dark:text-gray-400">User login and logout activities</p>
-            </div>
-          </div>
+          <SectionHeader icon={Shield} title="Authentication Logs" subtitle="User login and logout activities" />
           
           <div className="flex items-center space-x-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">

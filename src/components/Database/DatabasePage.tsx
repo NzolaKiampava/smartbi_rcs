@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+  import SectionHeader from '../Common/SectionHeader';
 import { 
   Database, 
   Plus, 
@@ -573,7 +574,7 @@ const DatabasePage: React.FC = () => {
 
       {/* Quick Stats */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Database Overview</h3>
+        <SectionHeader icon={Database} title="Database Overview" />
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="text-center">

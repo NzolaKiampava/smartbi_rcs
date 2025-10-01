@@ -19,6 +19,7 @@ import {
 import { graphqlService, Connection, AIQueryResult } from '../../services/graphqlService';
 // import { useNotification } from '../../contexts/NotificationContext'; // Temporariamente desabilitado para debug
 import { format } from 'date-fns';
+import SectionHeader from '../Common/SectionHeader';
 import QueryResultsModal from './QueryResultsModal';
 
 const NaturalLanguageQueryPage: React.FC = () => {
@@ -466,7 +467,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
       {/* Query History */}
       {queries.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Histórico de Consultas</h3>
+          <SectionHeader title="Histórico de Consultas" icon={Clock} />
           <div className="space-y-3">
             {queries.slice(0, 5).map((q) => (
               <div

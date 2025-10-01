@@ -42,6 +42,7 @@ import {
   ComposedChart
 } from 'recharts';
 import { format } from 'date-fns';
+import SectionHeader from '../Common/SectionHeader';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Lightweight clock component that updates itself every second. Placing
@@ -863,16 +864,9 @@ const OverviewPage: React.FC = () => {
 
         {/* Performance Metrics */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-                <Activity size={24} className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">System Performance</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Key performance indicators</p>
-              </div>
-            </div>
+          <div className="">
+            {/* Use centralized section header */}
+            <SectionHeader icon={Activity} title="System Performance" subtitle="Key performance indicators" />
           </div>
           
           <div className="space-y-4">
