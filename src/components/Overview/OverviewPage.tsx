@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { setLanguage, getLanguage } from '../../utils/i18nHelpers';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -52,14 +51,7 @@ import { useNavigate } from 'react-router-dom';
 // the clock in its own component prevents the parent `OverviewPage`
 // from re-rendering every second which would otherwise cause charts to
 // refresh unnecessarily.
-const ClockDisplay: React.FC = () => {
-  const [now, setNow] = React.useState<string>(() => new Date().toLocaleTimeString());
-  React.useEffect(() => {
-    const iv = setInterval(() => setNow(new Date().toLocaleTimeString()), 1000);
-    return () => clearInterval(iv);
-  }, []);
-  return <span className="text-sm text-blue-200">{now}</span>;
-};
+// ClockDisplay removed — no longer used in header
 
 // Mock data for the overview dashboard
 const dashboardData = {
@@ -211,19 +203,10 @@ const dashboardData = {
 const OverviewPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [currentLang, setCurrentLang] = useState(() => getLanguage());
+  // language selector removed from header per request
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
-  // auto-refresh disabled by default so charts don't update every second
-  const [isRealTime, setIsRealTime] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('overview_auto_refresh') || 'false'); } catch { return false; }
-  });
+  // refreshing state (manual refresh only)
   const [refreshing, setRefreshing] = useState(false);
-  // Clock is rendered by a lightweight child component so the entire
-  // OverviewPage doesn't re-render every second (prevents charts from
-  // appearing to refresh continuously).
-  const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState<number>(() => {
-    try { return Number(localStorage.getItem('overview_refresh_interval') || '30'); } catch { return 30; }
-  });
 
   // make dashboard data stateful so we can update charts dynamically on refresh
   const [dataState, setDataState] = useState(() => dashboardData);
@@ -334,21 +317,8 @@ const OverviewPage: React.FC = () => {
     }
   };
 
-  const changeTo = async (lang: string) => {
-    await setLanguage(lang);
-    try { setCurrentLang(getLanguage()); } catch {}
-  };
+  // language change function removed
 
-  // Auto-refresh effect (runs when isRealTime toggle is on)
-  useEffect(() => {
-    if (!isRealTime) return;
-    // enforce a sensible minimum interval to avoid excessive updates
-    const minIntervalMs = 5000; // 5s
-    const iv = setInterval(() => {
-      handleRefresh();
-    }, Math.max(minIntervalMs, refreshIntervalSeconds * 1000));
-    return () => clearInterval(iv);
-  }, [isRealTime, refreshIntervalSeconds]);
 
   // Fetch dynamic overview data on mount and when selectedTimeRange changes
   useEffect(() => {
@@ -391,14 +361,7 @@ const OverviewPage: React.FC = () => {
     return () => { mounted = false; };
   }, [selectedTimeRange]);
 
-  // persist auto-refresh preferences
-  useEffect(() => {
-    try { localStorage.setItem('overview_auto_refresh', JSON.stringify(!!isRealTime)); } catch (e) {}
-  }, [isRealTime]);
-
-  useEffect(() => {
-    try { localStorage.setItem('overview_refresh_interval', String(refreshIntervalSeconds)); } catch (e) {}
-  }, [refreshIntervalSeconds]);
+  // auto-refresh removed; manual refresh only
 
   const KPICard = ({ kpi }: { kpi: any }) => (
     <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 group relative overflow-hidden`}>
@@ -575,16 +538,9 @@ const OverviewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      {/* Professional Header */}
+      {/* Professional Header (matches Performance header) */}
       <div className="mb-8">
-        <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-600/20"></div>
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_30%,rgba(59,130,246,0.3),transparent_50%)]"></div>
-            <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_70%,rgba(147,51,234,0.3),transparent_50%)]"></div>
-          </div>
-          
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 shadow-lg text-white relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center space-x-4">
@@ -598,16 +554,6 @@ const OverviewPage: React.FC = () => {
               </div>
               
               <div className="flex items-center space-x-4">
-                {/* Real-time Status */}
-                  <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
-                  <div className={`w-3 h-3 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
-                  <span className="text-sm font-medium">
-                    {isRealTime ? t('overview.live', 'Live Data') : t('overview.paused', 'Paused')}
-                  </span>
-                  <ClockDisplay />
-                </div>
-                
-                {/* Actions */}
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleRefresh}
@@ -617,18 +563,9 @@ const OverviewPage: React.FC = () => {
                   >
                     <RefreshCw size={20} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
                   </button>
-                  <div className="flex items-center space-x-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
-                    <label className="text-sm text-white/90 mr-2">Auto</label>
-                    <button onClick={() => setIsRealTime((r: boolean) => !r)} className={`px-2 py-1 rounded ${isRealTime ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
-                      <span className="text-sm">{isRealTime ? 'On' : 'Off'}</span>
-                    </button>
-                    <input type="number" value={refreshIntervalSeconds} onChange={e => setRefreshIntervalSeconds(Math.max(1, Number(e.target.value || 1)))} className="w-20 ml-2 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600" />
-                    <span className="text-sm text-white/80 ml-1">s</span>
-                  </div>
                   <button className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20">
                     <Download size={20} className="text-white" />
                   </button>
-                  {/* Loading indicator when overview is being refreshed from backend */}
                   {isLoadingOverview && (
                     <div className="ml-2 px-3 py-2 bg-white/10 text-white rounded-xl flex items-center space-x-2">
                       <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
@@ -638,12 +575,6 @@ const OverviewPage: React.FC = () => {
                       <span className="text-sm">Loading</span>
                     </div>
                   )}
-                </div>
-                {/* Language switcher for quick testing */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-white/90 mr-2">Lang: {currentLang}</span>
-                  <button onClick={() => { changeTo('pt'); }} className="px-2 py-1 rounded bg-white/10 text-white">PT</button>
-                  <button onClick={() => { changeTo('en'); }} className="px-2 py-1 rounded bg-white/10 text-white">EN</button>
                 </div>
               </div>
             </div>
@@ -953,7 +884,7 @@ const OverviewPage: React.FC = () => {
         </ChartCard>
 
         {/* Performance Metrics */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 md:bg-gradient-to-r md:from-blue-600 md:to-purple-600 md:shadow-lg md:text-white md:border-transparent">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
@@ -1032,7 +963,7 @@ const OverviewPage: React.FC = () => {
       </div>
 
   {/* AI Insights Section */}
-  <div id="section-ai" className="mb-8">
+      <div id="section-ai" className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
