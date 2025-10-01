@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -43,15 +42,20 @@ import {
   ComposedChart
 } from 'recharts';
 import { format } from 'date-fns';
-import { graphqlService } from '../../services/graphqlService';
-import { useNavigate } from 'react-router-dom';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Lightweight clock component that updates itself every second. Placing
 // the clock in its own component prevents the parent `OverviewPage`
 // from re-rendering every second which would otherwise cause charts to
 // refresh unnecessarily.
-// ClockDisplay removed — no longer used in header
+const ClockDisplay: React.FC = () => {
+  const [now, setNow] = React.useState<string>(() => new Date().toLocaleTimeString());
+  React.useEffect(() => {
+    const iv = setInterval(() => setNow(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  return <span className="text-sm text-blue-200">{now}</span>;
+};
 
 // Mock data for the overview dashboard
 const dashboardData = {
@@ -201,16 +205,21 @@ const dashboardData = {
 
 
 const OverviewPage: React.FC = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  // language selector removed from header per request
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
-  // refreshing state (manual refresh only)
+  // auto-refresh disabled by default so charts don't update every second
+  const [isRealTime, setIsRealTime] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('overview_auto_refresh') || 'false'); } catch { return false; }
+  });
   const [refreshing, setRefreshing] = useState(false);
+  // Clock is rendered by a lightweight child component so the entire
+  // OverviewPage doesn't re-render every second (prevents charts from
+  // appearing to refresh continuously).
+  const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState<number>(() => {
+    try { return Number(localStorage.getItem('overview_refresh_interval') || '30'); } catch { return 30; }
+  });
 
   // make dashboard data stateful so we can update charts dynamically on refresh
   const [dataState, setDataState] = useState(() => dashboardData);
-  const [isLoadingOverview, setIsLoadingOverview] = useState<boolean>(false);
   // Revenue chart controls
   const [showRevenueSeries, setShowRevenueSeries] = useState<boolean>(true);
   const [showProfitSeries, setShowProfitSeries] = useState<boolean>(true);
@@ -222,146 +231,101 @@ const OverviewPage: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Try to fetch fresh overview from backend first
-    try {
-      setIsLoadingOverview(true);
-      const remote = await graphqlService.getOverview();
-      if (remote) {
-        setDataState((prev: any) => {
-          const next = { ...prev } as any;
-          if (remote.revenueData) next.revenueData = remote.revenueData;
-          if (remote.categoryData) next.categoryData = remote.categoryData;
-          if (remote.performanceMetrics) next.performanceMetrics = remote.performanceMetrics;
-          if (remote.recentActivities) next.recentActivities = remote.recentActivities.slice(0, 10);
-          if (remote.topInsights) next.topInsights = remote.topInsights;
-          if (remote.kpis) {
-            // merge remote KPIs while preserving local display fields
-            next.kpis = remote.kpis.map((rk: any, idx: number) => ({ ...prev.kpis[idx], ...rk }));
-          }
-          return next;
-        });
-      }
-    } catch (err) {
-      // backend unavailable — fallback to local simulated delta update
-      setDataState(prev => {
-        const next = { ...prev } as any;
-        // tweak revenue data points
-        next.revenueData = prev.revenueData.map((r: any) => {
-          const delta = Math.round((Math.random() - 0.45) * 20000); // -20k..+20k bias
-          return { ...r, revenue: Math.max(0, r.revenue + delta), profit: Math.max(0, r.profit + Math.round(delta * 0.18)) };
-        });
-        // recompute KPIs (simple derivation)
-        const totalRevenue = next.revenueData.reduce((s: number, x: any) => s + x.revenue, 0);
-        const revenueKpi = next.kpis.map((k: any) => ({ ...k }));
-        revenueKpi.forEach((k: any) => {
-          if (k.id === 'revenue') {
-            k.value = '$' + totalRevenue.toLocaleString();
-            k.change = +(Math.random() * 5).toFixed(1);
-          }
-        });
-        next.kpis = revenueKpi;
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-        // lightly perturb categoryData and performanceMetrics
-        next.categoryData = prev.categoryData.map((c: any) => ({
-          ...c,
-          // small percentage shifts
-          value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))),
-          revenue: Math.max(0, c.revenue + Math.round((Math.random() - 0.45) * 20000))
-        }));
-
-        next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({
-          ...m,
-          // nudge metrics toward their target slightly
-          value: Math.max(0, +(m.value + (Math.random() - 0.4) * (m.target ? (m.target * 0.05) : 5)).toFixed(1))
-        }));
-
-        // update recent activities: occasionally add a new activity and rotate older ones
-        const activityTypes = ['report', 'database', 'ai', 'export', 'login', 'query'];
-        const actionsByType: any = {
-          report: ['Generated Revenue Report', 'Scheduled Report Run', 'Exported PDF Report'],
-          database: ['Connected to Database', 'DB Backup Completed', 'DB Migration Started'],
-          ai: ['AI Query Executed', 'Model Training Job Finished', 'AI Analysis Completed'],
-          export: ['Data Export Started', 'Export Completed', 'Export Failed'],
-          login: ['User Logged In', 'User Session Started', 'User Logged Out'],
-          query: ['Ad-hoc Query Executed', 'Saved Query Run', 'Query Timeout']
-        };
-
-        const maybeNew = Math.random() < 0.6; // 60% chance to add an event on refresh
-        const newActivities = [...prev.recentActivities];
-        if (maybeNew) {
-          const t = activityTypes[Math.floor(Math.random() * activityTypes.length)];
-          const acts = actionsByType[t] || ['Performed Action'];
-          const action = acts[Math.floor(Math.random() * acts.length)];
-          const statusRand = Math.random();
-          const status = statusRand > 0.95 ? 'error' : 'success';
-          const userNames = ['João Silva','Maria Santos','Carlos Eduardo','Ana Paula','Luís Costa','Beatriz'];
-          const newAct = {
-            id: Date.now(),
-            user: userNames[Math.floor(Math.random() * userNames.length)],
-            action,
-            details: `${action} - ${Math.floor(Math.random()*1000)} items processed`,
-            timestamp: new Date().toISOString(),
-            type: t,
-            status
-          };
-          newActivities.unshift(newAct);
-        }
-        // keep max 10 recent activities
-        next.recentActivities = newActivities.slice(0, 10).map((a: any) => ({ ...a }));
-
-        return next;
+    // Create new dynamic data by applying small random deltas to numeric series
+    setDataState(prev => {
+      const next = { ...prev } as any;
+      // tweak revenue data points
+      next.revenueData = prev.revenueData.map((r: any) => {
+        const delta = Math.round((Math.random() - 0.45) * 20000); // -20k..+20k bias
+        return { ...r, revenue: Math.max(0, r.revenue + delta), profit: Math.max(0, r.profit + Math.round(delta * 0.18)) };
       });
-    } finally {
-      setIsLoadingOverview(false);
-      setRefreshing(false);
-    }
+      // recompute KPIs (simple derivation)
+      const totalRevenue = next.revenueData.reduce((s: number, x: any) => s + x.revenue, 0);
+      const revenueKpi = next.kpis.map((k: any) => ({ ...k }));
+      revenueKpi.forEach((k: any) => {
+        if (k.id === 'revenue') {
+          k.value = '$' + totalRevenue.toLocaleString();
+          k.change = +(Math.random() * 5).toFixed(1);
+        }
+      });
+      next.kpis = revenueKpi;
+
+      // lightly perturb categoryData and performanceMetrics
+      next.categoryData = prev.categoryData.map((c: any) => ({
+        ...c,
+        // small percentage shifts
+        value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))),
+        revenue: Math.max(0, c.revenue + Math.round((Math.random() - 0.45) * 20000))
+      }));
+
+      next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({
+        ...m,
+        // nudge metrics toward their target slightly
+        value: Math.max(0, +(m.value + (Math.random() - 0.4) * (m.target ? (m.target * 0.05) : 5)).toFixed(1))
+      }));
+
+      // update recent activities: occasionally add a new activity and rotate older ones
+      const activityTypes = ['report', 'database', 'ai', 'export', 'login', 'query'];
+      const actionsByType: any = {
+        report: ['Generated Revenue Report', 'Scheduled Report Run', 'Exported PDF Report'],
+        database: ['Connected to Database', 'DB Backup Completed', 'DB Migration Started'],
+        ai: ['AI Query Executed', 'Model Training Job Finished', 'AI Analysis Completed'],
+        export: ['Data Export Started', 'Export Completed', 'Export Failed'],
+        login: ['User Logged In', 'User Session Started', 'User Logged Out'],
+        query: ['Ad-hoc Query Executed', 'Saved Query Run', 'Query Timeout']
+      };
+
+      const maybeNew = Math.random() < 0.6; // 60% chance to add an event on refresh
+      const newActivities = [...prev.recentActivities];
+      if (maybeNew) {
+        const t = activityTypes[Math.floor(Math.random() * activityTypes.length)];
+        const acts = actionsByType[t] || ['Performed Action'];
+        const action = acts[Math.floor(Math.random() * acts.length)];
+        const statusRand = Math.random();
+        const status = statusRand > 0.95 ? 'error' : 'success';
+        const userNames = ['João Silva','Maria Santos','Carlos Eduardo','Ana Paula','Luís Costa','Beatriz'];
+        const newAct = {
+          id: Date.now(),
+          user: userNames[Math.floor(Math.random() * userNames.length)],
+          action,
+          details: `${action} - ${Math.floor(Math.random()*1000)} items processed`,
+          timestamp: new Date().toISOString(),
+          type: t,
+          status
+        };
+        newActivities.unshift(newAct);
+      }
+      // keep max 10 recent activities
+  next.recentActivities = newActivities.slice(0, 10).map((a: any) => ({ ...a }));
+
+      return next;
+    });
+
+    setRefreshing(false);
   };
 
-  // language change function removed
-
-
-  // Fetch dynamic overview data on mount and when selectedTimeRange changes
+  // Auto-refresh effect (runs when isRealTime toggle is on)
   useEffect(() => {
-    let mounted = true;
+    if (!isRealTime) return;
+    // enforce a sensible minimum interval to avoid excessive updates
+    const minIntervalMs = 5000; // 5s
+    const iv = setInterval(() => {
+      handleRefresh();
+    }, Math.max(minIntervalMs, refreshIntervalSeconds * 1000));
+    return () => clearInterval(iv);
+  }, [isRealTime, refreshIntervalSeconds]);
 
-    const loadOverview = async () => {
-      try {
-        // set a conservative timeout so the UI remains responsive if backend is unreachable
-        const timeoutMs = 1500;
-        const p = graphqlService.getOverview();
-        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeoutMs));
-        const result = await Promise.race([p, timeout]) as any;
+  // persist auto-refresh preferences
+  useEffect(() => {
+    try { localStorage.setItem('overview_auto_refresh', JSON.stringify(!!isRealTime)); } catch (e) {}
+  }, [isRealTime]);
 
-        if (!mounted || !result) return;
-
-        // Merge remote overview fields into our local state shape where present
-        setDataState((prev: any) => {
-          const next = { ...prev } as any;
-          if (result.kpis) {
-            // map remote KPIs to keep existing UI fields like icon/color/bgColor when possible
-            next.kpis = result.kpis.map((rk: any, idx: number) => ({
-              ...prev.kpis[idx],
-              ...rk
-            }));
-          }
-          if (result.revenueData) next.revenueData = result.revenueData;
-          if (result.categoryData) next.categoryData = result.categoryData;
-          if (result.performanceMetrics) next.performanceMetrics = result.performanceMetrics;
-          if (result.recentActivities) next.recentActivities = result.recentActivities;
-          if (result.topInsights) next.topInsights = result.topInsights;
-          return next;
-        });
-      } catch (err) {
-        // keep mock data if remote fetch fails; log for debugging
-        // console.debug('Overview fetch failed, using local mock data', err);
-      }
-    };
-
-    loadOverview();
-    return () => { mounted = false; };
-  }, [selectedTimeRange]);
-
-  // auto-refresh removed; manual refresh only
+  useEffect(() => {
+    try { localStorage.setItem('overview_refresh_interval', String(refreshIntervalSeconds)); } catch (e) {}
+  }, [refreshIntervalSeconds]);
 
   const KPICard = ({ kpi }: { kpi: any }) => (
     <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 group relative overflow-hidden`}>
@@ -390,7 +354,7 @@ const OverviewPage: React.FC = () => {
         <div className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
-              {t(kpi.titleKey || `kpi.${kpi.id}.title`, { defaultValue: String(kpi.title) })}
+              {kpi.title}
             </h3>
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
               {kpi.value}
@@ -400,7 +364,7 @@ const OverviewPage: React.FC = () => {
           {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
-              <span>{t('overview.progress_to_target', 'Progress to Target')}</span>
+              <span>Progress to Target</span>
               <span>{kpi.progress}%</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -422,7 +386,7 @@ const OverviewPage: React.FC = () => {
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-lg transition-shadow">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-lg transition-shadow">
             <Icon size={24} className="text-white" />
           </div>
           <div>
@@ -538,9 +502,16 @@ const OverviewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      {/* Professional Header (matches Performance header) */}
+      {/* Professional Header */}
       <div className="mb-8">
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 shadow-lg text-white relative overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-600/20"></div>
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_30%,rgba(59,130,246,0.3),transparent_50%)]"></div>
+            <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_70%,rgba(147,51,234,0.3),transparent_50%)]"></div>
+          </div>
+          
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center space-x-4">
@@ -548,12 +519,22 @@ const OverviewPage: React.FC = () => {
                   <BarChart3 size={32} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold text-white mb-2">{t('app.title', 'Business Intelligence Overview')}</h1>
-                  <p className="text-xl text-blue-100">{t('app.subtitle', 'Real-time insights and comprehensive analytics dashboard')}</p>
+                  <h1 className="text-4xl font-bold text-white mb-2">Business Intelligence Overview</h1>
+                  <p className="text-xl text-blue-100">Real-time insights and comprehensive analytics dashboard</p>
                 </div>
               </div>
               
               <div className="flex items-center space-x-4">
+                {/* Real-time Status */}
+                  <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
+                  <div className={`w-3 h-3 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                  <span className="text-sm font-medium">
+                    {isRealTime ? 'Live Data' : 'Paused'}
+                  </span>
+                  <ClockDisplay />
+                </div>
+                
+                {/* Actions */}
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={handleRefresh}
@@ -563,18 +544,17 @@ const OverviewPage: React.FC = () => {
                   >
                     <RefreshCw size={20} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
                   </button>
+                  <div className="flex items-center space-x-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
+                    <label className="text-sm text-white/90 mr-2">Auto</label>
+                    <button onClick={() => setIsRealTime((r: boolean) => !r)} className={`px-2 py-1 rounded ${isRealTime ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
+                      <span className="text-sm">{isRealTime ? 'On' : 'Off'}</span>
+                    </button>
+                    <input type="number" value={refreshIntervalSeconds} onChange={e => setRefreshIntervalSeconds(Math.max(1, Number(e.target.value || 1)))} className="w-20 ml-2 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600" />
+                    <span className="text-sm text-white/80 ml-1">s</span>
+                  </div>
                   <button className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20">
                     <Download size={20} className="text-white" />
                   </button>
-                  {isLoadingOverview && (
-                    <div className="ml-2 px-3 py-2 bg-white/10 text-white rounded-xl flex items-center space-x-2">
-                      <svg className="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="4"></circle>
-                        <path d="M22 12a10 10 0 00-10-10" stroke="white" strokeWidth="4" strokeLinecap="round"></path>
-                      </svg>
-                      <span className="text-sm">Loading</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -582,16 +562,16 @@ const OverviewPage: React.FC = () => {
             {/* Time Range Selector */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                  <select
+                <select
                   value={selectedTimeRange}
                   onChange={(e) => setSelectedTimeRange(e.target.value)}
                   className="px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-white/50 focus:border-white/50"
                 >
-                  <option value="24h" className="text-gray-900">{t('overview.range.24h', 'Last 24 Hours')}</option>
-                  <option value="7d" className="text-gray-900">{t('overview.range.7d', 'Last 7 Days')}</option>
-                  <option value="30d" className="text-gray-900">{t('overview.range.30d', 'Last 30 Days')}</option>
-                  <option value="90d" className="text-gray-900">{t('overview.range.90d', 'Last 90 Days')}</option>
-                  <option value="1y" className="text-gray-900">{t('overview.range.1y', 'Last Year')}</option>
+                  <option value="24h" className="text-gray-900">Last 24 Hours</option>
+                  <option value="7d" className="text-gray-900">Last 7 Days</option>
+                  <option value="30d" className="text-gray-900">Last 30 Days</option>
+                  <option value="90d" className="text-gray-900">Last 90 Days</option>
+                  <option value="1y" className="text-gray-900">Last Year</option>
                 </select>
               </div>
               
@@ -624,8 +604,7 @@ const OverviewPage: React.FC = () => {
       {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Revenue Trend */}
-        <div id="section-revenue">
-          <ChartCard
+        <ChartCard
           title="Revenue & Growth Analysis"
           icon={TrendingUp}
           actionsContent={(
@@ -701,7 +680,6 @@ const OverviewPage: React.FC = () => {
             <div className="mt-2 text-sm text-green-600">{chartMessage}</div>
           )}
         </ChartCard>
-      </div>
 
         {/* User Analytics */}
         <ChartCard
@@ -884,15 +862,15 @@ const OverviewPage: React.FC = () => {
         </ChartCard>
 
         {/* Performance Metrics */}
-  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 md:bg-gradient-to-r md:from-blue-600 md:to-purple-600 md:shadow-lg md:text-white md:border-transparent">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
                 <Activity size={24} className="text-white" />
               </div>
               <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('overview.system_performance', 'System Performance')}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t('overview.kpi_description', 'Key performance indicators')}</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">System Performance</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Key performance indicators</p>
               </div>
             </div>
           </div>
@@ -937,8 +915,8 @@ const OverviewPage: React.FC = () => {
           </div>
         </div>
 
-  {/* Recent Activity */}
-  <div id="section-recent-activity" className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+        {/* Recent Activity */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-sm">
@@ -962,16 +940,16 @@ const OverviewPage: React.FC = () => {
         </div>
       </div>
 
-  {/* AI Insights Section */}
-      <div id="section-ai" className="mb-8">
+      {/* AI Insights Section */}
+      <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
               <Sparkles size={24} className="text-white" />
             </div>
             <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('overview.ai_insights', 'AI-Powered Insights')}</h2>
-              <p className="text-gray-600 dark:text-gray-400">{t('overview.ai_description', 'Intelligent recommendations based on your data')}</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI-Powered Insights</h2>
+              <p className="text-gray-600 dark:text-gray-400">Intelligent recommendations based on your data</p>
             </div>
           </div>
           <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl">
@@ -990,34 +968,29 @@ const OverviewPage: React.FC = () => {
       {/* Quick Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{t('overview.quick_actions', 'Quick Actions')}</h3>
-          <span className="text-sm text-gray-500 dark:text-gray-400">{t('overview.quick_actions_sub', 'Frequently used features')}</span>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Quick Actions</h3>
+          <span className="text-sm text-gray-500 dark:text-gray-400">Frequently used features</span>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { icon: FileText, label: 'Generate Report', color: 'from-blue-500 to-cyan-600', description: 'Create new analytics report', route: '/reports' },
-            { icon: Database, label: 'Connect Database', color: 'from-green-500 to-emerald-600', description: 'Add new data source', route: '/database' },
-            { icon: Sparkles, label: 'AI Analysis', color: 'from-purple-500 to-violet-600', description: 'Run AI-powered analysis', route: '/analytics' },
-            { icon: Download, label: 'Export Data', color: 'from-orange-500 to-red-600', description: 'Export current dataset', route: '/reports' }
+            { icon: FileText, label: 'Generate Report', color: 'from-blue-500 to-cyan-600', description: 'Create new analytics report' },
+            { icon: Database, label: 'Connect Database', color: 'from-green-500 to-emerald-600', description: 'Add new data source' },
+            { icon: Sparkles, label: 'AI Analysis', color: 'from-purple-500 to-violet-600', description: 'Run AI-powered analysis' },
+            { icon: Download, label: 'Export Data', color: 'from-orange-500 to-red-600', description: 'Export current dataset' }
           ].map((action, index) => (
             <button
               key={index}
-              onClick={() => {
-                try {
-                  navigate(action.route);
-                } catch (e) {}
-              }}
               className="group p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-lg hover:scale-105 transition-all duration-300"
             >
               <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
                 <action.icon size={24} className="text-white" />
               </div>
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                {t(`quick.${index}.label`, action.label)}
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                {action.label}
               </h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t(`quick.${index}.desc`, action.description)}
+                {action.description}
               </p>
             </button>
           ))}
