@@ -31,6 +31,7 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
+import SectionHeader from '../Common/SectionHeader';
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { AnalysisReport } from '../../services/graphqlService';
 
@@ -418,15 +419,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ analysis, onClose }) 
               {/* Executive Summary Card */}
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                      <FileText size={24} className="text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Executive Summary</h2>
-                      <p className="text-gray-600 dark:text-gray-400">AI-powered insights and analysis</p>
-                    </div>
-                  </div>
+                  <SectionHeader icon={FileText} title={<div className="text-2xl font-bold">Executive Summary</div>} subtitle="AI-powered insights and analysis" />
                   <div className="flex items-center space-x-2">
                     <button 
                       className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"

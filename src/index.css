@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 /* Custom animations for notifications */
 @keyframes slideInFromRight {
@@ -31,4 +31,15 @@
 
 .animate-slide-out {
   animation: slideOutToRight 0.3s ease-in;
+}
+
+/* Slow pan for header gradients */
+@keyframes gradient-pan {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.bg-gradient-pan {
+  background-size: 200% 200%;
+  animation: gradient-pan 12s ease infinite;
 }

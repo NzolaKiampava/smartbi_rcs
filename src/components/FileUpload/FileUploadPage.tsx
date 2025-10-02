@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { graphqlService, FileUploadInput, AnalysisReport } from '../../services/graphqlService';
 import AnalysisResults from '../Analysis/AnalysisResults';
+import SectionHeader from '../Common/SectionHeader';
 
 interface UploadedFile {
   id: string;
@@ -371,10 +372,7 @@ const FileUploadPage: React.FC = () => {
           <div className="space-y-6">
             {/* Quick Stats */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                <BarChart3 size={20} className="mr-2 text-green-600" />
-                Processing Stats
-              </h3>
+              <SectionHeader icon={BarChart3} title="Processing Stats" />
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Files Uploaded</span>
@@ -393,10 +391,7 @@ const FileUploadPage: React.FC = () => {
             
             {/* AI Features */}
             <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl p-6 border border-purple-200 dark:border-purple-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                <Sparkles size={20} className="mr-2 text-purple-600" />
-                AI Capabilities
-              </h3>
+              <SectionHeader icon={Sparkles} title="AI Capabilities" />
               <div className="space-y-3">
                 <div className="flex items-start space-x-3">
                   <Brain size={16} className="text-purple-600 mt-1" />
