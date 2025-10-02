@@ -8,7 +8,6 @@ import {
   Target,
   Activity,
   Database,
-  Globe,
   Clock,
   ArrowUpRight,
   ArrowDownRight,
@@ -18,8 +17,7 @@ import {
   Settings,
   Eye,
   Sparkles,
-  Crown,
-  Shield,
+  // Crown and Shield removed from imports to avoid unused warnings
   CheckCircle2,
   AlertTriangle,
   FileText,
@@ -227,6 +225,51 @@ const OverviewPage: React.FC = () => {
   const [chartMessage, setChartMessage] = useState<string | null>(null);
   const [showUsersSeries, setShowUsersSeries] = useState<boolean>(true);
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(() => new Set());
+
+  // Download menu state and handlers
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState<boolean>(false);
+  const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
+
+  const handleDownloadCSV = () => {
+    const rows = dataState.revenueData.map((r: any) => `${r.month},${r.revenue},${r.profit}`);
+    const csv = ['month,revenue,profit', ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'overview_revenue.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setDownloadMessage('CSV exported');
+    setTimeout(() => setDownloadMessage(null), 2500);
+  };
+
+  const handleDownloadJSON = () => {
+    const payload = JSON.stringify(dataState, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'overview_full.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setDownloadMessage('JSON exported');
+    setTimeout(() => setDownloadMessage(null), 2500);
+  };
+
+  const handleCopyJSON = () => {
+    try {
+      navigator.clipboard?.writeText(JSON.stringify(dataState, null, 2));
+      setDownloadMessage('JSON copied to clipboard');
+    } catch (e) {
+      setDownloadMessage('Failed to copy');
+    }
+    setTimeout(() => setDownloadMessage(null), 2500);
+  };
 
   // ...existing code...
 
@@ -503,70 +546,25 @@ const OverviewPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      {/* Professional Header */}
+      {/* Header (aligned with Performance page style) */}
       <div className="mb-8">
-        <div className="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-600/20"></div>
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_30%,rgba(59,130,246,0.3),transparent_50%)]"></div>
-            <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_70%,rgba(147,51,234,0.3),transparent_50%)]"></div>
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <BarChart3 size={32} className="text-white" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-white mb-2">Business Intelligence Overview</h1>
-                  <p className="text-xl text-blue-100">Real-time insights and comprehensive analytics dashboard</p>
-                </div>
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                <BarChart3 size={24} className="text-white" />
               </div>
-              
-              <div className="flex items-center space-x-4">
-                {/* Real-time Status */}
-                  <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/20">
-                  <div className={`w-3 h-3 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
-                  <span className="text-sm font-medium">
-                    {isRealTime ? 'Live Data' : 'Paused'}
-                  </span>
-                  <ClockDisplay />
-                </div>
-                
-                {/* Actions */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20"
-                    title="Refresh data"
-                  >
-                    <RefreshCw size={20} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
-                  </button>
-                  <div className="flex items-center space-x-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
-                    <label className="text-sm text-white/90 mr-2">Auto</label>
-                    <button onClick={() => setIsRealTime((r: boolean) => !r)} className={`px-2 py-1 rounded ${isRealTime ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
-                      <span className="text-sm">{isRealTime ? 'On' : 'Off'}</span>
-                    </button>
-                    <input type="number" value={refreshIntervalSeconds} onChange={e => setRefreshIntervalSeconds(Math.max(1, Number(e.target.value || 1)))} className="w-20 ml-2 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600" />
-                    <span className="text-sm text-white/80 ml-1">s</span>
-                  </div>
-                  <button className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20">
-                    <Download size={20} className="text-white" />
-                  </button>
-                </div>
+              <div>
+                <h2 className="text-3xl font-bold">Business Intelligence Overview</h2>
+                <p className="text-blue-100">Real-time insights and comprehensive analytics dashboard</p>
               </div>
             </div>
 
-            {/* Time Range Selector */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
                 <select
                   value={selectedTimeRange}
                   onChange={(e) => setSelectedTimeRange(e.target.value)}
-                  className="px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-white/50 focus:border-white/50"
+                  className="px-4 py-2 bg-white bg-opacity-20 text-white border border-white border-opacity-30 rounded-lg focus:ring-2 focus:ring-white focus:ring-opacity-50"
                 >
                   <option value="24h" className="text-gray-900">Last 24 Hours</option>
                   <option value="7d" className="text-gray-900">Last 7 Days</option>
@@ -574,23 +572,57 @@ const OverviewPage: React.FC = () => {
                   <option value="90d" className="text-gray-900">Last 90 Days</option>
                   <option value="1y" className="text-gray-900">Last Year</option>
                 </select>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
+                  title="Refresh data"
+                >
+                  <RefreshCw size={20} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
+                </button>
+                <div className="flex items-center space-x-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
+                  <label className="text-sm text-white/90 mr-2">Auto</label>
+                  <button onClick={() => setIsRealTime((r: boolean) => !r)} className={`px-2 py-1 rounded ${isRealTime ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
+                    <span className="text-sm">{isRealTime ? 'On' : 'Off'}</span>
+                  </button>
+                  <input type="number" value={refreshIntervalSeconds} onChange={e => setRefreshIntervalSeconds(Math.max(1, Number(e.target.value || 1)))} className="w-20 ml-2 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600" />
+                  <span className="text-sm text-white/80 ml-1">s</span>
+                </div>
+                {/* Dynamic Download Button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setDownloadMenuOpen((o: boolean) => !o)}
+                    className="p-2 bg-white bg-opacity-20 dark:bg-white/5 dark:hover:bg-white/10 hover:bg-opacity-30 rounded-lg transition-colors flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    title="Download overview"
+                  >
+                    <Download size={18} className="text-white" />
+                    <span className="text-sm text-white/90 dark:text-white/90">Download</span>
+                  </button>
+
+                  {downloadMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                      <button onClick={() => { handleDownloadCSV(); setDownloadMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700">Download CSV (Revenue)</button>
+                      <button onClick={() => { handleDownloadJSON(); setDownloadMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700">Download JSON (Full)</button>
+                      <button onClick={() => { handleCopyJSON(); setDownloadMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700">Copy JSON</button>
+                    </div>
+                  )}
+                </div>
               </div>
-              
-              <div className="flex items-center space-x-6 text-sm text-blue-100">
-                <div className="flex items-center space-x-2">
-                  <Shield size={16} />
-                  <span>Enterprise Security</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Globe size={16} />
-                  <span>Global Access</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Crown size={16} />
-                  <span>Premium Analytics</span>
-                </div>
-              </div>
+          </div>
+
+          <div className="mt-4 flex items-center space-x-6 text-sm text-blue-100">
+            <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1 border border-white/10">
+              <div className={`w-2 h-2 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span>{isRealTime ? 'Live Data' : 'Paused'}</span>
+              <ClockDisplay />
             </div>
+            <span>•</span>
+            <span>Last Updated: {new Date().toLocaleTimeString()}</span>
+            <span>•</span>
+            <span>Overview Monitoring</span>
+            {downloadMessage && (
+              <span className="ml-4 text-sm text-green-200 bg-green-800/20 px-3 py-1 rounded-md">{downloadMessage}</span>
+            )}
           </div>
         </div>
       </div>

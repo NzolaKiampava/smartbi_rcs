@@ -14,7 +14,7 @@ import {
   RefreshCw,
   Calendar,
   TrendingUp,
-  Users,
+  
   Database,
   Shield,
   AlertTriangle,
@@ -28,7 +28,7 @@ import {
   Monitor,
   Tablet
 } from 'lucide-react';
-import { format } from 'date-fns';
+// format import removed because not referenced in this file after header changes
 import SectionHeader from '../Common/SectionHeader';
 
 interface ActivityLog {
