@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+import EditConnectionModal from './EditConnectionModal';
 import { 
   Database, 
   Plus, 
@@ -1067,6 +1068,17 @@ const DatabasePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Connection Modal */}
+      <EditConnectionModal
+        isOpen={editModalOpen}
+        connection={editConnection}
+        onClose={() => { setEditModalOpen(false); setEditConnection(null); }}
+        onSaved={async (updated) => {
+          // refresh list and keep modal closed
+          await loadDatabases();
+        }}
+      />
     </div>
   );
 };
