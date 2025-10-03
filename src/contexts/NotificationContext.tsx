@@ -18,18 +18,10 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notificationCounter, setNotificationCounter] = useState(0);
 
   const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(notification => notification.id !== id));
   }, []);
-
-  const generateUniqueId = useCallback(() => {
-    const timestamp = Date.now();
-    const counter = notificationCounter;
-    setNotificationCounter(prev => prev + 1);
-    return `notification-${timestamp}-${counter}`;
-  }, [notificationCounter]);
 
   const showSuccess = useCallback((message: string, duration = 5000, priority: 'high' | 'low' = 'low') => {
     // Only show high priority notifications to reduce noise
@@ -38,60 +30,66 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
 
     // Evita notificações duplicadas com a mesma mensagem nos últimos 1000ms
-    const now = Date.now();
-    const existingNotification = notifications.find(n => 
-      n.message === message && 
-      n.type === 'success' && 
-      (now - parseInt(n.id.split('-')[1])) < 1000
-    );
-    if (existingNotification) {
-      return;
-    }
+    setNotifications(prev => {
+      const now = Date.now();
+      const existingNotification = prev.find(n => 
+        n.message === message && 
+        n.type === 'success' && 
+        (now - parseInt(n.id.split('-')[1])) < 1000
+      );
+      
+      if (existingNotification) {
+        return prev;
+      }
 
-    const id = generateUniqueId();
-    const notification: Notification = {
-      id,
-      type: 'success',
-      message,
-      duration
-    };
+      const id = `notification-${Date.now()}-${Math.random()}`;
+      const notification: Notification = {
+        id,
+        type: 'success',
+        message,
+        duration
+      };
 
-    setNotifications(prev => [...prev, notification]);
+      // Auto remove after duration
+      setTimeout(() => {
+        removeNotification(id);
+      }, duration);
 
-    // Auto remove after duration
-    setTimeout(() => {
-      removeNotification(id);
-    }, duration);
-  }, [removeNotification, generateUniqueId, notifications]);
+      return [...prev, notification];
+    });
+  }, [removeNotification]);
 
   const showError = useCallback((message: string, duration = 5000, priority: 'high' | 'low' = 'high') => {
     // Always show errors, but apply duplicate filtering
     // Evita notificações duplicadas com a mesma mensagem nos últimos 1000ms
-    const now = Date.now();
-    const existingNotification = notifications.find(n => 
-      n.message === message && 
-      n.type === 'error' && 
-      (now - parseInt(n.id.split('-')[1])) < 1000
-    );
-    if (existingNotification) {
-      return;
-    }
+    setNotifications(prev => {
+      const now = Date.now();
+      const existingNotification = prev.find(n => 
+        n.message === message && 
+        n.type === 'error' && 
+        (now - parseInt(n.id.split('-')[1])) < 1000
+      );
+      
+      if (existingNotification) {
+        return prev;
+      }
 
-    const id = generateUniqueId();
-    const notification: Notification = {
-      id,
-      type: 'error',
-      message,
-      duration
-    };
+      const id = `notification-${Date.now()}-${Math.random()}`;
+      const notification: Notification = {
+        id,
+        type: 'error',
+        message,
+        duration
+      };
 
-    setNotifications(prev => [...prev, notification]);
+      // Auto remove after duration
+      setTimeout(() => {
+        removeNotification(id);
+      }, duration);
 
-    // Auto remove after duration
-    setTimeout(() => {
-      removeNotification(id);
-    }, duration);
-  }, [removeNotification, generateUniqueId, notifications]);
+      return [...prev, notification];
+    });
+  }, [removeNotification]);
 
   const value = {
     showSuccess,

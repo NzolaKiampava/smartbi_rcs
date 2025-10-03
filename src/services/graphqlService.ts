@@ -114,14 +114,6 @@ interface AnalysisOptionsInput {
   customPrompts?: string[];
 }
 
-interface GetConnectionsResponse {
-  getDataConnectionsPublic: Connection[];
-}
-
-interface ExecuteAIQueryResponse {
-  executeAIQueryPublic: AIQueryResult;
-}
-
 interface UploadAndAnalyzeFileResponse {
   uploadAndAnalyzeFile: AnalysisReport;
 }
@@ -195,50 +187,110 @@ class GraphQLService {
 
   constructor() {
     this.endpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
+    console.log('🔗 GraphQL Endpoint configurado:', this.endpoint);
   }
 
   private async makeRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-    try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem('accessToken');
-      
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      // Add authorization header if token exists
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    const maxRetries = 1;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Get auth token from localStorage
+        const token = localStorage.getItem('accessToken');
+        
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add authorization header if token exists
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        console.log(`📡 GraphQL Request (tentativa ${attempt + 1}/${maxRetries + 1}):`, {
+          endpoint: this.endpoint,
+          hasAuth: !!token,
+          queryType: query.includes('mutation') ? 'mutation' : 'query'
+        });
+
+        const response = await fetch(this.endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            query,
+            variables,
+          }),
+        });
+
+        console.log(`📥 GraphQL Response:`, {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Sem detalhes do erro');
+          console.error('❌ Erro HTTP:', { status: response.status, errorText });
+          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
+
+        const result: GraphQLResponse<T> = await response.json();
+
+        // Log detalhado da resposta GraphQL
+        console.log('📦 Resposta GraphQL completa:', {
+          hasData: !!result.data,
+          hasErrors: !!result.errors,
+          dataKeys: result.data ? Object.keys(result.data) : [],
+          errorCount: result.errors?.length || 0
+        });
+
+        if (result.errors && result.errors.length > 0) {
+          console.error('❌ Erros GraphQL:', result.errors);
+          throw new Error(result.errors[0].message);
+        }
+
+        if (!result.data) {
+          console.error('❌ Nenhum dado recebido do servidor');
+          console.error('Resposta completa:', result);
+          throw new Error('No data received from server');
+        }
+
+        console.log('✅ GraphQL Request bem-sucedida');
+        return result.data;
+      } catch (error) {
+        lastError = error as Error;
+        
+        // Detecta erro CORS especificamente
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+          console.error('🚫 ERRO CORS DETECTADO!');
+          console.error('⚠️ O backend no Vercel não permite requisições do navegador');
+          console.error('💡 Solução: Configure CORS no backend ou use endpoint localhost');
+          console.error(`📍 Endpoint atual: ${this.endpoint}`);
+          
+          // Cria erro mais descritivo
+          lastError = new Error(
+            'CORS Error: O backend não permite requisições do navegador. ' +
+            'Verifique as configurações CORS do backend ou use http://localhost:4000/graphql'
+          );
+          
+          // Não tenta novamente em caso de CORS (não adianta)
+          break;
+        }
+        
+        console.error(`❌ Tentativa ${attempt + 1} falhou:`, error);
+        
+        // Se não for a última tentativa, aguarda antes de tentar novamente
+        if (attempt < maxRetries) {
+          console.log('⏳ Aguardando antes de nova tentativa...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-
-      const response = await fetch(this.endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          query,
-          variables,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result: GraphQLResponse<T> = await response.json();
-
-      if (result.errors && result.errors.length > 0) {
-        throw new Error(result.errors[0].message);
-      }
-
-      if (!result.data) {
-        throw new Error('No data received from server');
-      }
-
-      return result.data;
-    } catch (error) {
-      console.error('GraphQL request failed:', error);
-      throw error;
     }
+
+    // Se todas as tentativas falharam
+    console.error('❌ Todas as tentativas falharam. Último erro:', lastError);
+    throw lastError || new Error('Request failed after all retries');
   }
 
   async getConnections(): Promise<Connection[]> {
@@ -254,8 +306,20 @@ class GraphQLService {
         }
       }
     `;
-    const response = await this.makeRequest<GetConnectionsResponse>(query);
-    return response.getDataConnectionsPublic;
+    const response = await this.makeRequest<{ getDataConnectionsPublic: Connection[] }>(query);
+    const connections = response.getDataConnectionsPublic;
+    
+    console.log('🔌 Connections recebidas:', {
+      totalItems: connections?.length || 0,
+      isEmpty: !connections || connections.length === 0,
+      firstItem: connections?.[0] ? {
+        id: connections[0].id,
+        name: connections[0].name,
+        type: connections[0].type
+      } : null
+    });
+    
+    return connections || [];
   }
 
   async executeNaturalQuery(connectionId: string, naturalQuery: string): Promise<AIQueryResult> {
@@ -283,7 +347,7 @@ class GraphQLService {
       },
     };
 
-    const response = await this.makeRequest<ExecuteAIQueryResponse>(mutation, variables);
+    const response = await this.makeRequest<{ executeAIQueryPublic: AIQueryResult }>(mutation, variables);
     return response.executeAIQueryPublic;
   }
 
@@ -306,7 +370,19 @@ class GraphQLService {
     `;
 
     const response = await this.makeRequest<{ getAIQueryHistoryPublic: AIQueryResult[] }>(query);
-    return response.getAIQueryHistoryPublic;
+    const history = response.getAIQueryHistoryPublic;
+    
+    console.log('📊 Query History recebido:', {
+      totalItems: history?.length || 0,
+      isEmpty: !history || history.length === 0,
+      firstItem: history?.[0] ? {
+        id: history[0].id,
+        naturalQuery: history[0].naturalQuery,
+        status: history[0].status
+      } : null
+    });
+    
+    return history || [];
   }
 
   async deleteQueryHistory(id: string): Promise<boolean> {
@@ -632,38 +708,38 @@ class GraphQLService {
     return response.deleteFileUpload;
   }
 
-    async createApiConnection(input: {
-      name: string;
-      type: string;
-      config: {
-        host?: string;
-        port?: number;
-        database?: string;
-        username?: string;
-        password?: string;
-        apiUrl?: string;
-        apiKey?: string;
-        headers?: { key: string; value: string }[];
-        timeout?: number;
-      };
-      isDefault?: boolean;
-    }): Promise<Connection> {
-      const mutation = `
-        mutation CreateApiConnection($input: DataConnectionInput!) {
-          createDataConnectionPublic(input: $input) {
-            id
-            name
-            type
-            status
-            isDefault
-            createdAt
-          }
+  async createApiConnection(input: {
+    name: string;
+    type: string;
+    config: {
+      host?: string;
+      port?: number;
+      database?: string;
+      username?: string;
+      password?: string;
+      apiUrl?: string;
+      apiKey?: string;
+      headers?: { key: string; value: string }[];
+      timeout?: number;
+    };
+    isDefault?: boolean;
+  }): Promise<Connection> {
+    const mutation = `
+      mutation CreateApiConnection($input: DataConnectionInput!) {
+        createDataConnectionPublic(input: $input) {
+          id
+          name
+          type
+          status
+          isDefault
+          createdAt
         }
-      `;
-      const variables = { input };
-      const response = await this.makeRequest<{ createDataConnectionPublic: Connection }>(mutation, variables);
-      return response.createDataConnectionPublic;
-    }
+      }
+    `;
+    const variables = { input };
+    const response = await this.makeRequest<{ createDataConnectionPublic: Connection }>(mutation, variables);
+    return response.createDataConnectionPublic;
+  }
 }
 
 export const graphqlService = new GraphQLService();

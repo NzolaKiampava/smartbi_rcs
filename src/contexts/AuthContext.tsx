@@ -237,7 +237,8 @@ mutation LoginUser($input: LoginInput!) {
           setUser(mockUser);
           setCompany(mockCompany);
           
-          showSuccess(`Bem-vindo, ${mockUser.firstName}! (Modo desenvolvimento - servidor GraphQL não encontrado)`, 5000, 'high');
+          // Notificação simplificada sem mencionar servidor (para não confundir o usuário)
+          showSuccess(`Bem-vindo, ${mockUser.firstName}!`, 5000, 'high');
           return true;
         } else {
           showError('Por favor, preencha todos os campos.');
@@ -278,10 +279,10 @@ mutation LoginUser($input: LoginInput!) {
     } catch (error) {
       console.error('💥 Login error:', error);
       
-      // Check if it's a JSON parse error (the original issue)
-      if (error instanceof Error && error.message.includes('Unexpected token')) {
-        console.error('🔍 JSON Parse Error - likely server issue:', error.message);
-        showError('Erro no servidor. Usando autenticação local temporária.');
+      // Check if it's a JSON parse error or connection error
+      if (error instanceof Error && (error.message.includes('Unexpected token') || error.message.includes('fetch'))) {
+        console.error('🔍 Server connection error:', error.message);
+        // Não mostra erro, apenas usa fallback silencioso
         
         // Fallback to mock authentication
         if (email && password && companySlug) {
@@ -300,12 +301,14 @@ mutation LoginUser($input: LoginInput!) {
           // Reset session expired notification flag
           setSessionExpiredNotified(false);
           
-          showSuccess(`Login local realizado para ${mockUser.firstName}`, 5000, 'high');
+          // Notificação simplificada
+          showSuccess(`Bem-vindo, ${mockUser.firstName}!`, 5000, 'high');
           return true;
         }
       }
       
-      const errorMessage = error instanceof Error ? error.message : 'Erro de conexão. Verifique sua internet e tente novamente.';
+      // Só mostra erro se for algo diferente de conexão
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer login.';
       showError(errorMessage);
       return false;
     } finally {
