@@ -475,8 +475,16 @@ class GraphQLService {
       // Convert file to base64
       const base64Content = await this.fileToBase64(file);
       
-      // Get REST API endpoint (replace /graphql with /api/upload)
-      const uploadEndpoint = this.endpoint.replace('/graphql', '/api/upload');
+      // Get REST API endpoint
+      // Handle both localhost (http://localhost:4000/graphql) and Vercel (https://.../api/graphql)
+      let uploadEndpoint: string;
+      if (this.endpoint.includes('/api/graphql')) {
+        // Vercel: replace /api/graphql with /api/upload
+        uploadEndpoint = this.endpoint.replace('/api/graphql', '/api/upload');
+      } else {
+        // Localhost: replace /graphql with /api/upload
+        uploadEndpoint = this.endpoint.replace('/graphql', '/api/upload');
+      }
       console.log('🔗 Upload endpoint:', uploadEndpoint);
       
       // Convert mimeType to FileType enum
