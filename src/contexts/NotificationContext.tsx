@@ -9,8 +9,8 @@ interface Notification {
 }
 
 interface NotificationContextType {
-  showSuccess: (message: string, duration?: number) => void;
-  showError: (message: string, duration?: number) => void;
+  showSuccess: (message: string, duration?: number, priority?: 'high' | 'low') => void;
+  showError: (message: string, duration?: number, priority?: 'high' | 'low') => void;
   removeNotification: (id: string) => void;
 }
 
@@ -31,7 +31,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return `notification-${timestamp}-${counter}`;
   }, [notificationCounter]);
 
-  const showSuccess = useCallback((message: string, duration = 5000) => {
+  const showSuccess = useCallback((message: string, duration = 5000, priority: 'high' | 'low' = 'low') => {
+    // Only show high priority notifications to reduce noise
+    if (priority !== 'high') {
+      return;
+    }
+
     // Evita notificações duplicadas com a mesma mensagem nos últimos 1000ms
     const now = Date.now();
     const existingNotification = notifications.find(n => 
@@ -59,7 +64,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, duration);
   }, [removeNotification, generateUniqueId, notifications]);
 
-  const showError = useCallback((message: string, duration = 5000) => {
+  const showError = useCallback((message: string, duration = 5000, priority: 'high' | 'low' = 'high') => {
+    // Always show errors, but apply duplicate filtering
     // Evita notificações duplicadas com a mesma mensagem nos últimos 1000ms
     const now = Date.now();
     const existingNotification = notifications.find(n => 

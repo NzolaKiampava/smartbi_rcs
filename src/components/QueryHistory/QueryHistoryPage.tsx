@@ -72,7 +72,7 @@ const QueryHistoryPage: React.FC = () => {
     try {
       const queryHistory = await graphqlService.getQueryHistory();
       setQueries(queryHistory);
-      showSuccess('Histórico atualizado com sucesso');
+      // Removed refresh notification to prevent noise
     } catch (error) {
       console.error('Failed to refresh query history:', error);
       showError('Erro ao atualizar histórico');
@@ -231,7 +231,8 @@ const QueryHistoryPage: React.FC = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    showSuccess('SQL copiado para a área de transferência');
+    // Removed copy notification to prevent noise
+    console.log('SQL copiado para a área de transferência');
   };
 
   const exportQueries = () => {

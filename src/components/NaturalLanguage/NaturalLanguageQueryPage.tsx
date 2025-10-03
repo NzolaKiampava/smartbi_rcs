@@ -17,7 +17,6 @@ import {
   Eye
 } from 'lucide-react';
 import { graphqlService, Connection, AIQueryResult } from '../../services/graphqlService';
-// import { useNotification } from '../../contexts/NotificationContext'; // Temporariamente desabilitado para debug
 import { format } from 'date-fns';
 import SectionHeader from '../Common/SectionHeader';
 import QueryResultsModal from './QueryResultsModal';
@@ -33,7 +32,6 @@ const NaturalLanguageQueryPage: React.FC = () => {
   const [showSqlQuery, setShowSqlQuery] = useState(false);
   const [apiStatus, setApiStatus] = useState<'checking' | 'available' | 'unavailable' | null>(null);
   const [selectedResultModal, setSelectedResultModal] = useState<AIQueryResult | null>(null);
-  // const { showSuccess, showError } = useNotification(); // Temporariamente desabilitado para debug
 
   const exampleQueries = [
     "Mostre os 5 primeiros usuários",
@@ -129,7 +127,7 @@ const NaturalLanguageQueryPage: React.FC = () => {
         setQueries(prev => [result, ...prev]);
         setActiveQuery(result);
         setQuery('');
-        console.log('Consulta executada com sucesso!');
+        // Notificação removida para evitar refresh da página que impede visualização dos dados
       } else {
         // Handle specific error messages from the backend
         let errorMessage = result.error || 'Erro desconhecido ao processar consulta';

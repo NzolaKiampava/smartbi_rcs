@@ -496,7 +496,7 @@ const DatabasePage: React.FC = () => {
                   try {
                     const connections = await graphqlService.getConnections();
                     setDatabases(connections);
-                    showSuccess(`${connections.length} conexões atualizadas`);
+                    // Removed refresh notification to prevent noise
                   } catch (error) {
                     console.error('Failed to refresh database connections:', error);
                     showError('Erro ao atualizar conexões');
@@ -1027,7 +1027,7 @@ const DatabasePage: React.FC = () => {
                           isDefault: false,
                         };
                         await graphqlService.createApiConnection(apiInput);
-                        showSuccess('API connection criada com sucesso!');
+                        // Removed create notification - user will see the new connection in the list
                         await loadDatabases();
                       } else {
                         // Database connection logic (not implemented here)

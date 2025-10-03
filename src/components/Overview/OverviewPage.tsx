@@ -354,12 +354,27 @@ const OverviewPage: React.FC = () => {
   // Auto-refresh effect (runs when isRealTime toggle is on)
   useEffect(() => {
     if (!isRealTime) return;
-    // enforce a sensible minimum interval to avoid excessive updates
-    const minIntervalMs = 5000; // 5s
-    const iv = setInterval(() => {
-      handleRefresh();
-    }, Math.max(minIntervalMs, refreshIntervalSeconds * 1000));
-    return () => clearInterval(iv);
+    
+    // Add a delay before starting auto-refresh to prevent immediate refresh after login
+    const initialDelayMs = 8000; // 8s delay to allow login notification to complete
+    const minIntervalMs = 5000; // 5s minimum interval
+    
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    // Set initial timeout to delay the first refresh
+    const initialTimeout = setTimeout(() => {
+      // Then set up the recurring interval
+      intervalId = setInterval(() => {
+        handleRefresh();
+      }, Math.max(minIntervalMs, refreshIntervalSeconds * 1000));
+    }, initialDelayMs);
+    
+    return () => {
+      clearTimeout(initialTimeout);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [isRealTime, refreshIntervalSeconds]);
 
   // persist auto-refresh preferences

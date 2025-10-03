@@ -36,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpiredNotified, setSessionExpiredNotified] = useState(false);
   const { showSuccess, showError } = useNotification();
 
   // GraphQL mutation for login - simplified to avoid potential parsing issues
@@ -236,7 +237,7 @@ mutation LoginUser($input: LoginInput!) {
           setUser(mockUser);
           setCompany(mockCompany);
           
-          showSuccess(`Bem-vindo, ${mockUser.firstName}! (Modo desenvolvimento - servidor GraphQL não encontrado)`);
+          showSuccess(`Bem-vindo, ${mockUser.firstName}! (Modo desenvolvimento - servidor GraphQL não encontrado)`, 5000, 'high');
           return true;
         } else {
           showError('Por favor, preencha todos os campos.');
@@ -261,8 +262,11 @@ mutation LoginUser($input: LoginInput!) {
         setUser(userData);
         setCompany(companyData);
         
+        // Reset session expired notification flag on successful login
+        setSessionExpiredNotified(false);
+        
         // Show success message
-        showSuccess(`Bem-vindo, ${userData.firstName}! Login realizado com sucesso.`);
+        showSuccess(`Bem-vindo, ${userData.firstName}! Login realizado com sucesso.`, 5000, 'high');
         
         return true;
       } else {
@@ -293,7 +297,10 @@ mutation LoginUser($input: LoginInput!) {
           setCompany({ id: '1', name: companySlug, slug: companySlug });
           localStorage.setItem('accessToken', 'mock-token');
           
-          showSuccess(`Login local realizado para ${mockUser.firstName}`);
+          // Reset session expired notification flag
+          setSessionExpiredNotified(false);
+          
+          showSuccess(`Login local realizado para ${mockUser.firstName}`, 5000, 'high');
           return true;
         }
       }
@@ -310,7 +317,7 @@ mutation LoginUser($input: LoginInput!) {
   const logout = useCallback(async (): Promise<void> => {
     try {
       await graphqlRequest(LOGOUT_MUTATION, {}, true);
-      showSuccess('Logout realizado com sucesso. Até breve!');
+      showSuccess('Logout realizado com sucesso. Até breve!', 5000, 'high');
     } catch (error) {
       console.error('Logout error:', error);
       showError('Erro ao fazer logout, mas você foi desconectado localmente.');
@@ -432,12 +439,17 @@ mutation LoginUser($input: LoginInput!) {
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      showError('Sessão expirada. Faça login novamente.');
+      // Only show error notification once to prevent spam
+      const hadToken = localStorage.getItem('accessToken');
+      if (hadToken && !sessionExpiredNotified) {
+        showError('Sessão expirada. Faça login novamente.', undefined, 'high');
+        setSessionExpiredNotified(true);
+      }
       await logout();
     } finally {
       setIsLoading(false);
     }
-  }, [refreshToken, logout, showError, ME_QUERY, graphqlRequest]);
+  }, [refreshToken, logout, showError, ME_QUERY, graphqlRequest, sessionExpiredNotified]);
 
   // Check authentication on mount
   useEffect(() => {
