@@ -1,0 +1,55 @@
+# Dependencies
+node_modules
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Development
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage
+.nyc_output
+*.lcov
+
+# Build (já está em dist, não precisa enviar de novo)
+dist-ssr
+*.local
+
+# Git
+.git
+.gitignore
+
+# Documentation (opcional - remova se quiser enviar)
+*.md
+!README.md
+
+# Scripts de desenvolvimento
+scripts/mock-*.js
+scripts/upload-server.js
+
+# Arquivos temporários
+.cache
+.temp
+.tmp
