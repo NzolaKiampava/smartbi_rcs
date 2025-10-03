@@ -88,8 +88,9 @@ const FileUploadPage: React.FC = () => {
         }));
       }, 300);
 
-      // Upload and analyze file
-      const analysisResult = await graphqlService.uploadAndAnalyzeFile(uploadInput);
+      // Upload and analyze file using new 2-step architecture
+      console.log('🚀 Using new 2-step file upload architecture...');
+      const analysisResult = await graphqlService.uploadAndAnalyzeFileV2(uploadInput);
       
       // Clear progress interval
       clearInterval(progressInterval);

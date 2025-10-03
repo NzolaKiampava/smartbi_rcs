@@ -426,7 +426,235 @@ class GraphQLService {
     return response.clearAIQueryHistoryPublic;
   }
 
-  // File Upload and Analysis Methods
+  // ==================== NEW FILE UPLOAD METHODS (2-Step Architecture) ====================
+  
+  /**
+   * Helper: Convert mimeType to FileType enum expected by backend
+   */
+  private mimeTypeToFileType(mimeType: string, fileName: string): string {
+    // Check by mime type first
+    if (mimeType.includes('csv') || mimeType === 'text/csv') return 'CSV';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'EXCEL';
+    if (mimeType === 'application/json') return 'JSON';
+    if (mimeType === 'application/pdf') return 'PDF';
+    if (mimeType === 'application/sql' || mimeType === 'text/sql') return 'SQL';
+    if (mimeType.includes('text/plain')) return 'TXT';
+    if (mimeType.includes('xml')) return 'XML';
+    
+    // Fallback: check by file extension
+    const ext = fileName.toLowerCase().split('.').pop();
+    switch (ext) {
+      case 'csv': return 'CSV';
+      case 'xls':
+      case 'xlsx': return 'EXCEL';
+      case 'json': return 'JSON';
+      case 'pdf': return 'PDF';
+      case 'sql': return 'SQL';
+      case 'txt': return 'TXT';
+      case 'xml': return 'XML';
+      default: return 'OTHER';
+    }
+  }
+  
+  /**
+   * Step 1: Upload file to REST API endpoint
+   * Returns fileId to be used in Step 2
+   */
+  async uploadFile(file: File): Promise<{
+    success: boolean;
+    fileId: string;
+    fileName: string;
+    originalName: string;
+    size: number;
+    url: string;
+    message: string;
+  }> {
+    try {
+      console.log('📤 Step 1: Uploading file to REST API...');
+      
+      // Convert file to base64
+      const base64Content = await this.fileToBase64(file);
+      
+      // Get REST API endpoint (replace /graphql with /api/upload)
+      const uploadEndpoint = this.endpoint.replace('/graphql', '/api/upload');
+      console.log('🔗 Upload endpoint:', uploadEndpoint);
+      
+      // Convert mimeType to FileType enum
+      const fileType = this.mimeTypeToFileType(file.type, file.name);
+      console.log('📝 File type detected:', fileType);
+      
+      const token = localStorage.getItem('accessToken');
+      
+      const response = await fetch(uploadEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          fileContent: base64Content,
+          fileName: file.name,
+          mimeType: file.type,
+          fileType: fileType  // Add FileType enum for backend
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ File uploaded successfully:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ File upload failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Step 2: Analyze uploaded file via GraphQL
+   * Uses fileId from Step 1
+   */
+  async analyzeUploadedFile(
+    fileId: string, 
+    options?: AnalysisOptionsInput
+  ): Promise<AnalysisReport> {
+    console.log('🔍 Step 2: Analyzing file via GraphQL...');
+    
+    const mutation = `
+      mutation AnalyzeFile($fileId: ID!, $options: AnalysisOptionsInput) {
+        analyzeUploadedFile(fileId: $fileId, options: $options) {
+          id
+          fileUploadId
+          status
+          title
+          summary
+          executionTime
+          extractedText
+          insights {
+            id
+            type
+            title
+            description
+            value
+            confidence
+            importance
+            createdAt
+          }
+          recommendations
+          dataQuality {
+            score
+            completeness
+            accuracy
+            consistency
+            validity
+            issues {
+              type
+              description
+              severity
+              count
+              examples
+            }
+          }
+          visualizations {
+            id
+            type
+            title
+            description
+            data
+            config
+          }
+          fileUpload {
+            id
+            filename
+            originalName
+            mimetype
+            size
+            fileType
+            uploadedAt
+          }
+          createdAt
+          updatedAt
+          error
+        }
+      }
+    `;
+
+    const variables = {
+      fileId,
+      options: options || {
+        analyzeRevenue: true,
+        analyzeTrends: true,
+        analyzeComparisons: true
+      }
+    };
+
+    try {
+      const response = await this.makeRequest<{ analyzeUploadedFile: AnalysisReport }>(
+        mutation, 
+        variables
+      );
+      
+      console.log('✅ File analysis completed:', response.analyzeUploadedFile);
+      return response.analyzeUploadedFile;
+    } catch (error) {
+      console.error('❌ File analysis failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Complete 2-step upload and analysis process
+   * Combines uploadFile + analyzeUploadedFile
+   */
+  async uploadAndAnalyzeFileV2(input: FileUploadInput): Promise<AnalysisReport> {
+    console.log('🚀 Starting 2-step file upload and analysis...');
+    
+    try {
+      // Step 1: Upload file
+      const uploadResult = await this.uploadFile(input.file);
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.message || 'File upload failed');
+      }
+
+      // Step 2: Analyze file
+      const analysisResult = await this.analyzeUploadedFile(
+        uploadResult.fileId,
+        input.analysisOptions
+      );
+
+      return analysisResult;
+    } catch (error) {
+      console.error('❌ Upload and analysis process failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper: Convert File to base64
+   */
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
+  }
+
+  // ==================== LEGACY FILE UPLOAD METHOD ====================
+  
+  /**
+   * @deprecated Use uploadAndAnalyzeFileV2 instead for Vercel deployment
+   * This method still works for local development with multipart upload support
+   */
   async uploadAndAnalyzeFile(input: FileUploadInput): Promise<AnalysisReport> {
     const formData = new FormData();
     
