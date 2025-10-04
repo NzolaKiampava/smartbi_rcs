@@ -970,8 +970,12 @@ class GraphQLService {
       }
 
       console.log('📥 Downloading file from:', downloadEndpoint);
+      console.log('📥 File ID:', fileId);
+      console.log('📥 File Name:', fileName);
 
       const token = localStorage.getItem('accessToken');
+      console.log('📥 Has Auth Token:', !!token);
+      
       const response = await fetch(downloadEndpoint, {
         method: 'GET',
         headers: {
@@ -979,12 +983,22 @@ class GraphQLService {
         }
       });
 
+      console.log('📥 Download Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Array.from(response.headers.entries())
+      });
+
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status}`);
+        const errorText = await response.text().catch(() => 'No error details');
+        console.error('❌ Download failed:', errorText);
+        throw new Error(`Download failed: ${response.status} - ${errorText}`);
       }
 
       // Get blob from response
       const blob = await response.blob();
+      console.log('📦 Blob created:', { size: blob.size, type: blob.type });
       
       // Create download link
       const url = window.URL.createObjectURL(blob);
