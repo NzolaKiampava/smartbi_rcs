@@ -866,17 +866,21 @@ class GraphQLService {
               createdAt
             }
           }
-          totalCount
+          total
+          limit
+          offset
           hasMore
         }
       }
     `;
 
     const variables = { limit, offset };
-    const response = await this.makeRequest<{ listFileUploads: { files: FileUpload[]; totalCount: number; hasMore: boolean } }>(query, variables);
+    const response = await this.makeRequest<{ listFileUploads: { files: FileUpload[]; total: number; limit: number; offset: number; hasMore: boolean } }>(query, variables);
     console.log('📊 Files loaded:', {
       count: response.listFileUploads.files.length,
-      totalCount: response.listFileUploads.totalCount,
+      total: response.listFileUploads.total,
+      limit: response.listFileUploads.limit,
+      offset: response.listFileUploads.offset,
       hasMore: response.listFileUploads.hasMore
     });
     return response.listFileUploads.files;
