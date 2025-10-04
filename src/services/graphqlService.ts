@@ -944,6 +944,54 @@ class GraphQLService {
     return response.deleteFileUpload;
   }
 
+  async downloadFile(fileId: string, fileName: string): Promise<void> {
+    try {
+      // Get REST API endpoint for download
+      let downloadEndpoint: string;
+      if (this.endpoint.includes('/api/graphql')) {
+        // Vercel: replace /api/graphql with /api/files/:id/download
+        downloadEndpoint = this.endpoint.replace('/api/graphql', `/api/files/${fileId}/download`);
+      } else {
+        // Localhost: replace /graphql with /api/files/:id/download
+        downloadEndpoint = this.endpoint.replace('/graphql', `/api/files/${fileId}/download`);
+      }
+
+      console.log('📥 Downloading file from:', downloadEndpoint);
+
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(downloadEndpoint, {
+        method: 'GET',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+
+      // Get blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('✅ File downloaded successfully:', fileName);
+    } catch (error) {
+      console.error('❌ File download failed:', error);
+      throw error;
+    }
+  }
+
   async createApiConnection(input: {
     name: string;
     type: string;
