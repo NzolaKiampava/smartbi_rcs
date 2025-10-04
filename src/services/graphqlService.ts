@@ -849,28 +849,37 @@ class GraphQLService {
     const query = `
       query ListFileUploads($limit: Int, $offset: Int) {
         listFileUploads(limit: $limit, offset: $offset) {
-          id
-          filename
-          originalName
-          mimetype
-          size
-          fileType
-          uploadedAt
-          metadata
-          analysisReport {
+          files {
             id
-            status
-            title
-            summary
-            createdAt
+            filename
+            originalName
+            mimetype
+            size
+            fileType
+            uploadedAt
+            metadata
+            analysisReport {
+              id
+              status
+              title
+              summary
+              createdAt
+            }
           }
+          totalCount
+          hasMore
         }
       }
     `;
 
     const variables = { limit, offset };
-    const response = await this.makeRequest<ListFileUploadsResponse>(query, variables);
-    return response.listFileUploads;
+    const response = await this.makeRequest<{ listFileUploads: { files: FileUpload[]; totalCount: number; hasMore: boolean } }>(query, variables);
+    console.log('📊 Files loaded:', {
+      count: response.listFileUploads.files.length,
+      totalCount: response.listFileUploads.totalCount,
+      hasMore: response.listFileUploads.hasMore
+    });
+    return response.listFileUploads.files;
   }
 
   // Fetch overview/dashboard data (KPIs, revenue series, categories, performance, recent activities, insights)
