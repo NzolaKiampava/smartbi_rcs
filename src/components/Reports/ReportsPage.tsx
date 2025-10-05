@@ -260,7 +260,7 @@ const ReportsPage: React.FC = () => {
       ${selectedFiles.has(file.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
     `}>
       <td className="px-6 py-4">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-4">
           <input
             type="checkbox"
             checked={selectedFiles.has(file.id)}
@@ -268,7 +268,7 @@ const ReportsPage: React.FC = () => {
             className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             aria-label={`Select ${file.originalName}`}
           />
-          <div className="w-8 h-8">
+          <div className="w-12 h-12 flex-shrink-0">
             {getFileIcon(file.fileType)}
           </div>
           <div>
@@ -356,10 +356,10 @@ const ReportsPage: React.FC = () => {
             {recentFiles.map((file) => (
               <div 
                 key={file.id} 
-                className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                 onClick={() => handleDownload(file)}
               >
-                <div className="w-10 h-10">
+                <div className="w-12 h-12 flex-shrink-0">
                   {getFileIcon(file.fileType)}
                 </div>
                 <div className="flex-1 min-w-0">
