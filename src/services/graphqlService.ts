@@ -126,6 +126,33 @@ interface ListFileUploadsResponse {
   listFileUploads: FileUpload[];
 }
 
+interface ManagementUser {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  role: string;
+  companyId?: string | null;
+  isActive: boolean;
+  emailVerified: boolean;
+  lastLoginAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ManagementUserList {
+  users: ManagementUser[];
+  total: number;
+  hasMore: boolean;
+}
+
+interface ManagementUserListResponse {
+  success: boolean;
+  data?: ManagementUserList;
+  message?: string;
+  errors?: string[];
+}
+
 class GraphQLService {
   async updateApiConnection(id: string, input: {
     name: string;
@@ -183,6 +210,7 @@ class GraphQLService {
     const response = await this.makeRequest<{ deleteDataConnectionPublic: boolean }>(mutation, variables);
     return response.deleteDataConnectionPublic;
   }
+
   private endpoint: string;
 
   constructor() {
@@ -884,6 +912,102 @@ class GraphQLService {
       hasMore: response.listFileUploads.hasMore
     });
     return response.listFileUploads.files;
+  }
+
+  async getUsers(options: {
+    companyId?: string;
+    pagination?: {
+      limit?: number;
+      offset?: number;
+      search?: string;
+    };
+  } = {}): Promise<ManagementUserList> {
+    const { companyId, pagination } = options;
+
+    const selectionSet = `
+      success
+      message
+      errors
+      data {
+        total
+        hasMore
+        users {
+          id
+          email
+          firstName
+          lastName
+          role
+          companyId
+          isActive
+          emailVerified
+          lastLoginAt
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const query = companyId
+      ? `
+        query UsersByCompany($companyId: ID!, $pagination: PaginationInput) {
+          usersByCompany(companyId: $companyId, pagination: $pagination) {
+            ${selectionSet}
+          }
+        }
+      `
+      : `
+        query Users($pagination: PaginationInput) {
+          users(pagination: $pagination) {
+            ${selectionSet}
+          }
+        }
+      `;
+
+    const variables: Record<string, unknown> = {};
+    const paginationInput: Record<string, unknown> = {};
+
+    const effectiveLimit = pagination?.limit ?? 50;
+    if (typeof effectiveLimit === 'number') {
+      paginationInput.limit = effectiveLimit;
+    }
+
+    if (typeof pagination?.offset === 'number') {
+      paginationInput.offset = pagination.offset;
+    }
+
+    if (pagination?.search) {
+      paginationInput.search = pagination.search;
+    }
+
+    if (Object.keys(paginationInput).length > 0) {
+      variables.pagination = paginationInput;
+    }
+
+    if (companyId) {
+      variables.companyId = companyId;
+    }
+
+    let payload: ManagementUserListResponse | undefined;
+
+    if (companyId) {
+      const response = await this.makeRequest<{ usersByCompany: ManagementUserListResponse }>(query, variables);
+      payload = response.usersByCompany;
+    } else {
+      const response = await this.makeRequest<{ users: ManagementUserListResponse }>(query, variables);
+      payload = response.users;
+    }
+
+    if (!payload?.success || !payload.data) {
+      const errorMessage = payload?.message || 'Failed to fetch users.';
+      console.error('❌ GraphQL users query failed:', payload?.errors || errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    return {
+      users: payload.data.users ?? [],
+      total: payload.data.total ?? payload.data.users?.length ?? 0,
+      hasMore: payload.data.hasMore ?? false,
+    };
   }
 
   // Fetch overview/dashboard data (KPIs, revenue series, categories, performance, recent activities, insights)

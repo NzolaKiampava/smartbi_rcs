@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Plus, 
@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { graphqlService } from '../../services/graphqlService';
 
 interface User {
   id: string;
@@ -36,6 +38,8 @@ interface User {
   email: string;
   phone?: string;
   role: 'admin' | 'manager' | 'analyst' | 'viewer';
+  roleLabel?: string;
+  originalRole?: string;
   department: string;
   status: 'active' | 'inactive' | 'pending';
   avatar?: string;
@@ -44,6 +48,8 @@ interface User {
   permissions: string[];
   location?: string;
   timezone?: string;
+  companyId?: string;
+  emailVerified?: boolean;
 }
 
 interface EditUserModalProps {
@@ -343,107 +349,174 @@ const UsersPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | User['status']>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const { showSuccess, showError } = useNotification();
+  const { user: authUser, company } = useAuth();
+  const isSuperAdmin = authUser?.role === 'SUPER_ADMIN';
 
-  // Mock data - Replace with real API calls
-  useEffect(() => {
-    const loadUsers = async () => {
-      setIsLoading(true);
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockUsers: User[] = [
-          {
-            id: '1',
-            name: 'João Silva',
-            email: 'joao.silva@company.com',
-            phone: '+244 912 345 678',
-            role: 'admin',
-            department: 'IT',
-            status: 'active',
-            avatar: '',
-            lastLogin: '2025-09-19T10:30:00Z',
-            createdAt: '2024-01-15T08:00:00Z',
-            permissions: ['read', 'write', 'admin'],
-            location: 'Luanda, Angola',
-            timezone: 'WAT'
-          },
-          {
-            id: '2',
-            name: 'Maria Santos',
-            email: 'maria.santos@company.com',
-            phone: '+244 923 456 789',
-            role: 'manager',
-            department: 'Finance',
-            status: 'active',
-            lastLogin: '2025-09-19T09:15:00Z',
-            createdAt: '2024-02-20T10:00:00Z',
-            permissions: ['read', 'write'],
-            location: 'Benguela, Angola',
-            timezone: 'WAT'
-          },
-          {
-            id: '3',
-            name: 'Carlos Eduardo',
-            email: 'carlos.eduardo@company.com',
-            phone: '+244 934 567 890',
-            role: 'analyst',
-            department: 'Analytics',
-            status: 'active',
-            lastLogin: '2025-09-18T16:45:00Z',
-            createdAt: '2024-03-10T14:30:00Z',
-            permissions: ['read'],
-            location: 'Huambo, Angola',
-            timezone: 'WAT'
-          },
-          {
-            id: '4',
-            name: 'Ana Costa',
-            email: 'ana.costa@company.com',
-            role: 'viewer',
-            department: 'Marketing',
-            status: 'pending',
-            createdAt: '2025-09-18T12:00:00Z',
-            permissions: ['read'],
-            location: 'Lobito, Angola',
-            timezone: 'WAT'
-          },
-          {
-            id: '5',
-            name: 'Pedro Mendes',
-            email: 'pedro.mendes@company.com',
-            phone: '+244 945 678 901',
-            role: 'analyst',
-            department: 'Operations',
-            status: 'inactive',
-            lastLogin: '2025-09-10T14:20:00Z',
-            createdAt: '2024-05-05T11:15:00Z',
-            permissions: ['read'],
-            location: 'Cabinda, Angola',
-            timezone: 'WAT'
-          }
-        ];
+  console.log('🔍 UsersPage render:', {
+    authUser: authUser?.email,
+    role: authUser?.role,
+    isSuperAdmin,
+    companyId: company?.id,
+    isLoading,
+    usersCount: users.length
+  });
 
-        setUsers(mockUsers);
-        // Removendo notificação para evitar duplicação
-        // showSuccess(`${mockUsers.length} users loaded successfully`);
-      } catch (error) {
-        console.error('Failed to load users:', error);
-        showError('Failed to load users');
-      } finally {
-        setIsLoading(false);
-      }
+  type GraphQLUser = Awaited<ReturnType<typeof graphqlService.getUsers>>['users'][number];
+
+  const mapBackendRoleToUi = useCallback((rawRole: string): { role: User['role']; roleLabel: string; originalRole: string } => {
+    switch (rawRole) {
+      case 'SUPER_ADMIN':
+        return { role: 'admin', roleLabel: 'Super Admin', originalRole: rawRole };
+      case 'COMPANY_ADMIN':
+        return { role: 'admin', roleLabel: 'Company Admin', originalRole: rawRole };
+      case 'MANAGER':
+        return { role: 'manager', roleLabel: 'Manager', originalRole: rawRole };
+      case 'ANALYST':
+        return { role: 'analyst', roleLabel: 'Analyst', originalRole: rawRole };
+      case 'VIEWER':
+        return { role: 'viewer', roleLabel: 'Viewer', originalRole: rawRole };
+      default:
+        return {
+          role: 'viewer',
+          roleLabel: rawRole ? rawRole.replace(/_/g, ' ') : 'Viewer',
+          originalRole: rawRole || 'VIEWER'
+        };
+    }
+  }, []);
+
+  const deriveRoleLabel = useCallback((role: User['role'], roleLabel?: string, originalRole?: string): string => {
+    if (roleLabel) return roleLabel;
+    if (originalRole === 'SUPER_ADMIN') return 'Super Admin';
+    if (originalRole === 'COMPANY_ADMIN') return 'Company Admin';
+
+    switch (role) {
+      case 'admin':
+        return 'Admin';
+      case 'manager':
+        return 'Manager';
+      case 'analyst':
+        return 'Analyst';
+      case 'viewer':
+        return 'Viewer';
+      default:
+        return String(role).replace(/_/g, ' ');
+    }
+  }, []);
+
+  const ensureUserDefaults = useCallback((user: Partial<User>): User => {
+    const role = user.role ?? 'viewer';
+    const label = deriveRoleLabel(role, user.roleLabel, user.originalRole);
+
+    return {
+      id: user.id ?? Date.now().toString(),
+      name: user.name ?? user.email ?? 'Usuário desconhecido',
+      email: user.email ?? 'unknown@domain.com',
+      phone: user.phone ?? '',
+      role,
+      roleLabel: label,
+      originalRole: user.originalRole ?? user.roleLabel ?? label ?? role,
+      department: user.department ?? '—',
+      status: user.status ?? 'pending',
+      avatar: user.avatar,
+      lastLogin: user.lastLogin,
+      createdAt: user.createdAt ?? new Date().toISOString(),
+      permissions: user.permissions && user.permissions.length > 0 ? user.permissions : [label],
+      location: user.location,
+      timezone: user.timezone ?? 'UTC',
+      companyId: user.companyId,
+      emailVerified: user.emailVerified ?? (user.status === 'active'),
     };
+  }, [deriveRoleLabel]);
 
+  const mapBackendUserToUi = useCallback((backendUser: GraphQLUser): User => {
+    const { role, roleLabel, originalRole } = mapBackendRoleToUi(backendUser.role);
+    const status: User['status'] = backendUser.emailVerified
+      ? (backendUser.isActive ? 'active' : 'inactive')
+      : 'pending';
+
+    const firstName = backendUser.firstName?.trim() ?? '';
+    const lastName = backendUser.lastName?.trim() ?? '';
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    return ensureUserDefaults({
+      id: backendUser.id,
+      name: fullName || backendUser.email,
+      email: backendUser.email,
+      role,
+      roleLabel,
+      originalRole,
+      status,
+      lastLogin: backendUser.lastLoginAt ?? undefined,
+      createdAt: backendUser.createdAt,
+      permissions: [roleLabel],
+  companyId: backendUser.companyId ?? undefined,
+      emailVerified: backendUser.emailVerified,
+    });
+  }, [ensureUserDefaults, mapBackendRoleToUi]);
+
+  const loadUsers = useCallback(async (
+    { showLoadingSpinner = true, showToast = false }: { showLoadingSpinner?: boolean; showToast?: boolean } = {}
+  ) => {
+  const fallbackCompanyId = company?.id ?? undefined;
+  const canLoad = isSuperAdmin || !!fallbackCompanyId;
+
+    if (!canLoad) {
+      console.warn('⚠️ UsersPage: Sem dados suficientes para carregar usuários', {
+        isSuperAdmin,
+        companyId: fallbackCompanyId,
+      });
+      setUsers([]);
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    if (showLoadingSpinner) {
+      setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
+
+    try {
+      console.log('🔄 UsersPage: Carregando usuários...', { isSuperAdmin, companyId: fallbackCompanyId });
+      const result = await graphqlService.getUsers({
+        companyId: isSuperAdmin ? undefined : fallbackCompanyId,
+        pagination: { limit: 100 },
+      });
+
+      console.log('✅ UsersPage: Usuários carregados:', result.users.length);
+      const normalizedUsers = (result.users ?? []).map(mapBackendUserToUi);
+      setUsers(normalizedUsers);
+
+      if (showToast) {
+        showSuccess('Lista de usuários atualizada');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load users:', error);
+      showError('Não foi possível carregar os usuários');
+      setUsers([]);
+    } finally {
+      if (showLoadingSpinner) {
+        setIsLoading(false);
+      } else {
+        setIsRefreshing(false);
+      }
+    }
+  }, [company?.id, isSuperAdmin, mapBackendUserToUi, showError, showSuccess]);
+
+  useEffect(() => {
     loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Carregamento inicial apenas
+  }, [loadUsers]);
+
+  const effectiveCompanyId = company?.id ?? undefined;
+  const canViewUsers = isSuperAdmin || !!effectiveCompanyId;
 
   const getRoleIcon = (role: User['role']) => {
     switch (role) {
@@ -494,14 +567,16 @@ const UsersPage: React.FC = () => {
   };
 
   const handleSaveUser = (userData: User) => {
+    const normalizedUser = ensureUserDefaults(userData);
+
     if (editingUser) {
       // Update existing user
-      setUsers(users.map(user => user.id === userData.id ? userData : user));
-      showSuccess(`User ${userData.name} updated successfully`);
+      setUsers(users.map(user => user.id === normalizedUser.id ? normalizedUser : user));
+      showSuccess(`User ${normalizedUser.name} updated successfully`);
     } else {
       // Add new user
-      setUsers([...users, userData]);
-      showSuccess(`User ${userData.name} created successfully`);
+      setUsers([...users, normalizedUser]);
+      showSuccess(`User ${normalizedUser.name} created successfully`);
     }
     setShowEditModal(false);
     setEditingUser(null);
@@ -517,13 +592,17 @@ const UsersPage: React.FC = () => {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.department.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const searchQuery = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      searchQuery.length === 0 ||
+      user.name.toLowerCase().includes(searchQuery) ||
+      user.email.toLowerCase().includes(searchQuery) ||
+      (user.department ?? '').toLowerCase().includes(searchQuery) ||
+      (user.roleLabel ?? user.role).toLowerCase().includes(searchQuery);
+
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -531,16 +610,31 @@ const UsersPage: React.FC = () => {
   const pendingUsersCount = users.filter(user => user.status === 'pending').length;
   const totalAdmins = users.filter(user => user.role === 'admin').length;
 
-  const UserCard: React.FC<{ user: User }> = ({ user }) => (
+  console.log('🎨 UsersPage render:', {
+    isLoading,
+    totalUsers: users.length,
+    filteredUsers: filteredUsers.length,
+    activeUsers: activeUsersCount,
+    canViewUsers,
+    viewMode
+  });
+
+  const UserCard: React.FC<{ user: User }> = ({ user }) => {
+    if (!user || !user.id) {
+      console.warn('⚠️ UserCard: Invalid user data', user);
+      return null;
+    }
+
+    return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-semibold text-lg">
-            {user.name.charAt(0).toUpperCase()}
+            {user.name?.charAt(0)?.toUpperCase() ?? '?'}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-gray-900 dark:text-white truncate">{user.name}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{user.email}</p>
+            <h3 className="font-semibold text-gray-900 dark:text-white truncate">{user.name ?? 'Unknown'}</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{user.email ?? 'No email'}</p>
           </div>
         </div>
         
@@ -579,7 +673,7 @@ const UsersPage: React.FC = () => {
           <span className="text-gray-500 dark:text-gray-400">Role</span>
           <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
             {getRoleIcon(user.role)}
-            <span className="capitalize">{user.role}</span>
+            <span className="capitalize">{user.roleLabel ?? user.role}</span>
           </div>
         </div>
         
@@ -598,7 +692,16 @@ const UsersPage: React.FC = () => {
         {user.lastLogin && (
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500 dark:text-gray-400">Last Login</span>
-            <span className="text-gray-900 dark:text-white">{format(new Date(user.lastLogin), 'MMM dd, HH:mm')}</span>
+            <span className="text-gray-900 dark:text-white">
+              {(() => {
+                try {
+                  const date = new Date(user.lastLogin);
+                  return !isNaN(date.getTime()) ? format(date, 'MMM dd, HH:mm') : 'N/A';
+                } catch {
+                  return 'N/A';
+                }
+              })()}
+            </span>
           </div>
         )}
       </div>
@@ -616,7 +719,8 @@ const UsersPage: React.FC = () => {
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
@@ -655,6 +759,20 @@ const UsersPage: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {!canViewUsers && (
+          <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle size={20} className="text-amber-600 dark:text-amber-300 mt-0.5" />
+              <div className="text-sm text-amber-700 dark:text-amber-200">
+                <p className="font-semibold mb-1">Permissões Limitadas</p>
+                <p>
+                  Não encontramos uma empresa associada à sua conta. Entre em contato com o administrador ou selecione uma empresa para visualizar os usuários.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -846,17 +964,14 @@ const UsersPage: React.FC = () => {
             </div>
             
             <button
-              onClick={() => {
-                setIsLoading(true);
-                setTimeout(() => {
-                  setIsLoading(false);
-                  // Removed refresh notification to prevent noise
-                }, 1000);
-              }}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
+              onClick={() => loadUsers({ showLoadingSpinner: false, showToast: true })}
+              disabled={isRefreshing}
+              className={`inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl transition-all duration-200 shadow-sm hover:shadow-md ${
+                isRefreshing ? 'opacity-80 cursor-not-allowed' : 'hover:bg-blue-700'
+              }`}
             >
-              <RefreshCw size={16} className="mr-2" />
-              Refresh
+              <RefreshCw size={16} className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
         </div>
