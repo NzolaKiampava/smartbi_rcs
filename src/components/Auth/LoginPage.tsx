@@ -232,9 +232,9 @@ const LoginPage: React.FC = () => {
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h4 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h4>
               <div className="text-sm text-blue-700 space-y-1">
-                <p><strong>Company Slug:</strong> demo-company</p>
-                <p><strong>Email:</strong> admin@smartbi.com</p>
-                <p><strong>Password:</strong> admin123</p>
+                <p><strong>Company Slug:</strong> test-company</p>
+                <p><strong>Email:</strong> user@smartbi.com</p>
+                <p><strong>Password:</strong> User@123</p>
               </div>
             </div>
 
