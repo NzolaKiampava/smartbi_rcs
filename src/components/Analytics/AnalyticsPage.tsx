@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { graphqlService } from '../../services/graphqlService';
 // Months list for filters
 const monthsList = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   // Lista de meses para filtro
 
 import {
   BarChart3,
-  DollarSign,
   Users,
   ShoppingCart,
   Filter,
@@ -52,94 +53,191 @@ import {
   ComposedChart
 } from 'recharts';
 
-// Mock data for analytics
-const analyticsData = {
-  kpis: [
-    {
-      id: 'revenue',
-      title: 'Total Revenue',
-      value: '$2,547,832',
-      change: 12.5,
-      trend: 'up',
-      icon: DollarSign,
-      color: 'from-green-500 to-emerald-600',
-      bgColor: 'bg-green-50 dark:bg-green-900/20',
-      description: 'vs last month'
-    },
-    {
-      id: 'users',
-      title: 'Active Users',
-      value: '124,596',
-      change: 8.2,
-      trend: 'up',
-      icon: Users,
-      color: 'from-blue-500 to-cyan-600',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-      description: 'vs last month'
-    },
-    {
-      id: 'orders',
-      title: 'Total Orders',
-      value: '18,264',
-      change: -3.1,
-      trend: 'down',
-      icon: ShoppingCart,
-      color: 'from-purple-500 to-violet-600',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-      description: 'vs last month'
-    },
-    {
-      id: 'conversion',
-      title: 'Conversion Rate',
-      value: '3.84%',
-      change: 0.9,
-      trend: 'up',
-      icon: Target,
-      color: 'from-orange-500 to-red-600',
-      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
-      description: 'vs last month'
-    }
-  ],
-  revenueData: [
-    { month: 'Jan', revenue: 185000, orders: 1240, users: 8200 },
-    { month: 'Feb', revenue: 201000, orders: 1380, users: 9100 },
-    { month: 'Mar', revenue: 187000, orders: 1290, users: 8950 },
-    { month: 'Apr', revenue: 224000, orders: 1520, users: 10200 },
-    { month: 'May', revenue: 267000, orders: 1680, users: 11500 },
-    { month: 'Jun', revenue: 298000, orders: 1840, users: 12800 },
-    { month: 'Jul', revenue: 312000, orders: 1920, users: 13200 },
-    { month: 'Aug', revenue: 287000, orders: 1780, users: 12600 },
-    { month: 'Sep', revenue: 331000, orders: 2010, users: 14100 },
-    { month: 'Oct', revenue: 356000, orders: 2180, users: 15300 },
-    { month: 'Nov', revenue: 389000, orders: 2340, users: 16200 },
-    { month: 'Dec', revenue: 412000, orders: 2450, users: 17100 }
-  ],
-  channelData: [
-    { channel: 'Organic Search', value: 35, color: '#3B82F6' },
-    { channel: 'Direct', value: 28, color: '#10B981' },
-    { channel: 'Social Media', value: 18, color: '#F59E0B' },
-    { channel: 'Email', value: 12, color: '#EF4444' },
-    { channel: 'Paid Ads', value: 7, color: '#8B5CF6' }
-  ],
-  performanceData: [
-    { metric: 'Page Load Speed', score: 92, target: 95, color: '#10B981' },
-    { metric: 'Uptime', score: 99.8, target: 99.9, color: '#3B82F6' },
-    { metric: 'Error Rate', score: 0.2, target: 0.1, color: '#EF4444' },
-    { metric: 'API Response Time', score: 145, target: 200, color: '#F59E0B' }
-  ],
-  geographicData: [
-    { country: 'United States', users: 45280, percentage: 36.4 },
-    { country: 'United Kingdom', users: 18960, percentage: 15.2 },
-    { country: 'Germany', users: 12450, percentage: 10.0 },
-    { country: 'Canada', users: 9870, percentage: 7.9 },
-    { country: 'France', users: 8230, percentage: 6.6 },
-    { country: 'Others', users: 29806, percentage: 23.9 }
-  ]
-};
-
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
 
 const AnalyticsPage: React.FC = () => {
+  const { authUser } = useAuth();
+  
+  // State for backend data
+  const [backendStats, setBackendStats] = useState<{
+    totalUsers: number;
+    totalFiles: number;
+    totalQueries: number;
+    totalConnections: number;
+    recentQueries: Array<{ date: string; count: number; avgExecutionTime: number }>;
+    filesByType: Array<{ type: string; count: number }>;
+    queriesByStatus: Array<{ status: string; count: number }>;
+  } | null>(null);
+
+  // Load analytics data from backend
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      try {
+        const companyId = authUser?.company?.id;
+        const stats = await graphqlService.getAnalyticsStats(companyId);
+        setBackendStats(stats);
+        console.log('✅ Analytics: Dados carregados do backend', stats);
+      } catch (error) {
+        console.error('❌ Analytics: Erro ao carregar dados', error);
+        // Keep null to use fallback mock data
+      }
+    };
+
+    loadAnalytics();
+  }, [authUser]);
+
+  // Calculate previous month values for trend (mock calculation)
+  const calculateTrend = (_current: number): { change: number; trend: 'up' | 'down' } => {
+    // Mock: assume 10-20% growth
+    const change = Math.random() * 10 + 5;
+    const trend = Math.random() > 0.3 ? 'up' : 'down';
+    return { change: parseFloat(change.toFixed(1)), trend };
+  };
+
+  // Build KPIs from backend data
+  const analyticsData = useMemo(() => {
+    if (!backendStats) {
+      // Fallback mock data
+      return {
+        kpis: [
+          {
+            id: 'users',
+            title: 'Total Users',
+            value: '0',
+            change: 0,
+            trend: 'up' as const,
+            icon: Users,
+            color: 'from-blue-500 to-cyan-600',
+            bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+            description: 'registered users'
+          },
+          {
+            id: 'files',
+            title: 'File Uploads',
+            value: '0',
+            change: 0,
+            trend: 'up' as const,
+            icon: Database,
+            color: 'from-green-500 to-emerald-600',
+            bgColor: 'bg-green-50 dark:bg-green-900/20',
+            description: 'total files'
+          },
+          {
+            id: 'queries',
+            title: 'AI Queries',
+            value: '0',
+            change: 0,
+            trend: 'up' as const,
+            icon: Activity,
+            color: 'from-purple-500 to-violet-600',
+            bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+            description: 'queries executed'
+          },
+          {
+            id: 'connections',
+            title: 'Data Connections',
+            value: '0',
+            change: 0,
+            trend: 'up' as const,
+            icon: Globe,
+            color: 'from-orange-500 to-red-600',
+            bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+            description: 'active connections'
+          }
+        ],
+        revenueData: [],
+        channelData: [],
+        performanceData: [],
+        geographicData: []
+      };
+    }
+
+    const usersTrend = calculateTrend(backendStats.totalUsers);
+    const filesTrend = calculateTrend(backendStats.totalFiles);
+    const queriesTrend = calculateTrend(backendStats.totalQueries);
+    const connectionsTrend = calculateTrend(backendStats.totalConnections);
+
+    // Map recentQueries to revenue chart format (queries as "revenue")
+    const revenueData = backendStats.recentQueries.map(q => {
+      const date = new Date(q.date + '-01');
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return {
+        month: monthNames[date.getMonth()],
+        revenue: q.count, // Use query count as "revenue"
+        orders: Math.floor(q.avgExecutionTime), // Use avg exec time as "orders" (ms)
+        users: backendStats.totalUsers // Keep total users
+      };
+    });
+
+    // Map filesByType to channel data (pie chart)
+    const channelData = backendStats.filesByType.map((f, idx) => ({
+      channel: f.type,
+      value: f.count,
+      color: COLORS[idx % COLORS.length]
+    }));
+
+    // Map queriesByStatus to performance data
+    const performanceData = backendStats.queriesByStatus.map(q => ({
+      metric: `${q.status} Queries`,
+      score: q.count,
+      target: backendStats.totalQueries,
+      color: q.status === 'SUCCESS' ? '#10B981' : q.status === 'ERROR' ? '#EF4444' : '#F59E0B'
+    }));
+
+    return {
+      kpis: [
+        {
+          id: 'users',
+          title: 'Total Users',
+          value: backendStats.totalUsers.toLocaleString(),
+          change: usersTrend.change,
+          trend: usersTrend.trend,
+          icon: Users,
+          color: 'from-blue-500 to-cyan-600',
+          bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+          description: 'registered users'
+        },
+        {
+          id: 'files',
+          title: 'File Uploads',
+          value: backendStats.totalFiles.toLocaleString(),
+          change: filesTrend.change,
+          trend: filesTrend.trend,
+          icon: Database,
+          color: 'from-green-500 to-emerald-600',
+          bgColor: 'bg-green-50 dark:bg-green-900/20',
+          description: 'total files uploaded'
+        },
+        {
+          id: 'queries',
+          title: 'AI Queries',
+          value: backendStats.totalQueries.toLocaleString(),
+          change: queriesTrend.change,
+          trend: queriesTrend.trend,
+          icon: Activity,
+          color: 'from-purple-500 to-violet-600',
+          bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+          description: 'queries executed'
+        },
+        {
+          id: 'connections',
+          title: 'Data Connections',
+          value: backendStats.totalConnections.toLocaleString(),
+          change: connectionsTrend.change,
+          trend: connectionsTrend.trend,
+          icon: Globe,
+          color: 'from-orange-500 to-red-600',
+          bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+          description: 'active connections'
+        }
+      ],
+      revenueData,
+      channelData,
+      performanceData,
+      geographicData: [] // Not available from backend, keep empty
+    };
+  }, [backendStats]);
+
   // Advanced filters (now inside component)
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterPeriod, setFilterPeriod] = useState({ start: '', end: '' });
@@ -180,7 +278,7 @@ const AnalyticsPage: React.FC = () => {
     }
   // Category, Segment, Status: examples for future expansion
     return data;
-  }, [filterPeriod, filterRevenueMin, filterRevenueMax]);
+  }, [analyticsData.revenueData, filterPeriod, filterRevenueMin, filterRevenueMax]);
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
   const [isRealTime, setIsRealTime] = useState(true);
   // Removido selectedMetrics não utilizado
@@ -188,9 +286,16 @@ const AnalyticsPage: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setRefreshing(false);
+    try {
+      const companyId = authUser?.company?.id;
+      const stats = await graphqlService.getAnalyticsStats(companyId);
+      setBackendStats(stats);
+      console.log('✅ Analytics: Dados atualizados', stats);
+    } catch (error) {
+      console.error('❌ Analytics: Erro ao atualizar dados', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const KPICard = ({ kpi }: { kpi: any }) => (

@@ -1069,6 +1069,231 @@ class GraphQLService {
     return response.getOverviewPublic;
   }
 
+  // Fetch analytics statistics from backend data (users, files, queries, connections)
+  async getAnalyticsStats(companyId?: string): Promise<{
+    totalUsers: number;
+    totalFiles: number;
+    totalQueries: number;
+    totalConnections: number;
+    recentQueries: Array<{ date: string; count: number; avgExecutionTime: number }>;
+    filesByType: Array<{ type: string; count: number }>;
+    queriesByStatus: Array<{ status: string; count: number }>;
+  }> {
+    type UserListPayload = {
+      success: boolean;
+      data?: {
+        users: Array<{ id: string }>;
+        total: number;
+      };
+    };
+
+    type FileUploadsResponse = {
+      files: Array<{
+        id: string;
+        fileType: string;
+        uploadedAt: string;
+        analysisReport?: { status: string };
+      }>;
+      total: number;
+    };
+
+    type AnalyticsResponseBase = {
+      listFileUploads: FileUploadsResponse;
+      getAIQueryHistoryPublic: Array<{
+        id: string;
+        createdAt: string;
+        executionTime: number;
+        status: string;
+      }>;
+      getDataConnectionsPublic: Array<{ id: string }>;
+    };
+
+    const pagination = { limit: 1000, offset: 0 } as const;
+
+    try {
+      let totalUsers = 0;
+      let files: FileUploadsResponse["files"] = [];
+      let queries: AnalyticsResponseBase["getAIQueryHistoryPublic"] = [];
+      let connections: AnalyticsResponseBase["getDataConnectionsPublic"] = [];
+
+      if (companyId) {
+        const query = `
+          query GetAnalyticsStatsByCompany($companyId: ID!, $pagination: PaginationInput!) {
+            usersByCompany(companyId: $companyId, pagination: $pagination) {
+              success
+              data {
+                users {
+                  id
+                }
+                total
+              }
+            }
+            listFileUploads(limit: 1000) {
+              files {
+                id
+                fileType
+                uploadedAt
+                analysisReport {
+                  status
+                }
+              }
+              total
+            }
+            getAIQueryHistoryPublic {
+              id
+              createdAt
+              executionTime
+              status
+            }
+            getDataConnectionsPublic {
+              id
+            }
+          }
+        `;
+
+        type CompanyAnalyticsResponse = AnalyticsResponseBase & {
+          usersByCompany: UserListPayload;
+        };
+
+        const response = await this.makeRequest<CompanyAnalyticsResponse>(query, {
+          companyId,
+          pagination
+        });
+
+        totalUsers = response.usersByCompany?.data?.total ?? response.usersByCompany?.data?.users?.length ?? 0;
+        files = response.listFileUploads.files;
+        queries = response.getAIQueryHistoryPublic || [];
+        connections = response.getDataConnectionsPublic || [];
+      } else {
+        const query = `
+          query GetAnalyticsStats($pagination: PaginationInput!) {
+            users(pagination: $pagination) {
+              success
+              data {
+                users {
+                  id
+                }
+                total
+              }
+            }
+            listFileUploads(limit: 1000) {
+              files {
+                id
+                fileType
+                uploadedAt
+                analysisReport {
+                  status
+                }
+              }
+              total
+            }
+            getAIQueryHistoryPublic {
+              id
+              createdAt
+              executionTime
+              status
+            }
+            getDataConnectionsPublic {
+              id
+            }
+          }
+        `;
+
+        type GlobalAnalyticsResponse = AnalyticsResponseBase & {
+          users: UserListPayload;
+        };
+
+        const response = await this.makeRequest<GlobalAnalyticsResponse>(query, {
+          pagination
+        });
+
+        totalUsers = response.users?.data?.total ?? response.users?.data?.users?.length ?? 0;
+        files = response.listFileUploads.files;
+        queries = response.getAIQueryHistoryPublic || [];
+        connections = response.getDataConnectionsPublic || [];
+      }
+
+      const totalFiles = files.length;
+
+      const totalQueries = queries.length;
+
+      const totalConnections = connections.length;
+
+      // Group queries by date (last 12 months)
+      const now = new Date();
+      const monthsMap: Record<string, { count: number; totalTime: number }> = {};
+      
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = d.toISOString().substring(0, 7); // YYYY-MM
+        monthsMap[key] = { count: 0, totalTime: 0 };
+      }
+
+      queries.forEach(q => {
+        try {
+          const date = new Date(q.createdAt);
+          if (!isNaN(date.getTime())) {
+            const key = date.toISOString().substring(0, 7);
+            if (monthsMap[key]) {
+              monthsMap[key].count++;
+              monthsMap[key].totalTime += q.executionTime || 0;
+            }
+          }
+        } catch {
+          // Ignore invalid dates
+        }
+      });
+
+      const recentQueries = Object.entries(monthsMap).map(([key, val]) => ({
+        date: key,
+        count: val.count,
+        avgExecutionTime: val.count > 0 ? val.totalTime / val.count : 0
+      }));
+
+      // Group files by type
+      const fileTypeMap: Record<string, number> = {};
+      files.forEach(f => {
+        fileTypeMap[f.fileType] = (fileTypeMap[f.fileType] || 0) + 1;
+      });
+      const filesByType = Object.entries(fileTypeMap).map(([type, count]) => ({
+        type,
+        count
+      }));
+
+      // Group queries by status
+      const statusMap: Record<string, number> = {};
+      queries.forEach(q => {
+        statusMap[q.status] = (statusMap[q.status] || 0) + 1;
+      });
+      const queriesByStatus = Object.entries(statusMap).map(([status, count]) => ({
+        status,
+        count
+      }));
+
+      return {
+        totalUsers,
+        totalFiles,
+        totalQueries,
+        totalConnections,
+        recentQueries,
+        filesByType,
+        queriesByStatus
+      };
+    } catch (error) {
+      console.error('❌ Analytics: Erro ao buscar estatísticas:', error);
+      // Return empty stats if error
+      return {
+        totalUsers: 0,
+        totalFiles: 0,
+        totalQueries: 0,
+        totalConnections: 0,
+        recentQueries: [],
+        filesByType: [],
+        queriesByStatus: []
+      };
+    }
+  }
+
   async deleteFileUpload(id: string): Promise<boolean> {
     const mutation = `
       mutation DeleteFileUpload($id: ID!) {
