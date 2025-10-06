@@ -546,11 +546,51 @@ const DatabasePage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDatabases.map((database) => (
-            <DatabaseCard key={database.id} database={database} />
-          ))}
-        </div>
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDatabases.map((database) => (
+              <DatabaseCard key={database.id} database={database} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredDatabases.map((database) => (
+              <div key={database.id} className={`${getDatabaseBackgroundColor(database.type, database.status)} rounded-xl p-4 hover:shadow-lg transition-all duration-200 flex items-center justify-between` }>
+                <div className="flex items-center space-x-4">
+                  {getDatabaseIcon(database.type)}
+                  <div>
+                    <div className="font-semibold text-gray-900 dark:text-white">{database.name}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{database.type} • ID {database.id}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  <div className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(database.status)}`}>
+                    {getStatusIcon(database.status)}
+                    <span className="capitalize">{mapStatus(database.status || '')}</span>
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">{format(new Date(database.createdAt), 'dd/MM/yyyy')}</div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      title="Editar conexão"
+                      onClick={() => { setEditConnection(database); setEditModalOpen(true); }}
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Excluir conexão"
+                      onClick={() => setDeleteModal({ open: true, connection: database, loading: false })}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       {filteredDatabases.length === 0 && !isLoading && (
@@ -1075,7 +1115,7 @@ const DatabasePage: React.FC = () => {
         isOpen={editModalOpen}
         connection={editConnection}
         onClose={() => { setEditModalOpen(false); setEditConnection(null); }}
-        onSaved={async (updated) => {
+        onSaved={async () => {
           // refresh list and keep modal closed
           await loadDatabases();
         }}
