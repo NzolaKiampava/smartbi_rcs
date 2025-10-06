@@ -287,10 +287,12 @@ const DatabasePage: React.FC = () => {
             {getStatusIcon(database.status)}
             <span className="capitalize">{mapStatus(database.status || '')}</span>
           </div>
-          <button 
-            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all"
+          <button
+            className="p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all"
             title="Opções da conexão"
             aria-label="Opções da conexão"
+            aria-haspopup="true"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); /* open menu if implemented */ } }}
           >
             <MoreVertical size={16} className="text-gray-400 dark:text-gray-500" />
           </button>

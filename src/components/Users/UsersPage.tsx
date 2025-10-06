@@ -645,7 +645,7 @@ const UsersPage: React.FC = () => {
           </div>
           
           <div className="relative group/menu">
-            <button className="p-2 opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all" title="More options" aria-label="More options">
+            <button className="p-2 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all" title="More options" aria-label="More options" aria-haspopup="true">
               <MoreVertical size={16} className="text-gray-400 dark:text-gray-500" />
             </button>
             <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-700 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-10">

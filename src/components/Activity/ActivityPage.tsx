@@ -19,7 +19,7 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
-  Info,
+  // Info, (unused)
   Settings,
   Eye,
   MoreVertical,
@@ -703,7 +703,7 @@ const ActivityPage: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                     <button className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
                       <Eye size={16} />
                     </button>
@@ -772,7 +772,7 @@ const ActivityPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" aria-label="Quick action">
                   <MoreVertical size={16} />
                 </button>
               </div>
