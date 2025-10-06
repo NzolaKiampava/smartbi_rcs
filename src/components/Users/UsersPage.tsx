@@ -10,8 +10,7 @@ import {
   Mail, 
   Phone, 
   Filter,
-  Download,
-  Upload,
+  
   RefreshCw,
   UserCheck,
   UserX,
@@ -28,6 +27,8 @@ import {
   UserPlus
 } from 'lucide-react';
 import { format } from 'date-fns';
+// SectionHeader removed: using inline header markup to match Performance header
+import ImportExportControls from './ImportExportControls';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { graphqlService } from '../../services/graphqlService';
@@ -117,6 +118,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onClose, on
   };
 
   if (!isOpen) return null;
+
+  
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -713,7 +716,7 @@ const UsersPage: React.FC = () => {
             Call
           </button>
         )}
-        <button className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+        <button onClick={() => { const subject = encodeURIComponent('Contact from Admin'); const body = encodeURIComponent(`Hello ${user.name || ''},%0A%0AWe are contacting you regarding your account.%0A%0AEmail: ${user.email || ''}%0ARole: ${user.roleLabel || user.role}%0A%0ARegards,`); window.location.href = `mailto:${user.email}?subject=${subject}&body=${body}`; }} className="flex-1 inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
           <Mail size={14} className="mr-2" />
           Email
         </button>
@@ -726,27 +729,20 @@ const UsersPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Header with KPIs */}
       <div className="mb-8">
-        {/* Title Section */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Users size={32} className="text-white" />
+        {/* Title Section - match Performance header style */}
+        <div className="flex items-center justify-between mb-6 group">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-lg transition-shadow">
+              <Users size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
-              <p className="text-gray-600 dark:text-gray-400 text-lg">Manage team members and permissions</p>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">User Management</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Manage team members and permissions</p>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <button className="inline-flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-              <Upload size={16} className="mr-2" />
-              Import
-            </button>
-            <button className="inline-flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-              <Download size={16} className="mr-2" />
-              Export
-            </button>
+
+          <div className="flex items-center space-x-2 opacity-100 group-hover:opacity-100 transition-opacity">
+            <ImportExportControls users={users} onImport={(_, name) => { showSuccess(`Imported ${name}`); }} />
             <button
               onClick={() => {
                 setEditingUser(null);
