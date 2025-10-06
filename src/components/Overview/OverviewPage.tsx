@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -204,6 +205,7 @@ const dashboardData = {
 
 
 const OverviewPage: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
   // auto-refresh disabled by default so charts don't update every second
   const [isRealTime, setIsRealTime] = useState(() => {
@@ -1015,13 +1017,14 @@ const OverviewPage: React.FC = () => {
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { icon: FileText, label: 'Generate Report', color: 'from-blue-500 to-cyan-600', description: 'Create new analytics report' },
-            { icon: Database, label: 'Connect Database', color: 'from-green-500 to-emerald-600', description: 'Add new data source' },
-            { icon: Sparkles, label: 'AI Analysis', color: 'from-purple-500 to-violet-600', description: 'Run AI-powered analysis' },
-            { icon: Download, label: 'Export Data', color: 'from-orange-500 to-red-600', description: 'Export current dataset' }
+            { icon: FileText, label: 'Generate Report', color: 'from-blue-500 to-cyan-600', description: 'Create new analytics report', section: 'reports' },
+            { icon: Database, label: 'Connect Database', color: 'from-green-500 to-emerald-600', description: 'Add new data source', section: 'database' },
+            { icon: Sparkles, label: 'AI Analysis', color: 'from-purple-500 to-violet-600', description: 'Run AI-powered analysis', section: 'instant-insight' },
+            { icon: Download, label: 'Export Data', color: 'from-orange-500 to-red-600', description: 'Export current dataset', section: 'reports' }
           ].map((action, index) => (
             <button
               key={index}
+              onClick={() => navigate(`/${action.section}`)}
               className="group p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-lg hover:scale-105 transition-all duration-300"
             >
               <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
