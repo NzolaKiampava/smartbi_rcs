@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 
 import UniversalModal from '../Common/UniversalModal';
+import Dropdown from '../Common/Dropdown';
 
 import {
   Line,
@@ -193,12 +194,12 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const KPICard = ({ kpi }: { kpi: any }) => (
-    <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group`}>
+    <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group relative`}>
       <div className="flex items-start justify-between mb-4">
         <div className={`w-12 h-12 bg-gradient-to-br ${kpi.color} rounded-xl flex items-center justify-center shadow-sm`}>
           <kpi.icon size={24} className="text-white" />
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 relative">
           <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
             kpi.trend === 'up' 
               ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30' 
@@ -207,9 +208,7 @@ const AnalyticsPage: React.FC = () => {
             {kpi.trend === 'up' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
             <span>{Math.abs(kpi.change)}%</span>
           </div>
-          <button className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all">
-            <MoreHorizontal size={16} className="text-gray-400" />
-          </button>
+          <KPIOptions kpi={kpi} />
         </div>
       </div>
       <div className="space-y-1">
@@ -317,6 +316,55 @@ const AnalyticsPage: React.FC = () => {
     } catch (e) {}
     return null;
   }
+
+  // Small options menu for KPI cards
+  const KPIOptions: React.FC<{ kpi: any }> = ({ kpi }) => {
+    const [open, setOpen] = useState(false);
+    const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+
+    const toggle = () => setOpen(o => !o);
+    const close = () => setOpen(false);
+
+    function onKeyDown(e: React.KeyboardEvent) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      } else if (e.key === 'Escape') {
+        close();
+      }
+    }
+
+    const rowsForKpi = (k: any) => {
+      // return some representative data for export based on KPI id
+      if (k.id === 'revenue') return analyticsData.revenueData;
+      if (k.id === 'users') return analyticsData.revenueData.map(r => ({ month: r.month, users: r.users }));
+      if (k.id === 'orders') return analyticsData.revenueData.map(r => ({ month: r.month, orders: r.orders }));
+      return [];
+    };
+
+    return (
+      <div className="relative inline-block">
+        <button
+          ref={buttonRef}
+          onClick={toggle}
+          onKeyDown={onKeyDown}
+          aria-haspopup="true"
+          aria-expanded={open}
+          className="p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all"
+          title="More options"
+        >
+          <MoreHorizontal size={16} className="text-gray-400" />
+        </button>
+        <Dropdown open={open} onClose={close}>
+          <div className="flex flex-col">
+            <button onClick={() => { handleRefresh(); close(); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Refresh</button>
+            <button onClick={() => { exportToCSV(rowsForKpi(kpi), `${kpi.id}.csv`); close(); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Export CSV</button>
+            <button onClick={() => { exportToPDF(kpi.title, rowsForKpi(kpi)); close(); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">Export PDF</button>
+          </div>
+        </Dropdown>
+      </div>
+    );
+  };
 
   // Serialize an SVG element and draw it to a canvas to produce a PNG download
   async function exportSvgElementAsPng(svgEl: SVGElement, filename = 'chart.png') {

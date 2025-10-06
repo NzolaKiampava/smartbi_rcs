@@ -93,6 +93,15 @@ export class ReportExportService {
     };
   }
 
+  private formatDate(value: string | Date | undefined): string {
+    if (!value) return '';
+    if (typeof value === 'string') {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? value : d.toISOString();
+    }
+    return value.toISOString();
+  }
+
   private async generateJSONReport(
     report: AnalysisReport,
     filePath: string,
@@ -157,8 +166,8 @@ export class ReportExportService {
       ['File Type', report.fileUpload.fileType],
       ['File Size', this.formatFileSize(report.fileUpload.size)],
       ['Execution Time', `${report.executionTime || 0}ms`],
-      ['Created At', report.createdAt.toISOString()],
-      ['Updated At', report.updatedAt.toISOString()],
+  ['Created At', this.formatDate(report.createdAt)],
+  ['Updated At', this.formatDate(report.updatedAt)],
       [''],
       ['Summary'],
       [report.summary],
@@ -182,14 +191,14 @@ export class ReportExportService {
     // Insights Sheet
     const insightsData = [
       ['Type', 'Title', 'Description', 'Value', 'Confidence', 'Importance', 'Created At'],
-      ...report.insights.map(insight => [
+      ...report.insights.map((insight: Insight) => [
         insight.type,
         insight.title,
         insight.description,
         insight.value || '',
         insight.confidence || '',
         insight.importance,
-        insight.createdAt.toISOString(),
+  this.formatDate(insight.createdAt),
       ]),
     ];
 
@@ -199,7 +208,7 @@ export class ReportExportService {
     // Recommendations Sheet
     const recommendationsData = [
       ['Recommendation'],
-      ...report.recommendations.map(rec => [rec]),
+      ...report.recommendations.map((rec: string) => [rec]),
     ];
 
     const recommendationsSheet = XLSX.utils.aoa_to_sheet(recommendationsData);
@@ -209,7 +218,7 @@ export class ReportExportService {
     if (report.dataQuality && report.dataQuality.issues.length > 0) {
       const issuesData = [
         ['Type', 'Description', 'Severity', 'Count', 'Examples'],
-        ...report.dataQuality.issues.map(issue => [
+        ...report.dataQuality.issues.map((issue: any) => [
           issue.type,
           issue.description,
           issue.severity,
@@ -226,7 +235,7 @@ export class ReportExportService {
     if (input.includeVisualizations && report.visualizations.length > 0) {
       const vizData = [
         ['Type', 'Title', 'Description', 'Data'],
-        ...report.visualizations.map(viz => [
+        ...report.visualizations.map((viz: Visualization) => [
           viz.type,
           viz.title,
           viz.description || '',
@@ -323,7 +332,7 @@ export class ReportExportService {
         html += `
           <h3>Data Quality Issues</h3>
         `;
-        report.dataQuality.issues.forEach(issue => {
+  report.dataQuality.issues.forEach((issue: any) => {
           html += `
             <div class="issue">
               <strong>${issue.type}</strong> (${issue.severity})<br>
@@ -347,7 +356,7 @@ export class ReportExportService {
       const insightsByType = this.groupInsightsByType(report.insights);
       Object.entries(insightsByType).forEach(([type, insights]) => {
         html += `<h3>${type.replace(/_/g, ' ')}</h3>`;
-        insights.forEach(insight => {
+  insights.forEach((insight: Insight) => {
           html += `
             <div class="insight">
               <div class="insight-title">${insight.title}</div>
@@ -371,7 +380,7 @@ export class ReportExportService {
         <div class="section">
           <h2>Recommendations</h2>
       `;
-      report.recommendations.forEach((rec, index) => {
+      report.recommendations.forEach((rec: string, index: number) => {
         html += `<div class="recommendation">${index + 1}. ${rec}</div>`;
       });
       html += `</div>`;
@@ -385,7 +394,7 @@ export class ReportExportService {
           <table>
             <tr><th>Type</th><th>Title</th><th>Description</th></tr>
       `;
-      report.visualizations.forEach(viz => {
+      report.visualizations.forEach((viz: Visualization) => {
         html += `
           <tr>
             <td>${viz.type}</td>
@@ -459,7 +468,7 @@ Validity: ${Math.round(report.dataQuality.validity * 100)}%
 
       if (report.dataQuality.issues.length > 0) {
         content += `Data Quality Issues:\n`;
-        report.dataQuality.issues.forEach((issue, index) => {
+        report.dataQuality.issues.forEach((issue: any, index: number) => {
           content += `${index + 1}. ${issue.type} (${issue.severity}): ${issue.description}\n`;
         });
         content += '\n';
@@ -474,7 +483,7 @@ ${'-'.repeat(15)}
       const insightsByType = this.groupInsightsByType(report.insights);
       Object.entries(insightsByType).forEach(([type, insights]) => {
         content += `\n${type.replace(/_/g, ' ')}:\n`;
-        insights.forEach((insight, index) => {
+        insights.forEach((insight: Insight, index: number) => {
           content += `  ${index + 1}. ${insight.title}\n     ${insight.description}\n`;
           if (insight.value) {
             content += `     Value: ${insight.value}\n`;
@@ -489,7 +498,7 @@ ${'-'.repeat(15)}
 RECOMMENDATIONS
 ${'-'.repeat(18)}
 `;
-      report.recommendations.forEach((rec, index) => {
+      report.recommendations.forEach((rec: string, index: number) => {
         content += `${index + 1}. ${rec}\n`;
       });
       content += '\n';
@@ -519,7 +528,7 @@ Generated at: ${new Date().toISOString()}
   }
 
   private groupInsightsByType(insights: Insight[]): Record<string, Insight[]> {
-    return insights.reduce((groups, insight) => {
+    return insights.reduce((groups: Record<string, Insight[]>, insight: Insight) => {
       const type = insight.type;
       if (!groups[type]) {
         groups[type] = [];

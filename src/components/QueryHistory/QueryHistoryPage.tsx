@@ -439,152 +439,74 @@ const QueryHistoryPage: React.FC = () => {
             <p className="text-gray-600 dark:text-gray-400">Carregando histórico de consultas...</p>
           </div>
         ) : filteredQueries.length > 0 ? (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredQueries.map((query) => (
-              <div
-                key={query.id}
-                className={`p-6 border-l-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${getStatusColor(query.status)}`}
-              >
-                <div className="flex items-start space-x-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedQueries.has(query.id)}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleQuerySelection(query.id);
-                    }}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    title="Selecionar consulta"
-                  />
-                  
-                  <div className="flex-shrink-0 mt-1">
-                    {getConnectionIcon('default')}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {query.naturalQuery}
-                          </h3>
-                          {getStatusIcon(query.status)}
-                          <span className={`text-sm font-medium ${
-                            query.status?.toLowerCase() === 'success' ? 'text-green-600 dark:text-green-400' :
-                            query.status?.toLowerCase() === 'error' ? 'text-red-600 dark:text-red-400' :
-                            'text-blue-600 dark:text-blue-400'
-                          }`}>
-                            {query.status}
-                          </span>
-                          {query.status?.toLowerCase() === 'success' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                              <Eye size={10} className="mr-1" />
-                              Detalhes disponíveis
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="bg-gray-900 rounded-lg p-3 mb-3 overflow-x-auto">
-                          <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap">
-                            {query.generatedQuery}
-                          </pre>
-                        </div>
-                        
-                        {query.error && (
-                          <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                              <AlertCircle className="w-4 h-4 text-red-500" />
-                              <span className="text-sm font-medium text-red-800 dark:text-red-200">Erro:</span>
+          viewMode === 'list' ? (
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredQueries.map((query) => (
+                <div
+                  key={query.id}
+                  className={`p-6 border-l-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${getStatusColor(query.status)}`}
+                >
+                  {/* detailed list item (kept compact in code for readability) */}
+                  <div className="flex items-start space-x-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedQueries.has(query.id)}
+                      onChange={(e) => { e.stopPropagation(); toggleQuerySelection(query.id); }}
+                      className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      title="Selecionar consulta"
+                    />
+                    <div className="flex-shrink-0 mt-1">{getConnectionIcon('default')}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{query.naturalQuery}</h3>
+                            {getStatusIcon(query.status)}
+                            <span className={`text-sm font-medium ${query.status?.toLowerCase() === 'success' ? 'text-green-600 dark:text-green-400' : query.status?.toLowerCase() === 'error' ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>{query.status}</span>
+                            {query.status?.toLowerCase() === 'success' && (<span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"><Eye size={10} className="mr-1" />Detalhes disponíveis</span>)}
+                          </div>
+                          <div className="bg-gray-900 rounded-lg p-3 mb-3 overflow-x-auto">
+                            <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap">{query.generatedQuery}</pre>
+                          </div>
+                          {query.error && (<div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"><div className="flex items-center space-x-2"><AlertCircle className="w-4 h-4 text-red-500" /><span className="text-sm font-medium text-red-800 dark:text-red-200">Erro:</span></div><p className="text-sm text-red-700 dark:text-red-300 mt-1">{query.error}</p></div>)}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+                              <span className="flex items-center"><Clock size={14} className="mr-1" />{format(new Date(query.createdAt), 'dd/MM/yyyy HH:mm')}</span>
+                              <span className="flex items-center"><BarChart3 size={14} className="mr-1" />{query.results?.length || 0} registros</span>
+                              {query.status?.toLowerCase() === 'success' && (<span className="flex items-center"><Clock size={14} className="mr-1" />{query.executionTime}ms</span>)}
                             </div>
-                            <p className="text-sm text-red-700 dark:text-red-300 mt-1">{query.error}</p>
+                            {query.status?.toLowerCase() === 'success' && (<button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedResultModal(query); }} className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" title="Ver todos os detalhes desta consulta"><Eye size={12} /><span>Ver todos os detalhes</span></button>)}
                           </div>
-                        )}
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="flex items-center">
-                              <Clock size={14} className="mr-1" />
-                              {format(new Date(query.createdAt), 'dd/MM/yyyy HH:mm')}
-                            </span>
-                            <span className="flex items-center">
-                              <BarChart3 size={14} className="mr-1" />
-                              {query.results?.length || 0} registros
-                            </span>
-                            {query.status?.toLowerCase() === 'success' && (
-                              <span className="flex items-center">
-                                <Clock size={14} className="mr-1" />
-                                {query.executionTime}ms
-                              </span>
-                            )}
-                          </div>
-                          
-                          {query.status?.toLowerCase() === 'success' && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setSelectedResultModal(query);
-                              }}
-                              className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                              title="Ver todos os detalhes desta consulta"
-                            >
-                              <Eye size={12} />
-                              <span>Ver todos os detalhes</span>
-                            </button>
-                          )}
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        {query.status?.toLowerCase() === 'success' && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedResultModal(query);
-                            }}
-                            className="flex items-center space-x-1 px-3 py-1.5 text-sm  dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
-                            title="Visualizar detalhes completos da consulta"
-                          >
-                            <Eye size={14} />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            copyToClipboard(query.generatedQuery);
-                          }}
-                          className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                          title="Copiar SQL"
-                        >
-                          <Copy size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!isDeleting) {
-                              handleDeleteQuery(query.id, query.naturalQuery);
-                            }
-                          }}
-                          disabled={isDeleting}
-                          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Deletar consulta"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center space-x-2">{query.status?.toLowerCase() === 'success' && (<button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedResultModal(query); }} className="flex items-center space-x-1 px-3 py-1.5 text-sm  dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium" title="Visualizar detalhes completos da consulta"><Eye size={14} /></button>)}<button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyToClipboard(query.generatedQuery); }} className="p-2 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Copiar SQL"><Copy size={16} /></button><button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!isDeleting) { handleDeleteQuery(query.id, query.naturalQuery); } }} disabled={isDeleting} className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Deletar consulta"><Trash2 size={16} /></button></div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredQueries.map((query) => (
+                <div key={query.id} className={`p-4 rounded-lg shadow-sm ${getStatusColor(query.status)}`}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{query.naturalQuery}</h4>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{query.generatedQuery}</p>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{format(new Date(query.createdAt), 'dd/MM/yyyy HH:mm')} • {query.results?.length || 0} registros</div>
+                    </div>
+                    <div className="flex flex-col items-end space-y-2">
+                      <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(query.status)}`}>{getStatusIcon(query.status)}<span className="ml-1">{query.status}</span></div>
+                      <div className="flex items-center space-x-2">
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedResultModal(query); }} className="p-2 text-gray-500 hover:text-blue-600 rounded-lg"><Eye size={16} /></button>
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyToClipboard(query.generatedQuery); }} className="p-2 text-gray-500 hover:text-gray-700 rounded-lg"><Copy size={16} /></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : (
           <div className="p-12 text-center">
             <History size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />

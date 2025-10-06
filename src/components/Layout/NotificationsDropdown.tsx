@@ -206,29 +206,29 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({
                           </div>
                         </div>
                         
-                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                           {!notification.read && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onMarkAsRead(notification.id);
                               }}
-                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                               title="Mark as read"
                             >
                               <Check size={14} />
                             </button>
                           )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDeleteNotification(notification.id);
-                            }}
-                            className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                            title="Delete notification"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteNotification(notification.id);
+                              }}
+                              className="p-1 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                              title="Delete notification"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                         </div>
                       </div>
                     </div>

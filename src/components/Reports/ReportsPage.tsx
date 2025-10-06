@@ -183,7 +183,7 @@ const ReportsPage: React.FC = () => {
             {getFileIcon(file.fileType)}
           </div>
         </div>
-        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           <button 
             onClick={() => handleDownload(file)}
             className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400"
@@ -284,7 +284,7 @@ const ReportsPage: React.FC = () => {
         {formatFileSize(file.size)}
       </td>
       <td className="px-6 py-4">
-        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           <button 
             onClick={() => handleDownload(file)}
             className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded text-blue-600 dark:text-blue-400"
