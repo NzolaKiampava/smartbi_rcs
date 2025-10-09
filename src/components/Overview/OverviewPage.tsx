@@ -1368,7 +1368,7 @@ const OverviewPage: React.FC = () => {
               View All →
             </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {overviewData.recentActivities.map((activity) => (
               <ActivityItem key={activity.id} activity={activity} />
             ))}
