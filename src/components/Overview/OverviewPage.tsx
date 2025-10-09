@@ -67,6 +67,7 @@ interface UsageTrendPoint {
   avgExecutionTime: number;
   fileUploads: number;
   successRate: number;
+  errorRate: number;
 }
 
 interface FileTypeSlice {
@@ -225,6 +226,7 @@ const OverviewPage: React.FC = () => {
   const [showFileSeries, setShowFileSeries] = useState(true);
   const [showExecutionSeries, setShowExecutionSeries] = useState(true);
   const [showSuccessSeries, setShowSuccessSeries] = useState(true);
+  const [showErrorSeries, setShowErrorSeries] = useState(true);
 
   const [chartMessage, setChartMessage] = useState<string | null>(null);
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(() => new Set());
@@ -407,6 +409,7 @@ const OverviewPage: React.FC = () => {
         const bucket = monthlyQueryBuckets.get(key) ?? { total: 0, success: 0, sumExecution: 0 };
         const fileCount = monthlyFileBuckets.get(key) ?? 0;
         const successRate = bucket.total ? (bucket.success / bucket.total) * 100 : 0;
+        const errorRate = bucket.total ? ((bucket.total - bucket.success) / bucket.total) * 100 : 0;
         const avgExecution = bucket.total ? bucket.sumExecution / bucket.total : analyticEntry?.avgExecutionTime ?? 0;
         const monthLabel = format(new Date(`${key}-01T00:00:00`), 'MMM yyyy');
 
@@ -415,7 +418,8 @@ const OverviewPage: React.FC = () => {
           queryCount: analyticEntry?.count ?? bucket.total,
           avgExecutionTime: analyticEntry?.avgExecutionTime ?? avgExecution,
           fileUploads: fileCount,
-          successRate
+          successRate,
+          errorRate
         };
       });
 
@@ -1137,8 +1141,8 @@ const OverviewPage: React.FC = () => {
             <>
               <button
                 onClick={() => {
-                  const rows = overviewData.usageTrends.map((point) => `${point.month},${point.avgExecutionTime.toFixed(2)},${point.successRate.toFixed(1)}`);
-                  const csv = ['month,avgExecutionTimeMs,successRatePercent', ...rows].join('\n');
+                  const rows = overviewData.usageTrends.map((point) => `${point.month},${point.avgExecutionTime.toFixed(2)},${point.successRate.toFixed(1)},${point.errorRate.toFixed(1)}`);
+                  const csv = ['month,avgExecutionTimeMs,successRatePercent,errorRatePercent', ...rows].join('\n');
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
                   const anchor = document.createElement('a');
@@ -1163,7 +1167,8 @@ const OverviewPage: React.FC = () => {
                       overviewData.usageTrends.map((point) => ({
                         month: point.month,
                         avgExecutionTime: point.avgExecutionTime,
-                        successRate: point.successRate
+                        successRate: point.successRate,
+                        errorRate: point.errorRate
                       })),
                       null,
                       2
@@ -1193,6 +1198,14 @@ const OverviewPage: React.FC = () => {
                     onChange={() => setShowSuccessSeries((state) => !state)}
                   />
                   <span>Sucesso</span>
+                </label>
+                <label className="flex items-center space-x-1 text-xs text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={showErrorSeries}
+                    onChange={() => setShowErrorSeries((state) => !state)}
+                  />
+                  <span>Erro</span>
                 </label>
               </div>
             </>
@@ -1233,6 +1246,17 @@ const OverviewPage: React.FC = () => {
                   strokeWidth={3}
                   name="Success Rate (%)"
                   dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }}
+                />
+              )}
+              {showErrorSeries && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="errorRate"
+                  stroke="#EF4444"
+                  strokeWidth={3}
+                  name="Error Rate (%)"
+                  dot={{ fill: '#EF4444', strokeWidth: 2, r: 4 }}
                 />
               )}
               <defs>
