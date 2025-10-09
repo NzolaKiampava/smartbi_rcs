@@ -1012,7 +1012,22 @@ class GraphQLService {
 
   // Fetch overview/dashboard data (KPIs, revenue series, categories, performance, recent activities, insights)
   // This endpoint may not exist on all backends; callers should handle errors and fall back to local mocks.
-  async getOverview(): Promise<any> {
+  async getOverview(): Promise<{
+    kpis: Array<{ id: string; title: string; value: string; change: number; trend: string; target: string; progress: number }>;
+    revenueData: Array<{ month: string; revenue: number; orders: number; users: number; profit: number }>;
+    categoryData: Array<{ name: string; value: number; revenue: number; color: string }>;
+    performanceMetrics: Array<{ metric: string; value: number; target: number; status: string }>;
+    recentActivities: Array<{ id: string; user: string; action: string; details: string; timestamp: string; type: string; status: string }>;
+    topInsights: Array<{ id: string; title: string; description: string; impact: string; category: string; confidence: number }>;
+  }> {
+    type OverviewPayload = {
+      kpis: Array<{ id: string; title: string; value: string; change: number; trend: string; target: string; progress: number }>;
+      revenueData: Array<{ month: string; revenue: number; orders: number; users: number; profit: number }>;
+      categoryData: Array<{ name: string; value: number; revenue: number; color: string }>;
+      performanceMetrics: Array<{ metric: string; value: number; target: number; status: string }>;
+      recentActivities: Array<{ id: string; user: string; action: string; details: string; timestamp: string; type: string; status: string }>;
+      topInsights: Array<{ id: string; title: string; description: string; impact: string; category: string; confidence: number }>;
+    };
     const query = `
       query GetOverview {
         getOverviewPublic {
@@ -1065,8 +1080,22 @@ class GraphQLService {
       }
     `;
 
-    const response = await this.makeRequest<{ getOverviewPublic: any }>(query);
-    return response.getOverviewPublic;
+    const fallbackPayload: OverviewPayload = {
+      kpis: [],
+      revenueData: [],
+      categoryData: [],
+      performanceMetrics: [],
+      recentActivities: [],
+      topInsights: []
+    } as const;
+
+    try {
+      const response = await this.makeRequest<{ getOverviewPublic: OverviewPayload | null }>(query);
+      return response.getOverviewPublic ?? fallbackPayload;
+    } catch (error) {
+      console.warn('⚠️  Overview query unavailable, falling back to empty payload.', error);
+      return fallbackPayload;
+    }
   }
 
   // Fetch analytics statistics from backend data (users, files, queries, connections)

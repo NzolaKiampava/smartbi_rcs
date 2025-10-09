@@ -1,449 +1,752 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  ShoppingCart, 
-  Target,
+import {
   Activity,
-  Database,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
-  RefreshCw,
-  Download,
-  Share2,
-  Settings,
-  Eye,
-  Sparkles,
-  // Crown and Shield removed from imports to avoid unused warnings
-  CheckCircle2,
   AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  CheckCircle2,
+  Clock,
+  Database,
+  Download,
+  Eye,
   FileText,
-  PieChart
+  PieChart,
+  RefreshCw,
+  Settings,
+  Share2,
+  Sparkles,
+  TrendingUp,
+  Users
 } from 'lucide-react';
 import {
-  Line,
-  AreaChart,
   Area,
+  AreaChart,
   Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
   CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  Cell,
+  ComposedChart,
   Legend,
-  ComposedChart
+  Line,
+  Pie,
+  PieChart as RechartsPieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
 } from 'recharts';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import SectionHeader from '../Common/SectionHeader';
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useAuth } from '../../contexts/AuthContext';
+import { graphqlService, type AIQueryResult, type FileUpload } from '../../services/graphqlService';
 
-// Lightweight clock component that updates itself every second. Placing
-// the clock in its own component prevents the parent `OverviewPage`
-// from re-rendering every second which would otherwise cause charts to
-// refresh unnecessarily.
+type KPITrend = 'up' | 'down' | 'neutral';
+type PerformanceStatus = 'excellent' | 'good' | 'warning' | 'critical';
+type ActivityStatus = 'success' | 'error' | 'warning';
+type ActivityType = 'file' | 'ai' | 'database' | 'report' | 'export';
+type InsightImpact = 'low' | 'medium' | 'high';
+
+interface OverviewKPI {
+  id: string;
+  title: string;
+  value: string;
+  change: number;
+  trend: KPITrend;
+  icon: React.ElementType;
+  color: string;
+  bgColor: string;
+  target: string;
+  progress: number;
+  subtitle?: string;
+}
+
+interface UsageTrendPoint {
+  month: string;
+  queryCount: number;
+  avgExecutionTime: number;
+  fileUploads: number;
+  successRate: number;
+}
+
+interface FileTypeSlice {
+  name: string;
+  count: number;
+  color: string;
+  percentage: number;
+}
+
+interface PerformanceMetric {
+  metric: string;
+  value: number;
+  target: number;
+  status: PerformanceStatus;
+  suffix?: string;
+}
+
+interface OverviewActivity {
+  id: string;
+  user: string;
+  action: string;
+  details: string;
+  timestamp?: string | null;
+  type: ActivityType;
+  status: ActivityStatus;
+}
+
+interface OverviewInsight {
+  id: string;
+  title: string;
+  description: string;
+  impact: InsightImpact;
+  category: string;
+  confidence: number;
+}
+
+interface OverviewData {
+  kpis: OverviewKPI[];
+  usageTrends: UsageTrendPoint[];
+  fileTypeDistribution: FileTypeSlice[];
+  performanceMetrics: PerformanceMetric[];
+  recentActivities: OverviewActivity[];
+  topInsights: OverviewInsight[];
+}
+
+const defaultOverviewData: OverviewData = {
+  kpis: [],
+  usageTrends: [],
+  fileTypeDistribution: [],
+  performanceMetrics: [],
+  recentActivities: [],
+  topInsights: []
+};
+
+const FILE_TYPE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#6366F1', '#F97316'];
+
+const KPI_ACCENT_MAP: Record<string, string> = {
+  'from-blue-500 to-cyan-600': 'accent-sky-500',
+  'from-emerald-500 to-green-600': 'accent-emerald-500',
+  'from-purple-500 to-violet-600': 'accent-purple-500',
+  'from-orange-500 to-red-600': 'accent-orange-500'
+};
+
+const STATUS_ACCENT_MAP: Record<PerformanceStatus, string> = {
+  excellent: 'accent-green-500',
+  good: 'accent-blue-500',
+  warning: 'accent-yellow-500',
+  critical: 'accent-red-500'
+};
+
+const RANGE_IN_DAYS: Record<string, number> = {
+  '24h': 1,
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+  '1y': 365
+};
+
+const SUCCESS_STATUS_HINTS = ['SUCCESS', 'COMPLETED', 'DONE', 'OK'];
+const FAILURE_STATUS_HINTS = ['FAIL', 'ERROR', 'TIMEOUT'];
+
+const formatNumber = (value: number): string => new Intl.NumberFormat('pt-PT').format(Math.round(value));
+
+const safeDivide = (numerator: number, denominator: number): number => {
+  if (!denominator) return 0;
+  return numerator / denominator;
+};
+
+const getRangeInDays = (key: string): number => RANGE_IN_DAYS[key] ?? 90;
+
+const inferStatus = (status?: string | null): ActivityStatus => {
+  if (!status) return 'warning';
+  const upper = status.toUpperCase();
+  if (FAILURE_STATUS_HINTS.some((hint) => upper.includes(hint))) return 'error';
+  if (SUCCESS_STATUS_HINTS.some((hint) => upper.includes(hint))) return 'success';
+  return 'warning';
+};
+
+const computeTrend = (series: number[]): { change: number; trend: KPITrend } => {
+  if (series.length < 2) {
+    return { change: 0, trend: 'neutral' };
+  }
+  const latest = series[series.length - 1];
+  const previous = series[series.length - 2];
+  if (previous === 0) {
+    return { change: latest > 0 ? 100 : 0, trend: latest > 0 ? 'up' : 'neutral' };
+  }
+  const change = ((latest - previous) / previous) * 100;
+  if (change > 1) return { change, trend: 'up' };
+  if (change < -1) return { change, trend: 'down' };
+  return { change, trend: 'neutral' };
+};
+
+const getDominantFileType = (distribution: FileTypeSlice[]): FileTypeSlice | null => {
+  if (!distribution.length) return null;
+  return distribution.reduce((prev, current) => (current.count > prev.count ? current : prev), distribution[0]);
+};
+
 const ClockDisplay: React.FC = () => {
-  const [now, setNow] = React.useState<string>(() => new Date().toLocaleTimeString());
-  React.useEffect(() => {
-    const iv = setInterval(() => setNow(new Date().toLocaleTimeString()), 1000);
-    return () => clearInterval(iv);
+  const [now, setNow] = useState<string>(() => new Date().toLocaleTimeString());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(interval);
   }, []);
-  return <span className="text-sm text-blue-200">{now}</span>;
+  return <span>{now}</span>;
 };
-
-// Mock data for the overview dashboard
-const dashboardData = {
-  kpis: [
-    {
-      id: 'revenue',
-      title: 'Total Revenue',
-      value: '$2,847,392',
-      change: 15.3,
-      trend: 'up',
-      icon: DollarSign,
-      color: 'from-emerald-500 to-green-600',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
-      target: '$3,000,000',
-      progress: 94.9
-    },
-    {
-      id: 'users',
-      title: 'Active Users',
-      value: '156,847',
-      change: 8.7,
-      trend: 'up',
-      icon: Users,
-      color: 'from-blue-500 to-cyan-600',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-      target: '200,000',
-      progress: 78.4
-    },
-    {
-      id: 'orders',
-      title: 'Total Orders',
-      value: '24,891',
-      change: -2.1,
-      trend: 'down',
-      icon: ShoppingCart,
-      color: 'from-purple-500 to-violet-600',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-      target: '30,000',
-      progress: 83.0
-    },
-    {
-      id: 'conversion',
-      title: 'Conversion Rate',
-      value: '4.23%',
-      change: 12.8,
-      trend: 'up',
-      icon: Target,
-      color: 'from-orange-500 to-red-600',
-      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
-      target: '5.0%',
-      progress: 84.6
-    }
-  ],
-  revenueData: [
-    { month: 'Jan', revenue: 185000, orders: 1240, users: 8200, profit: 45000 },
-    { month: 'Feb', revenue: 201000, orders: 1380, users: 9100, profit: 52000 },
-    { month: 'Mar', revenue: 187000, orders: 1290, users: 8950, profit: 48000 },
-    { month: 'Apr', revenue: 224000, orders: 1520, users: 10200, profit: 58000 },
-    { month: 'May', revenue: 267000, orders: 1680, users: 11500, profit: 67000 },
-    { month: 'Jun', revenue: 298000, orders: 1840, users: 12800, profit: 75000 },
-    { month: 'Jul', revenue: 312000, orders: 1920, users: 13200, profit: 78000 },
-    { month: 'Aug', revenue: 287000, orders: 1780, users: 12600, profit: 72000 },
-    { month: 'Sep', revenue: 331000, orders: 2010, users: 14100, profit: 82000 },
-    { month: 'Oct', revenue: 356000, orders: 2180, users: 15300, profit: 89000 },
-    { month: 'Nov', revenue: 389000, orders: 2340, users: 16200, profit: 97000 },
-    { month: 'Dec', revenue: 412000, orders: 2450, users: 17100, profit: 103000 }
-  ],
-  categoryData: [
-    { name: 'E-commerce', value: 35, revenue: 1200000, color: '#3B82F6' },
-    { name: 'SaaS', value: 28, revenue: 980000, color: '#10B981' },
-    { name: 'Consulting', value: 18, revenue: 630000, color: '#F59E0B' },
-    { name: 'Digital Marketing', value: 12, revenue: 420000, color: '#EF4444' },
-    { name: 'Other', value: 7, revenue: 245000, color: '#8B5CF6' }
-  ],
-  performanceMetrics: [
-    { metric: 'System Uptime', value: 99.9, target: 99.5, status: 'excellent' },
-    { metric: 'Query Response', value: 145, target: 200, status: 'good' },
-    { metric: 'Data Processing', value: 2.3, target: 5.0, status: 'excellent' },
-    { metric: 'Error Rate', value: 0.02, target: 0.1, status: 'excellent' }
-  ],
-  recentActivities: [
-    {
-      id: 1,
-      user: 'João Silva',
-      action: 'Generated Revenue Report',
-      details: 'Q4 2024 comprehensive revenue analysis completed',
-      timestamp: '2025-01-19T10:30:00Z',
-      type: 'report',
-      status: 'success'
-    },
-    {
-      id: 2,
-      user: 'Maria Santos',
-      action: 'Database Connection',
-      details: 'Connected to PostgreSQL production database',
-      timestamp: '2025-01-19T10:25:00Z',
-      type: 'database',
-      status: 'success'
-    },
-    {
-      id: 3,
-      user: 'Carlos Eduardo',
-      action: 'AI Query Execution',
-      details: 'Natural language query processed successfully',
-      timestamp: '2025-01-19T10:20:00Z',
-      type: 'ai',
-      status: 'success'
-    },
-    {
-      id: 4,
-      user: 'Ana Paula',
-      action: 'Data Export Failed',
-      details: 'Large dataset export exceeded timeout limit',
-      timestamp: '2025-01-19T10:15:00Z',
-      type: 'export',
-      status: 'error'
-    }
-  ],
-  topInsights: [
-    {
-      id: 1,
-      title: 'Revenue Growth Acceleration',
-      description: 'Q4 revenue increased by 23% compared to Q3, driven by enterprise client acquisitions',
-      impact: 'high',
-      category: 'revenue',
-      confidence: 94
-    },
-    {
-      id: 2,
-      title: 'User Engagement Peak',
-      description: 'Daily active users reached all-time high with 67% increase in session duration',
-      impact: 'medium',
-      category: 'engagement',
-      confidence: 87
-    },
-    {
-      id: 3,
-      title: 'Conversion Optimization',
-      description: 'New checkout flow improved conversion rate by 12.8% across all channels',
-      impact: 'high',
-      category: 'conversion',
-      confidence: 91
-    }
-  ]
-};
-
-
 
 const OverviewPage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
-  // auto-refresh disabled by default so charts don't update every second
-  const [isRealTime, setIsRealTime] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('overview_auto_refresh') || 'false'); } catch { return false; }
+  const { company } = useAuth();
+
+  const [selectedTimeRange, setSelectedTimeRange] = useState('90d');
+  const [isRealTime, setIsRealTime] = useState<boolean>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('overview_auto_refresh') || 'false');
+    } catch {
+      return false;
+    }
   });
   const [refreshing, setRefreshing] = useState(false);
-  // Clock is rendered by a lightweight child component so the entire
-  // OverviewPage doesn't re-render every second (prevents charts from
-  // appearing to refresh continuously).
   const [refreshIntervalSeconds, setRefreshIntervalSeconds] = useState<number>(() => {
-    try { return Number(localStorage.getItem('overview_refresh_interval') || '30'); } catch { return 30; }
+    try {
+      return Number(localStorage.getItem('overview_refresh_interval') || '180');
+    } catch {
+      return 180;
+    }
   });
 
-  // make dashboard data stateful so we can update charts dynamically on refresh
-  const [dataState, setDataState] = useState(() => dashboardData);
-  // Revenue chart controls
-  const [showRevenueSeries, setShowRevenueSeries] = useState<boolean>(true);
-  const [showProfitSeries, setShowProfitSeries] = useState<boolean>(true);
-  const [chartMessage, setChartMessage] = useState<string | null>(null);
-  const [showUsersSeries, setShowUsersSeries] = useState<boolean>(true);
-  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(() => new Set());
+  const [overviewData, setOverviewData] = useState<OverviewData>(defaultOverviewData);
+  const [analyticsStats, setAnalyticsStats] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Download menu state and handlers
-  const [downloadMenuOpen, setDownloadMenuOpen] = useState<boolean>(false);
+  const [showQuerySeries, setShowQuerySeries] = useState(true);
+  const [showFileSeries, setShowFileSeries] = useState(true);
+  const [showExecutionSeries, setShowExecutionSeries] = useState(true);
+  const [showSuccessSeries, setShowSuccessSeries] = useState(true);
+
+  const [chartMessage, setChartMessage] = useState<string | null>(null);
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(() => new Set());
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
 
-  const handleDownloadCSV = () => {
-    const rows = dataState.revenueData.map((r: any) => `${r.month},${r.revenue},${r.profit}`);
-    const csv = ['month,revenue,profit', ...rows].join('\n');
+  const filteredDistribution = useMemo(
+    () => overviewData.fileTypeDistribution.filter((entry) => !hiddenCategories.has(entry.name)),
+    [overviewData.fileTypeDistribution, hiddenCategories]
+  );
+
+  const handleDownloadCSV = useCallback(() => {
+    const rows = overviewData.usageTrends.map((point) => `${point.month},${point.queryCount},${point.fileUploads},${point.avgExecutionTime}`);
+    const csv = ['month,queryCount,fileUploads,avgExecutionTimeMs', ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'overview_revenue.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'overview_timeseries.csv';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
     URL.revokeObjectURL(url);
-    setDownloadMessage('CSV exported');
+    setDownloadMessage('CSV exportado');
     setTimeout(() => setDownloadMessage(null), 2500);
-  };
+  }, [overviewData.usageTrends]);
 
-  const handleDownloadJSON = () => {
-    const payload = JSON.stringify(dataState, null, 2);
+  const handleDownloadJSON = useCallback(() => {
+    const payload = JSON.stringify({ overviewData, analyticsStats }, null, 2);
     const blob = new Blob([payload], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'overview_full.json';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'overview_snapshot.json';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
     URL.revokeObjectURL(url);
-    setDownloadMessage('JSON exported');
+    setDownloadMessage('JSON exportado');
     setTimeout(() => setDownloadMessage(null), 2500);
-  };
+  }, [analyticsStats, overviewData]);
 
-  const handleCopyJSON = () => {
+  const handleCopyJSON = useCallback(() => {
     try {
-      navigator.clipboard?.writeText(JSON.stringify(dataState, null, 2));
-      setDownloadMessage('JSON copied to clipboard');
-    } catch (e) {
-      setDownloadMessage('Failed to copy');
+      navigator.clipboard?.writeText(JSON.stringify({ overviewData, analyticsStats }, null, 2));
+      setDownloadMessage('JSON copiado para clipboard');
+    } catch {
+      setDownloadMessage('Falha ao copiar');
     }
     setTimeout(() => setDownloadMessage(null), 2500);
-  };
+  }, [analyticsStats, overviewData]);
 
-  // ...existing code...
+  const fetchOverviewData = useCallback(async (options: { manual?: boolean } = {}) => {
+    if (!options.manual) {
+      setLoading(true);
+    }
+    setError(null);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const rangeDays = getRangeInDays(selectedTimeRange);
+    const now = new Date();
+    const rangeStart = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000);
 
-    // Create new dynamic data by applying small random deltas to numeric series
-    setDataState(prev => {
-      const next = { ...prev } as any;
-      // tweak revenue data points
-      next.revenueData = prev.revenueData.map((r: any) => {
-        const delta = Math.round((Math.random() - 0.45) * 20000); // -20k..+20k bias
-        return { ...r, revenue: Math.max(0, r.revenue + delta), profit: Math.max(0, r.profit + Math.round(delta * 0.18)) };
+    try {
+      const [analyticsResult, filesResult, queriesResult, overviewResult] = await Promise.allSettled([
+        graphqlService.getAnalyticsStats(company?.id),
+        graphqlService.listFileUploads(200, 0),
+        graphqlService.getQueryHistory(),
+        graphqlService.getOverview()
+      ]);
+
+      const analytics = analyticsResult.status === 'fulfilled' ? (analyticsResult.value as Record<string, unknown>) : null;
+      const files = filesResult.status === 'fulfilled' ? (filesResult.value as FileUpload[]) : [];
+      const queries = queriesResult.status === 'fulfilled' ? (queriesResult.value as AIQueryResult[]) : [];
+      const backendOverview = overviewResult.status === 'fulfilled' ? (overviewResult.value as Partial<OverviewData>) : null;
+
+      setAnalyticsStats(analytics);
+
+      const filteredQueries = queries.filter((query) => {
+        if (!query.createdAt) return false;
+        const created = new Date(query.createdAt);
+        return created >= rangeStart;
       });
-      // recompute KPIs (simple derivation)
-      const totalRevenue = next.revenueData.reduce((s: number, x: any) => s + x.revenue, 0);
-      const revenueKpi = next.kpis.map((k: any) => ({ ...k }));
-      revenueKpi.forEach((k: any) => {
-        if (k.id === 'revenue') {
-          k.value = '$' + totalRevenue.toLocaleString();
-          k.change = +(Math.random() * 5).toFixed(1);
+
+      const filteredFiles = files.filter((file) => {
+        if (!file.uploadedAt) return false;
+        const uploaded = new Date(file.uploadedAt);
+        return uploaded >= rangeStart;
+      });
+
+      const analyticsTyped = analytics as {
+        totalUsers?: number;
+        totalFiles?: number;
+        totalQueries?: number;
+        totalConnections?: number;
+        recentQueries?: Array<{ date: string; count: number; avgExecutionTime: number }>;
+        filesByType?: Array<{ type: string; count: number }>;
+      } | null;
+
+      const totalUsers = analyticsTyped?.totalUsers ?? Number(backendOverview?.kpis?.find((kpi) => kpi.id === 'users')?.value?.replace?.(/[^0-9]/g, '') || 0);
+      const totalFiles = analyticsTyped?.totalFiles ?? files.length;
+      const totalQueries = analyticsTyped?.totalQueries ?? queries.length;
+      const totalConnections = analyticsTyped?.totalConnections ?? 0;
+
+      const monthlyQueryBuckets = new Map<string, { total: number; success: number; sumExecution: number }>();
+      queries.forEach((query) => {
+        if (!query.createdAt) return;
+        const key = query.createdAt.substring(0, 7);
+        const bucket = monthlyQueryBuckets.get(key) ?? { total: 0, success: 0, sumExecution: 0 };
+        bucket.total += 1;
+        bucket.sumExecution += query.executionTime || 0;
+        if (inferStatus(query.status) !== 'error') {
+          bucket.success += 1;
         }
+        monthlyQueryBuckets.set(key, bucket);
       });
-      next.kpis = revenueKpi;
 
-      // lightly perturb categoryData and performanceMetrics
-      next.categoryData = prev.categoryData.map((c: any) => ({
-        ...c,
-        // small percentage shifts
-        value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 6))),
-        revenue: Math.max(0, c.revenue + Math.round((Math.random() - 0.45) * 20000))
-      }));
+      const monthlyFileBuckets = new Map<string, number>();
+      files.forEach((file) => {
+        if (!file.uploadedAt) return;
+        const key = file.uploadedAt.substring(0, 7);
+        monthlyFileBuckets.set(key, (monthlyFileBuckets.get(key) ?? 0) + 1);
+      });
 
-      next.performanceMetrics = prev.performanceMetrics.map((m: any) => ({
-        ...m,
-        // nudge metrics toward their target slightly
-        value: Math.max(0, +(m.value + (Math.random() - 0.4) * (m.target ? (m.target * 0.05) : 5)).toFixed(1))
-      }));
+      const recentQuerySeries = analyticsTyped?.recentQueries ?? [];
+      const timelineKeys = recentQuerySeries
+        .map((item) => item.date)
+        .filter((key) => {
+          const date = new Date(`${key}-01T00:00:00`);
+          return !Number.isNaN(date.getTime()) && date >= new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+        });
 
-      // update recent activities: occasionally add a new activity and rotate older ones
-      const activityTypes = ['report', 'database', 'ai', 'export', 'login', 'query'];
-      const actionsByType: any = {
-        report: ['Generated Revenue Report', 'Scheduled Report Run', 'Exported PDF Report'],
-        database: ['Connected to Database', 'DB Backup Completed', 'DB Migration Started'],
-        ai: ['AI Query Executed', 'Model Training Job Finished', 'AI Analysis Completed'],
-        export: ['Data Export Started', 'Export Completed', 'Export Failed'],
-        login: ['User Logged In', 'User Session Started', 'User Logged Out'],
-        query: ['Ad-hoc Query Executed', 'Saved Query Run', 'Query Timeout']
-      };
-
-      const maybeNew = Math.random() < 0.6; // 60% chance to add an event on refresh
-      const newActivities = [...prev.recentActivities];
-      if (maybeNew) {
-        const t = activityTypes[Math.floor(Math.random() * activityTypes.length)];
-        const acts = actionsByType[t] || ['Performed Action'];
-        const action = acts[Math.floor(Math.random() * acts.length)];
-        const statusRand = Math.random();
-        const status = statusRand > 0.95 ? 'error' : 'success';
-        const userNames = ['João Silva','Maria Santos','Carlos Eduardo','Ana Paula','Luís Costa','Beatriz'];
-        const newAct = {
-          id: Date.now(),
-          user: userNames[Math.floor(Math.random() * userNames.length)],
-          action,
-          details: `${action} - ${Math.floor(Math.random()*1000)} items processed`,
-          timestamp: new Date().toISOString(),
-          type: t,
-          status
-        };
-        newActivities.unshift(newAct);
+      if (!timelineKeys.length) {
+        const baseKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        timelineKeys.push(baseKey);
       }
-      // keep max 10 recent activities
-  next.recentActivities = newActivities.slice(0, 10).map((a: any) => ({ ...a }));
 
-      return next;
-    });
+      while (timelineKeys.length < 6) {
+        const referenceKey = timelineKeys[0];
+        const [yearStr, monthStr] = referenceKey.split('-');
+        const seed = new Date(Number(yearStr), Number(monthStr) - 1, 1);
+        seed.setMonth(seed.getMonth() - 1);
+        const newKey = `${seed.getFullYear()}-${String(seed.getMonth() + 1).padStart(2, '0')}`;
+        if (!timelineKeys.includes(newKey)) {
+          timelineKeys.unshift(newKey);
+        } else {
+          break;
+        }
+      }
 
-    setRefreshing(false);
-  };
+      const usageTrends: UsageTrendPoint[] = timelineKeys.slice(-6).map((key) => {
+        const analyticEntry = recentQuerySeries.find((item) => item.date === key);
+        const bucket = monthlyQueryBuckets.get(key) ?? { total: 0, success: 0, sumExecution: 0 };
+        const fileCount = monthlyFileBuckets.get(key) ?? 0;
+        const successRate = bucket.total ? (bucket.success / bucket.total) * 100 : 0;
+        const avgExecution = bucket.total ? bucket.sumExecution / bucket.total : analyticEntry?.avgExecutionTime ?? 0;
+        const monthLabel = format(new Date(`${key}-01T00:00:00`), 'MMM yyyy');
 
-  // Auto-refresh effect (runs when isRealTime toggle is on)
+        return {
+          month: monthLabel,
+          queryCount: analyticEntry?.count ?? bucket.total,
+          avgExecutionTime: analyticEntry?.avgExecutionTime ?? avgExecution,
+          fileUploads: fileCount,
+          successRate
+        };
+      });
+
+      const querySeries = usageTrends.map((item) => item.queryCount);
+      const fileSeries = usageTrends.map((item) => item.fileUploads);
+      const queryTrend = computeTrend(querySeries);
+      const fileTrend = computeTrend(fileSeries);
+
+      const userTarget = Math.max(totalUsers * 1.15, totalUsers + 5);
+      const filesTarget = Math.max(totalFiles * 1.2, totalFiles + 10);
+      const queriesTarget = Math.max(totalQueries * 1.2, totalQueries + 20);
+      const connectionsTarget = Math.max(totalConnections * 1.5, totalConnections + 3);
+
+      const kpis: OverviewKPI[] = [
+        {
+          id: 'users',
+          title: 'Total Users',
+          value: formatNumber(totalUsers),
+          change: 0,
+          trend: 'neutral',
+          icon: Users,
+          color: 'from-blue-500 to-cyan-600',
+          bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+          target: formatNumber(userTarget),
+          progress: Math.min(100, safeDivide(totalUsers, userTarget) * 100),
+          subtitle: company?.name ? `Empresa: ${company.name}` : 'Todos os utilizadores'
+        },
+        {
+          id: 'files',
+          title: 'Files Processed',
+          value: formatNumber(totalFiles),
+          change: fileTrend.change,
+          trend: fileTrend.trend,
+          icon: FileText,
+          color: 'from-emerald-500 to-green-600',
+          bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
+          target: formatNumber(filesTarget),
+          progress: Math.min(100, safeDivide(totalFiles, filesTarget) * 100),
+          subtitle: `${formatNumber(filteredFiles.length)} no período`
+        },
+        {
+          id: 'queries',
+          title: 'AI Queries',
+          value: formatNumber(totalQueries),
+          change: queryTrend.change,
+          trend: queryTrend.trend,
+          icon: TrendingUp,
+          color: 'from-purple-500 to-violet-600',
+          bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+          target: formatNumber(queriesTarget),
+          progress: Math.min(100, safeDivide(totalQueries, queriesTarget) * 100),
+          subtitle: `${formatNumber(filteredQueries.length)} no período`
+        },
+        {
+          id: 'connections',
+          title: 'Data Connections',
+          value: formatNumber(totalConnections),
+          change: 0,
+          trend: totalConnections > 0 ? 'up' : 'neutral',
+          icon: Database,
+          color: 'from-orange-500 to-red-600',
+          bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+          target: formatNumber(connectionsTarget),
+          progress: Math.min(100, safeDivide(totalConnections, connectionsTarget) * 100),
+          subtitle: 'Integrações activas'
+        }
+      ];
+
+      const distributionSource = Array.isArray(analyticsTyped?.filesByType)
+        ? analyticsTyped?.filesByType ?? []
+        : files.reduce<Record<string, number>>((acc, file) => {
+            const type = file.fileType || 'OTHER';
+            acc[type] = (acc[type] ?? 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+
+      const distributionEntries: FileTypeSlice[] = Array.isArray(distributionSource)
+        ? distributionSource.map((entry, index) => ({
+            name: entry.type ?? 'Other',
+            count: entry.count ?? 0,
+            color: FILE_TYPE_COLORS[index % FILE_TYPE_COLORS.length],
+            percentage: 0
+          }))
+        : Object.entries(distributionSource).map(([type, count], index) => ({
+            name: type,
+            count,
+            color: FILE_TYPE_COLORS[index % FILE_TYPE_COLORS.length],
+            percentage: 0
+          }));
+
+      const totalDistribution = distributionEntries.reduce((sum, entry) => sum + entry.count, 0);
+      const fileTypeDistribution = distributionEntries.map((entry) => ({
+        ...entry,
+        percentage: totalDistribution ? (entry.count / totalDistribution) * 100 : 0
+      }));
+
+      const totalSuccess = queries.reduce((sum, query) => sum + (inferStatus(query.status) !== 'error' ? 1 : 0), 0);
+      const overallSuccessRate = safeDivide(totalSuccess, queries.length) * 100;
+      const overallAvgExecution = queries.length
+        ? queries.reduce((sum, query) => sum + (query.executionTime || 0), 0) / queries.length
+        : 0;
+      const filesPerDay = rangeDays ? filteredFiles.length / rangeDays : filteredFiles.length;
+
+      const successStatus: PerformanceStatus = overallSuccessRate >= 95 ? 'excellent' : overallSuccessRate >= 85 ? 'good' : overallSuccessRate >= 70 ? 'warning' : 'critical';
+      const executionStatus: PerformanceStatus = overallAvgExecution <= 250 ? 'excellent' : overallAvgExecution <= 450 ? 'good' : overallAvgExecution <= 650 ? 'warning' : 'critical';
+      const fileStatus: PerformanceStatus = filesPerDay >= 5 ? 'excellent' : filesPerDay >= 2 ? 'good' : filesPerDay > 0.2 ? 'warning' : 'critical';
+      const connectionStatus: PerformanceStatus = totalConnections > 0 ? 'good' : 'warning';
+
+      const performanceMetrics: PerformanceMetric[] = [
+        {
+          metric: 'Query Success Rate',
+          value: Number(overallSuccessRate.toFixed(1)),
+          target: 95,
+          status: successStatus,
+          suffix: '%'
+        },
+        {
+          metric: 'Average Execution',
+          value: Number(overallAvgExecution.toFixed(0)),
+          target: 250,
+          status: executionStatus,
+          suffix: 'ms'
+        },
+        {
+          metric: 'Files por dia',
+          value: Number(filesPerDay.toFixed(2)),
+          target: 5,
+          status: fileStatus
+        },
+        {
+          metric: 'Active Integrations',
+          value: totalConnections,
+          target: Math.ceil(connectionsTarget),
+          status: connectionStatus
+        }
+      ];
+
+      const fileActivities: OverviewActivity[] = files.slice(0, 15).map((file) => ({
+        id: `file-${file.id}`,
+        user: (file.metadata as { uploadedBy?: string } | undefined)?.uploadedBy || 'Upload Service',
+        action: 'File Uploaded',
+        details: file.originalName || file.filename,
+        timestamp: file.uploadedAt,
+        type: 'file',
+        status: inferStatus(file.analysisReport?.status)
+      }));
+
+      const queryActivities: OverviewActivity[] = queries.slice(0, 15).map((query) => ({
+        id: `query-${query.id}`,
+        user: 'AI Engine',
+        action: 'AI Query Executed',
+        details: query.naturalQuery || query.generatedQuery || 'Consulta processada',
+        timestamp: query.createdAt,
+        type: 'ai',
+        status: inferStatus(query.status)
+      }));
+
+      const recentActivities = [...fileActivities, ...queryActivities]
+        .filter((activity) => activity.timestamp)
+        .sort((a, b) => new Date(b.timestamp ?? '').getTime() - new Date(a.timestamp ?? '').getTime())
+        .slice(0, 10);
+
+      const dominantType = getDominantFileType(fileTypeDistribution);
+      const latestTrend = usageTrends[usageTrends.length - 1];
+      const previousTrend = usageTrends.length > 1 ? usageTrends[usageTrends.length - 2] : undefined;
+
+      const insights: OverviewInsight[] = [];
+
+      if (!Number.isNaN(overallSuccessRate)) {
+        insights.push({
+          id: 'insight-success',
+          title: overallSuccessRate >= 90 ? 'Execuções saudáveis' : 'Melhorar fiabilidade',
+          description:
+            overallSuccessRate >= 90
+              ? `As consultas estão a responder com ${overallSuccessRate.toFixed(1)}% de sucesso. Continue a monitorizar para manter esse nível.`
+              : `A taxa de sucesso das consultas está em ${overallSuccessRate.toFixed(1)}%. Verifique logs de falha e credenciais das integrações.`,
+          impact: overallSuccessRate >= 90 ? 'high' : 'medium',
+          category: 'analytics',
+          confidence: 85
+        });
+      }
+
+      if (dominantType && dominantType.percentage >= 10) {
+        insights.push({
+          id: 'insight-files',
+          title: `${dominantType.name} domina uploads`,
+          description: `${dominantType.percentage.toFixed(1)}% dos ficheiros carregados são do tipo ${dominantType.name}. Considere automatizar validações para esse formato.`,
+          impact: 'medium',
+          category: 'files',
+          confidence: 70
+        });
+      }
+
+      if (latestTrend && previousTrend) {
+        const diff = latestTrend.queryCount - previousTrend.queryCount;
+        insights.push({
+          id: 'insight-trend',
+          title: diff >= 0 ? 'Queries em crescimento' : 'Queries estabilizaram',
+          description:
+            diff >= 0
+              ? `Foram processadas ${latestTrend.queryCount} queries no último período, ${diff} acima do anterior. Prepare dashboards para o aumento de carga.`
+              : `O volume de queries manteve-se em ${latestTrend.queryCount}. Analise novas fontes de dados para estimular o uso.`,
+          impact: diff >= 0 ? 'high' : 'low',
+          category: 'usage',
+          confidence: 65
+        });
+      }
+
+      if (!insights.length && backendOverview?.topInsights?.length) {
+        insights.push(...backendOverview.topInsights);
+      }
+
+      setOverviewData({
+        kpis,
+        usageTrends,
+        fileTypeDistribution,
+        performanceMetrics,
+        recentActivities,
+        topInsights: insights.length ? insights : backendOverview?.topInsights ?? []
+      });
+
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('Overview fetch failed:', err);
+      const message = err instanceof Error ? err.message : 'Erro ao carregar overview';
+      setError(message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [company?.id, company?.name, selectedTimeRange]);
+
   useEffect(() => {
-    if (!isRealTime) return;
-    
-    // Add a delay before starting auto-refresh to prevent immediate refresh after login
-    const initialDelayMs = 8000; // 8s delay to allow login notification to complete
-    const minIntervalMs = 5000; // 5s minimum interval
-    
+    fetchOverviewData();
+  }, [fetchOverviewData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchOverviewData({ manual: true });
+  }, [fetchOverviewData]);
+
+  useEffect(() => {
+    if (!isRealTime) return undefined;
+
+    const initialDelayMs = 8000;
+    const minIntervalMs = 5000;
+
     let intervalId: NodeJS.Timeout | null = null;
-    
-    // Set initial timeout to delay the first refresh
+
     const initialTimeout = setTimeout(() => {
-      // Then set up the recurring interval
       intervalId = setInterval(() => {
         handleRefresh();
       }, Math.max(minIntervalMs, refreshIntervalSeconds * 1000));
     }, initialDelayMs);
-    
+
     return () => {
       clearTimeout(initialTimeout);
       if (intervalId) {
         clearInterval(intervalId);
       }
     };
-  }, [isRealTime, refreshIntervalSeconds]);
+  }, [handleRefresh, isRealTime, refreshIntervalSeconds]);
 
-  // persist auto-refresh preferences
   useEffect(() => {
-    try { localStorage.setItem('overview_auto_refresh', JSON.stringify(!!isRealTime)); } catch (e) {}
+    try {
+      localStorage.setItem('overview_auto_refresh', JSON.stringify(!!isRealTime));
+    } catch (storageError) {
+      console.warn('Failed to persist auto refresh preference', storageError);
+    }
   }, [isRealTime]);
 
   useEffect(() => {
-    try { localStorage.setItem('overview_refresh_interval', String(refreshIntervalSeconds)); } catch (e) {}
+    try {
+      localStorage.setItem('overview_refresh_interval', String(refreshIntervalSeconds));
+    } catch (storageError) {
+      console.warn('Failed to persist refresh interval', storageError);
+    }
   }, [refreshIntervalSeconds]);
 
-  const KPICard = ({ kpi }: { kpi: any }) => (
-    <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 group relative overflow-hidden`}>
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-      </div>
-      
-      <div className="relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-14 h-14 bg-gradient-to-br ${kpi.color} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-            <kpi.icon size={28} className="text-white" />
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-sm font-semibold ${
-              kpi.trend === 'up' 
-                ? 'text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/30' 
-                : 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/30'
-            }`}>
-              {kpi.trend === 'up' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-              <span>{Math.abs(kpi.change)}%</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
-              {kpi.title}
-            </h3>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {kpi.value}
-            </p>
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
-              <span>Progress to Target</span>
-              <span>{kpi.progress}%</span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div 
-                className={`h-2 rounded-full bg-gradient-to-r ${kpi.color} transition-all duration-500`}
-                style={{ width: `${kpi.progress}%` }}
-              />
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Target: {kpi.target}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const KPICard = ({ kpi }: { kpi: OverviewKPI }) => {
+    const trendLabel = kpi.change ? `${Math.abs(kpi.change).toFixed(1)}%` : '—';
+    const trendConfig = kpi.trend === 'up'
+      ? {
+          className: 'text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/30',
+          icon: <ArrowUpRight size={16} />
+        }
+      : kpi.trend === 'down'
+        ? {
+            className: 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/30',
+            icon: <ArrowDownRight size={16} />
+          }
+        : {
+            className: 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30',
+            icon: <Clock size={16} />
+          };
+    const accentClass = KPI_ACCENT_MAP[kpi.color] ?? 'accent-blue-500';
 
-  const ChartCard = ({ title, children, icon: Icon, actions = true, actionsContent }: { title: string; children: React.ReactNode; icon: any; actions?: boolean; actionsContent?: React.ReactNode }) => (
+    return (
+      <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 group relative overflow-hidden`}>
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+        </div>
+        <div className="relative z-10">
+          <div className="flex items-start justify-between mb-4">
+            <div className={`w-14 h-14 bg-gradient-to-br ${kpi.color} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+              <kpi.icon size={28} className="text-white" />
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-sm font-semibold ${trendConfig.className}`}>
+                {trendConfig.icon}
+                <span>{trendLabel}</span>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-1">
+                {kpi.title}
+              </h3>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                {kpi.value}
+              </p>
+              {kpi.subtitle && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{kpi.subtitle}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                <span>Progress to Target</span>
+                <span>{Math.round(Math.min(100, kpi.progress))}%</span>
+              </div>
+              <progress
+                className={`w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden ${accentClass}`}
+                value={Math.min(100, kpi.progress)}
+                max={100}
+              />
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Target: {kpi.target}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ChartCard = ({
+    title,
+    children,
+    icon: Icon,
+    actions = true,
+    actionsContent
+  }: {
+    title: string;
+    children: React.ReactNode;
+  icon: React.ElementType;
+    actions?: boolean;
+    actionsContent?: React.ReactNode;
+  }) => (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
@@ -457,15 +760,15 @@ const OverviewPage: React.FC = () => {
         </div>
         {actions && (
           <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-            {actionsContent ? actionsContent : (
+            {actionsContent ?? (
               <>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <button aria-label="Download chart CSV" className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                   <Download size={16} />
                 </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <button aria-label="Share chart data" className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                   <Share2 size={16} />
                 </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                <button aria-label="Open chart settings" className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                   <Settings size={16} />
                 </button>
               </>
@@ -479,46 +782,40 @@ const OverviewPage: React.FC = () => {
     </div>
   );
 
-  const InsightCard = ({ insight }: { insight: any }) => (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-          insight.impact === 'high' ? 'bg-red-100 dark:bg-red-900/30' :
-          insight.impact === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-          'bg-blue-100 dark:bg-blue-900/30'
-        }`}>
-          <Sparkles size={20} className={
-            insight.impact === 'high' ? 'text-red-600 dark:text-red-400' :
-            insight.impact === 'medium' ? 'text-yellow-600 dark:text-yellow-400' :
-            'text-blue-600 dark:text-blue-400'
-          } />
+  const InsightCard = ({ insight }: { insight: OverviewInsight }) => {
+    const categoryMap: Record<string, string> = {
+      analytics: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      files: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      usage: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+    };
+
+    const impactMap: Record<InsightImpact, string> = {
+      high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+      medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+      low: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    };
+
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group">
+        <div className="flex items-start justify-between mb-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${impactMap[insight.impact] ?? impactMap.medium}`}>
+            <Sparkles size={20} />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${categoryMap[insight.category] ?? categoryMap.analytics}`}>
+              {insight.category}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{insight.confidence}% confidence</span>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-            insight.category === 'revenue' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-            insight.category === 'engagement' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-            'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-          }`}>
-            {insight.category}
-          </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{insight.confidence}% confidence</span>
-        </div>
-      </div>
-      
-      <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-        {insight.title}
-      </h4>
-      <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-        {insight.description}
-      </p>
-      
-      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            insight.impact === 'high' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-            insight.impact === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-            'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-          }`}>
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          {insight.title}
+        </h4>
+        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+          {insight.description}
+        </p>
+        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${impactMap[insight.impact] ?? impactMap.medium}`}>
             {insight.impact} impact
           </span>
           <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium">
@@ -526,49 +823,59 @@ const OverviewPage: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const ActivityItem = ({ activity }: { activity: any }) => (
-    <div className="flex items-start space-x-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors group">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-        activity.status === 'success' ? 'bg-green-100 dark:bg-green-900/30' :
-        activity.status === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
-        'bg-blue-100 dark:bg-blue-900/30'
-      }`}>
-        {activity.type === 'report' && <FileText size={16} className="text-green-600 dark:text-green-400" />}
-        {activity.type === 'database' && <Database size={16} className="text-blue-600 dark:text-blue-400" />}
-        {activity.type === 'ai' && <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />}
-        {activity.type === 'export' && <Download size={16} className="text-orange-600 dark:text-orange-400" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium text-gray-900 dark:text-white text-sm">{activity.action}</h4>
-          <div className="flex items-center space-x-2">
-            {activity.status === 'success' ? (
-              <CheckCircle2 size={14} className="text-green-500" />
-            ) : (
-              <AlertTriangle size={14} className="text-red-500" />
-            )}
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {format(new Date(activity.timestamp), 'HH:mm')}
-            </span>
-          </div>
+  const ActivityItem = ({ activity }: { activity: OverviewActivity }) => {
+    const iconMap: Record<ActivityType, React.ReactNode> = {
+      file: <FileText size={16} className="text-blue-600 dark:text-blue-400" />,
+      ai: <Sparkles size={16} className="text-purple-600 dark:text-purple-400" />,
+      database: <Database size={16} className="text-indigo-600 dark:text-indigo-400" />,
+      report: <Download size={16} className="text-orange-600 dark:text-orange-400" />,
+      export: <Download size={16} className="text-orange-600 dark:text-orange-400" />
+    };
+
+    const backgroundMap: Record<ActivityStatus, string> = {
+      success: 'bg-green-100 dark:bg-green-900/30',
+      error: 'bg-red-100 dark:bg-red-900/30',
+      warning: 'bg-blue-100 dark:bg-blue-900/30'
+    };
+
+    return (
+      <div className="flex items-start space-x-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors group">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${backgroundMap[activity.status]}`}>
+          {iconMap[activity.type]}
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{activity.details}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">by {activity.user}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm">{activity.action}</h4>
+            <div className="flex items-center space-x-2">
+              {activity.status === 'success' ? (
+                <CheckCircle2 size={14} className="text-green-500" />
+              ) : (
+                <AlertTriangle size={14} className="text-red-500" />
+              )}
+              {activity.timestamp && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                </span>
+              )}
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">{activity.details}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">by {activity.user}</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      {/* Header (aligned with Performance page style) */}
       <div className="mb-8">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                 <BarChart3 size={24} className="text-white" />
               </div>
               <div>
@@ -576,102 +883,150 @@ const OverviewPage: React.FC = () => {
                 <p className="text-blue-100">Real-time insights and comprehensive analytics dashboard</p>
               </div>
             </div>
-
             <div className="flex items-center space-x-3">
-                <select
-                  value={selectedTimeRange}
-                  onChange={(e) => setSelectedTimeRange(e.target.value)}
-                  className="px-4 py-2 bg-white bg-opacity-20 text-white border border-white border-opacity-30 rounded-lg focus:ring-2 focus:ring-white focus:ring-opacity-50"
-                >
-                  <option value="24h" className="text-gray-900">Last 24 Hours</option>
-                  <option value="7d" className="text-gray-900">Last 7 Days</option>
-                  <option value="30d" className="text-gray-900">Last 30 Days</option>
-                  <option value="90d" className="text-gray-900">Last 90 Days</option>
-                  <option value="1y" className="text-gray-900">Last Year</option>
-                </select>
+              <label htmlFor="overview-time-range" className="sr-only">
+                Selecionar intervalo temporal
+              </label>
+              <select
+                id="overview-time-range"
+                value={selectedTimeRange}
+                onChange={(event) => setSelectedTimeRange(event.target.value)}
+                aria-label="Selecionar intervalo temporal"
+                className="px-4 py-2 bg-white/20 text-white border border-white/30 rounded-lg focus:ring-2 focus:ring-white focus:ring-opacity-50"
+              >
+                <option value="24h" className="text-gray-900">Last 24 Hours</option>
+                <option value="7d" className="text-gray-900">Last 7 Days</option>
+                <option value="30d" className="text-gray-900">Last 30 Days</option>
+                <option value="90d" className="text-gray-900">Last 90 Days</option>
+                <option value="1y" className="text-gray-900">Last Year</option>
+              </select>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors disabled:opacity-60"
+                title="Refresh data"
+              >
+                <RefreshCw size={20} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+              <div className="flex items-center space-x-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
+                <label className="text-sm text-white/90 mr-2">Auto</label>
                 <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
-                  title="Refresh data"
+                  onClick={() => setIsRealTime((state) => !state)}
+                  className={`px-2 py-1 rounded ${isRealTime ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-800'}`}
                 >
-                  <RefreshCw size={20} className={`text-white ${refreshing ? 'animate-spin' : ''}`} />
+                  <span className="text-sm">{isRealTime ? 'On' : 'Off'}</span>
                 </button>
-                <div className="flex items-center space-x-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
-                  <label className="text-sm text-white/90 mr-2">Auto</label>
-                  <button onClick={() => setIsRealTime((r: boolean) => !r)} className={`px-2 py-1 rounded ${isRealTime ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}`}>
-                    <span className="text-sm">{isRealTime ? 'On' : 'Off'}</span>
-                  </button>
-                  <input type="number" value={refreshIntervalSeconds} onChange={e => setRefreshIntervalSeconds(Math.max(1, Number(e.target.value || 1)))} className="w-20 ml-2 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600" />
-                  <span className="text-sm text-white/80 ml-1">s</span>
-                </div>
-                {/* Dynamic Download Button */}
-                <div className="relative">
-                  <button
-                    onClick={() => setDownloadMenuOpen((o: boolean) => !o)}
-                    className="p-2 bg-white bg-opacity-20 dark:bg-white/5 dark:hover:bg-white/10 hover:bg-opacity-30 rounded-lg transition-colors flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-white/30"
-                    title="Download overview"
-                  >
-                    <Download size={18} className="text-white" />
-                    <span className="text-sm text-white/90 dark:text-white/90">Download</span>
-                  </button>
-
-                  {downloadMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                      <button onClick={() => { handleDownloadCSV(); setDownloadMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700">Download CSV (Revenue)</button>
-                      <button onClick={() => { handleDownloadJSON(); setDownloadMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700">Download JSON (Full)</button>
-                      <button onClick={() => { handleCopyJSON(); setDownloadMenuOpen(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700">Copy JSON</button>
-                    </div>
-                  )}
-                </div>
+                <label htmlFor="overview-refresh-interval" className="sr-only">
+                  Intervalo de atualização (segundos)
+                </label>
+                <input
+                  id="overview-refresh-interval"
+                  type="number"
+                  min={1}
+                  value={refreshIntervalSeconds}
+                  onChange={(event) => setRefreshIntervalSeconds(Math.max(1, Number(event.target.value) || 1))}
+                  aria-label="Intervalo de atualização (segundos)"
+                  className="w-20 ml-2 rounded px-2 py-1 text-sm bg-white text-gray-900 border border-gray-200"
+                />
+                <span className="text-sm text-white/80 ml-1">s</span>
               </div>
+              <div className="relative">
+                <button
+                  onClick={() => setDownloadMenuOpen((open) => !open)}
+                  className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors flex items-center space-x-2"
+                  title="Download overview"
+                >
+                  <Download size={18} className="text-white" />
+                  <span className="text-sm text-white/90">Download</span>
+                </button>
+                {downloadMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                    <button
+                      onClick={() => {
+                        handleDownloadCSV();
+                        setDownloadMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                    >
+                      Download CSV (Usage)
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleDownloadJSON();
+                        setDownloadMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                    >
+                      Download JSON (Full)
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleCopyJSON();
+                        setDownloadMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                    >
+                      Copy JSON
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-
-          <div className="mt-4 flex items-center space-x-6 text-sm text-blue-100">
+          <div className="mt-4 flex items-center flex-wrap gap-4 text-sm text-blue-100">
             <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1 border border-white/10">
-              <div className={`w-2 h-2 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${isRealTime ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
               <span>{isRealTime ? 'Live Data' : 'Paused'}</span>
               <ClockDisplay />
             </div>
             <span>•</span>
-            <span>Last Updated: {new Date().toLocaleTimeString()}</span>
-            <span>•</span>
-            <span>Overview Monitoring</span>
+            <span>
+              Last Updated: {lastUpdated ? formatDistanceToNow(lastUpdated, { addSuffix: true }) : '—'}
+            </span>
             {downloadMessage && (
-              <span className="ml-4 text-sm text-green-200 bg-green-800/20 px-3 py-1 rounded-md">{downloadMessage}</span>
+              <span className="ml-auto text-sm text-green-200 bg-green-800/20 px-3 py-1 rounded-md">
+                {downloadMessage}
+              </span>
             )}
           </div>
+          {error && (
+            <div className="mt-4 bg-white/20 border border-white/30 text-white px-4 py-2 rounded-lg">
+              {error}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* KPI Grid */}
+      {loading && (
+        <div className="mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-gray-600 dark:text-gray-300">
+          A carregar dados do overview...
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {dataState.kpis.map((kpi) => (
+        {overviewData.kpis.map((kpi) => (
           <KPICard key={kpi.id} kpi={kpi} />
         ))}
       </div>
 
-      {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Revenue Trend */}
         <ChartCard
-          title="Revenue & Growth Analysis"
+          title="Usage & Volume Analysis"
           icon={TrendingUp}
           actionsContent={(
             <>
               <button
                 onClick={() => {
-                  // export CSV
-                  const rows = dataState.revenueData.map((r: any) => `${r.month},${r.revenue},${r.profit}`);
-                  const csv = ['month,revenue,profit', ...rows].join('\n');
+                  const rows = overviewData.usageTrends.map((point) => `${point.month},${point.queryCount},${point.fileUploads},${point.successRate.toFixed(1)}`);
+                  const csv = ['month,queryCount,fileUploads,successRatePercent', ...rows].join('\n');
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'revenue.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = 'usage_trends.csv';
+                  document.body.appendChild(anchor);
+                  anchor.click();
+                  anchor.remove();
                   URL.revokeObjectURL(url);
                   setChartMessage('CSV exported');
                   setTimeout(() => setChartMessage(null), 2500);
@@ -683,9 +1038,7 @@ const OverviewPage: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  // share JSON (copy to clipboard)
-                  const payload = JSON.stringify(dataState.revenueData, null, 2);
-                  navigator.clipboard?.writeText(payload);
+                  navigator.clipboard?.writeText(JSON.stringify(overviewData.usageTrends, null, 2));
                   setChartMessage('Chart JSON copied to clipboard');
                   setTimeout(() => setChartMessage(null), 2500);
                 }}
@@ -694,22 +1047,34 @@ const OverviewPage: React.FC = () => {
               >
                 <Share2 size={16} />
               </button>
-              <div className="p-2 flex items-center space-x-2">
-                <label className="text-xs text-gray-500 mr-1">Revenue</label>
-                <input type="checkbox" checked={showRevenueSeries} onChange={() => setShowRevenueSeries(s => !s)} />
-                <label className="text-xs text-gray-500 ml-2 mr-1">Profit</label>
-                <input type="checkbox" checked={showProfitSeries} onChange={() => setShowProfitSeries(s => !s)} />
+              <div className="p-2 flex items-center space-x-3">
+                <label className="flex items-center space-x-1 text-xs text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={showQuerySeries}
+                    onChange={() => setShowQuerySeries((state) => !state)}
+                  />
+                  <span>Queries</span>
+                </label>
+                <label className="flex items-center space-x-1 text-xs text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={showFileSeries}
+                    onChange={() => setShowFileSeries((state) => !state)}
+                  />
+                  <span>Uploads</span>
+                </label>
               </div>
             </>
           )}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={dataState.revenueData}>
+            <ComposedChart data={overviewData.usageTrends}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-              <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
-              <YAxis yAxisId="right" orientation="right" stroke="#6b7280" fontSize={12} />
-              <Tooltip 
+              <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} allowDecimals={false} />
+              <YAxis yAxisId="right" orientation="right" stroke="#6b7280" fontSize={12} allowDecimals={false} />
+              <Tooltip
                 contentStyle={{
                   backgroundColor: '#fff',
                   border: '1px solid #e5e7eb',
@@ -718,70 +1083,100 @@ const OverviewPage: React.FC = () => {
                 }}
               />
               <Legend />
-              {showRevenueSeries && (
-                <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Revenue" radius={[4, 4, 0, 0]} />
+              {showQuerySeries && (
+                <Bar yAxisId="left" dataKey="queryCount" fill="#3B82F6" name="Queries" radius={[4, 4, 0, 0]} />
               )}
-              {showProfitSeries && (
-                <Line yAxisId="right" type="monotone" dataKey="profit" stroke="#10B981" strokeWidth={3} name="Profit" dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }} />
+              {showFileSeries && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="fileUploads"
+                  stroke="#10B981"
+                  strokeWidth={3}
+                  name="Uploads"
+                  dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
+                />
               )}
             </ComposedChart>
           </ResponsiveContainer>
-          {chartMessage && (
-            <div className="mt-2 text-sm text-green-600">{chartMessage}</div>
-          )}
+          {chartMessage && <div className="mt-2 text-sm text-green-600">{chartMessage}</div>}
         </ChartCard>
 
-        {/* User Analytics */}
         <ChartCard
-          title="User Growth & Engagement"
+          title="Performance & Latency"
           icon={Users}
           actionsContent={(
             <>
               <button
                 onClick={() => {
-                  const rows = dataState.revenueData.map((r: any) => `${r.month},${r.users}`);
-                  const csv = ['month,users', ...rows].join('\n');
+                  const rows = overviewData.usageTrends.map((point) => `${point.month},${point.avgExecutionTime.toFixed(2)},${point.successRate.toFixed(1)}`);
+                  const csv = ['month,avgExecutionTimeMs,successRatePercent', ...rows].join('\n');
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'users.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = 'performance_trends.csv';
+                  document.body.appendChild(anchor);
+                  anchor.click();
+                  anchor.remove();
                   URL.revokeObjectURL(url);
-                  setChartMessage('Users CSV exported');
+                  setChartMessage('Performance CSV exported');
                   setTimeout(() => setChartMessage(null), 2500);
                 }}
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Download Users CSV"
+                title="Download CSV"
               >
                 <Download size={16} />
               </button>
               <button
                 onClick={() => {
-                  navigator.clipboard?.writeText(JSON.stringify(dataState.revenueData.map((r:any)=>({month:r.month,users:r.users})), null, 2));
-                  setChartMessage('Users JSON copied');
+                  navigator.clipboard?.writeText(
+                    JSON.stringify(
+                      overviewData.usageTrends.map((point) => ({
+                        month: point.month,
+                        avgExecutionTime: point.avgExecutionTime,
+                        successRate: point.successRate
+                      })),
+                      null,
+                      2
+                    )
+                  );
+                  setChartMessage('Performance JSON copied');
                   setTimeout(() => setChartMessage(null), 2500);
                 }}
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Copy Users JSON"
+                title="Copy JSON"
               >
                 <Share2 size={16} />
               </button>
-              <div className="p-2 flex items-center space-x-2">
-                <label className="text-xs text-gray-500 mr-1">Active Users</label>
-                <input type="checkbox" checked={showUsersSeries} onChange={() => setShowUsersSeries(s=>!s)} />
+              <div className="p-2 flex items-center space-x-3">
+                <label className="flex items-center space-x-1 text-xs text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={showExecutionSeries}
+                    onChange={() => setShowExecutionSeries((state) => !state)}
+                  />
+                  <span>Execução</span>
+                </label>
+                <label className="flex items-center space-x-1 text-xs text-gray-500">
+                  <input
+                    type="checkbox"
+                    checked={showSuccessSeries}
+                    onChange={() => setShowSuccessSeries((state) => !state)}
+                  />
+                  <span>Sucesso</span>
+                </label>
               </div>
             </>
           )}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dataState.revenueData}>
+            <AreaChart data={overviewData.usageTrends}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-              <YAxis stroke="#6b7280" fontSize={12} />
-              <Tooltip 
+              <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
+              <YAxis yAxisId="right" orientation="right" stroke="#6b7280" fontSize={12} domain={[0, 100]} />
+              <Tooltip
                 contentStyle={{
                   backgroundColor: '#fff',
                   border: '1px solid #e5e7eb',
@@ -789,165 +1184,165 @@ const OverviewPage: React.FC = () => {
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
                 }}
               />
-              {showUsersSeries && (
+              <Legend />
+              {showExecutionSeries && (
                 <Area
+                  yAxisId="left"
                   type="monotone"
-                  dataKey="users"
+                  dataKey="avgExecutionTime"
                   stroke="#8B5CF6"
-                  fill="url(#userGradient)"
+                  fill="url(#executionGradient)"
                   strokeWidth={3}
-                  name="Active Users"
+                  name="Avg Execution (ms)"
+                />
+              )}
+              {showSuccessSeries && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="successRate"
+                  stroke="#F59E0B"
+                  strokeWidth={3}
+                  name="Success Rate (%)"
+                  dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }}
                 />
               )}
               <defs>
-                <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
+                <linearGradient id="executionGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
                 </linearGradient>
               </defs>
             </AreaChart>
           </ResponsiveContainer>
+          {chartMessage && <div className="mt-2 text-sm text-green-600">{chartMessage}</div>}
         </ChartCard>
       </div>
 
-      {/* Secondary Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Revenue Distribution */}
         <ChartCard
-          title="Revenue by Category"
+          title="File Type Distribution"
           icon={PieChart}
           actionsContent={(
             <>
               <button
                 onClick={() => {
-                  const rows = dataState.categoryData.map((c:any) => `${c.name},${c.value},${c.revenue}`);
-                  const csv = ['category,value,revenue', ...rows].join('\n');
+                  const rows = overviewData.fileTypeDistribution.map((slice) => `${slice.name},${slice.count},${slice.percentage.toFixed(1)}`);
+                  const csv = ['type,count,percentage', ...rows].join('\n');
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'categories.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = 'file_distribution.csv';
+                  document.body.appendChild(anchor);
+                  anchor.click();
+                  anchor.remove();
                   URL.revokeObjectURL(url);
-                  setChartMessage('Categories CSV exported');
+                  setChartMessage('Distribution CSV exported');
                   setTimeout(() => setChartMessage(null), 2500);
                 }}
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Download Categories CSV"
+                title="Download CSV"
               >
                 <Download size={16} />
               </button>
               <button
                 onClick={() => {
-                  navigator.clipboard?.writeText(JSON.stringify(dataState.categoryData, null, 2));
-                  setChartMessage('Categories JSON copied');
+                  navigator.clipboard?.writeText(JSON.stringify(overviewData.fileTypeDistribution, null, 2));
+                  setChartMessage('Distribution JSON copied');
                   setTimeout(() => setChartMessage(null), 2500);
                 }}
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Copy Categories JSON"
+                title="Copy JSON"
               >
                 <Share2 size={16} />
-              </button>
-              <button
-                onClick={() => {
-                  // shuffle category values slightly
-                  setDataState((prev:any) => {
-                    const nextCat = prev.categoryData.map((c:any) => ({
-                      ...c,
-                      value: Math.max(1, Math.min(100, c.value + Math.round((Math.random() - 0.5) * 10)))
-                    }));
-                    return {
-                      ...prev,
-                      categoryData: nextCat
-                    };
-                  });
-                  setChartMessage('Categories updated');
-                  setTimeout(() => setChartMessage(null), 2500);
-                }}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Update Categories"
-              >
-                <RefreshCw size={16} />
               </button>
             </>
           )}
         >
           <ResponsiveContainer width="100%" height="100%">
             <RechartsPieChart>
-                <Pie
-                  data={dataState.categoryData.filter((c:any)=>!hiddenCategories.has(c.name))}
+              <Pie
+                data={filteredDistribution}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
                 outerRadius={120}
                 paddingAngle={5}
-                dataKey="value"
-                label={({ name, percent }: any) => `${name} ${Math.round((percent || 0) * 100)}%`}
+                dataKey="count"
+                label={({ name, percent }) => `${name} ${Math.round((percent || 0) * 100)}%`}
                 labelLine={false}
               >
-                {dataState.categoryData.filter((c:any)=>!hiddenCategories.has(c.name)).map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                {filteredDistribution.map((entry, index) => (
+                  <Cell key={`cell-${entry.name}-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
+              <Tooltip formatter={(value) => [`${value}`, 'Count']} />
             </RechartsPieChart>
           </ResponsiveContainer>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {dataState.categoryData.map((c:any) => (
-              <label key={c.name} className="text-sm text-gray-700 dark:text-gray-300 flex items-center space-x-2">
-                <input type="checkbox" checked={!hiddenCategories.has(c.name)} onChange={() => {
-                  setHiddenCategories(prev => {
-                    const copy = new Set(prev);
-                    if (copy.has(c.name)) copy.delete(c.name); else copy.add(c.name);
-                    return copy;
-                  });
-                }} />
-                <span>{c.name}</span>
+            {overviewData.fileTypeDistribution.map((slice) => (
+              <label key={slice.name} className="text-sm text-gray-700 dark:text-gray-300 flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={!hiddenCategories.has(slice.name)}
+                  onChange={() => {
+                    setHiddenCategories((prev) => {
+                      const copy = new Set(prev);
+                      if (copy.has(slice.name)) {
+                        copy.delete(slice.name);
+                      } else {
+                        copy.add(slice.name);
+                      }
+                      return copy;
+                    });
+                  }}
+                />
+                <span>{slice.name}</span>
               </label>
             ))}
           </div>
-          {chartMessage && (<div className="mt-2 text-sm text-green-600">{chartMessage}</div>)}
+          {chartMessage && <div className="mt-2 text-sm text-green-600">{chartMessage}</div>}
         </ChartCard>
 
-        {/* Performance Metrics */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
-          <div className="">
-            {/* Use centralized section header */}
-            <SectionHeader icon={Activity} title="System Performance" subtitle="Key performance indicators" />
-          </div>
-          
-          <div className="space-y-4">
-            {dataState.performanceMetrics.map((metric, index) => (
+          <SectionHeader icon={Activity} title="System Performance" subtitle="Key performance indicators" />
+          <div className="space-y-4 mt-4">
+            {overviewData.performanceMetrics.map((metric, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-900 dark:text-white">{metric.metric}</span>
                     <span className={`text-sm font-semibold ${
-                      metric.status === 'excellent' ? 'text-green-600 dark:text-green-400' :
-                      metric.status === 'good' ? 'text-blue-600 dark:text-blue-400' :
-                      'text-yellow-600 dark:text-yellow-400'
+                      metric.status === 'excellent'
+                        ? 'text-green-600 dark:text-green-400'
+                        : metric.status === 'good'
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : metric.status === 'warning'
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-red-600 dark:text-red-400'
                     }`}>
-                      {metric.value}{metric.metric.includes('Rate') ? '%' : metric.metric.includes('Time') ? 'ms' : metric.metric.includes('Processing') ? 's' : '%'}
+                      {metric.value}{metric.suffix ?? ''}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        metric.status === 'excellent' ? 'bg-green-500' :
-                        metric.status === 'good' ? 'bg-blue-500' :
-                        'bg-yellow-500'
-                      }`}
-                      style={{ width: `${Math.min((metric.value / metric.target) * 100, 100)}%` }}
-                    />
-                  </div>
+                  <progress
+                    className={`w-full h-2 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden ${STATUS_ACCENT_MAP[metric.status]}`}
+                    value={Math.min((metric.value / metric.target) * 100, 100)}
+                    max={100}
+                  />
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>Target: {metric.target}{metric.metric.includes('Rate') ? '%' : metric.metric.includes('Time') ? 'ms' : metric.metric.includes('Processing') ? 's' : '%'}</span>
+                    <span>
+                      Target: {metric.target}
+                      {metric.suffix ?? ''}
+                    </span>
                     <span className={`font-medium ${
-                      metric.status === 'excellent' ? 'text-green-600 dark:text-green-400' :
-                      metric.status === 'good' ? 'text-blue-600 dark:text-blue-400' :
-                      'text-yellow-600 dark:text-yellow-400'
+                      metric.status === 'excellent'
+                        ? 'text-green-600 dark:text-green-400'
+                        : metric.status === 'good'
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : metric.status === 'warning'
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-red-600 dark:text-red-400'
                     }`}>
                       {metric.status}
                     </span>
@@ -958,7 +1353,6 @@ const OverviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Activity */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -974,16 +1368,14 @@ const OverviewPage: React.FC = () => {
               View All →
             </button>
           </div>
-          
           <div className="space-y-2">
-            {dataState.recentActivities.map((activity) => (
+            {overviewData.recentActivities.map((activity) => (
               <ActivityItem key={activity.id} activity={activity} />
             ))}
           </div>
         </div>
       </div>
 
-      {/* AI Insights Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
@@ -1000,28 +1392,44 @@ const OverviewPage: React.FC = () => {
             View All Insights
           </button>
         </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {dataState.topInsights.map((insight) => (
+          {overviewData.topInsights.map((insight) => (
             <InsightCard key={insight.id} insight={insight} />
           ))}
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Quick Actions</h3>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text.white">Quick Actions</h3>
           <span className="text-sm text-gray-500 dark:text-gray-400">Frequently used features</span>
         </div>
-        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: FileText, label: 'Generate Report', color: 'from-blue-500 to-cyan-600', description: 'Create new analytics report', section: 'reports' },
-            { icon: Database, label: 'Connect Database', color: 'from-green-500 to-emerald-600', description: 'Add new data source', section: 'database' },
-            { icon: Sparkles, label: 'AI Analysis', color: 'from-purple-500 to-violet-600', description: 'Run AI-powered analysis', section: 'instant-insight' },
-            { icon: Download, label: 'Export Data', color: 'from-orange-500 to-red-600', description: 'Export current dataset', section: 'reports' }
-          ].map((action, index) => (
+          {[{
+            icon: FileText,
+            label: 'Generate Report',
+            color: 'from-blue-500 to-cyan-600',
+            description: 'Create new analytics report',
+            section: 'reports'
+          }, {
+            icon: Database,
+            label: 'Connect Database',
+            color: 'from-green-500 to-emerald-600',
+            description: 'Add new data source',
+            section: 'database'
+          }, {
+            icon: Sparkles,
+            label: 'AI Analysis',
+            color: 'from-purple-500 to-violet-600',
+            description: 'Run AI-powered analysis',
+            section: 'instant-insight'
+          }, {
+            icon: Download,
+            label: 'Export Data',
+            color: 'from-orange-500 to-red-600',
+            description: 'Export current dataset',
+            section: 'reports'
+          }].map((action, index) => (
             <button
               key={index}
               onClick={() => navigate(`/${action.section}`)}
@@ -1033,9 +1441,7 @@ const OverviewPage: React.FC = () => {
               <h4 className="font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                 {action.label}
               </h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {action.description}
-              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
             </button>
           ))}
         </div>
