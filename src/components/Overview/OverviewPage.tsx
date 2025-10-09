@@ -342,39 +342,67 @@ const OverviewPage: React.FC = () => {
       });
 
       const monthlyFileBuckets = new Map<string, number>();
+      const fileTimelineKeys = new Set<string>();
       files.forEach((file) => {
         if (!file.uploadedAt) return;
-        const key = file.uploadedAt.substring(0, 7);
+        const uploadedDate = new Date(file.uploadedAt);
+        if (Number.isNaN(uploadedDate.getTime()) || uploadedDate < rangeStart) return;
+        const key = `${uploadedDate.getFullYear()}-${String(uploadedDate.getMonth() + 1).padStart(2, '0')}`;
         monthlyFileBuckets.set(key, (monthlyFileBuckets.get(key) ?? 0) + 1);
+        fileTimelineKeys.add(key);
       });
 
       const recentQuerySeries = analyticsTyped?.recentQueries ?? [];
-      const timelineKeys = recentQuerySeries
+      const queryTimelineKeys = recentQuerySeries
         .map((item) => item.date)
         .filter((key) => {
           const date = new Date(`${key}-01T00:00:00`);
           return !Number.isNaN(date.getTime()) && date >= new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
         });
 
-      if (!timelineKeys.length) {
+      if (!queryTimelineKeys.length) {
         const baseKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        timelineKeys.push(baseKey);
+        queryTimelineKeys.push(baseKey);
       }
 
-      while (timelineKeys.length < 6) {
-        const referenceKey = timelineKeys[0];
+      const combinedTimelineKeys = new Set<string>(queryTimelineKeys);
+      fileTimelineKeys.forEach((key) => combinedTimelineKeys.add(key));
+
+      const sortedKeys = Array.from(combinedTimelineKeys).sort();
+      const chronologicalKeys: string[] = [];
+
+      if (sortedKeys.length) {
+        const [startYearStr, startMonthStr] = sortedKeys[0].split('-');
+        const [endYearStr, endMonthStr] = sortedKeys[sortedKeys.length - 1].split('-');
+        const cursor = new Date(Number(startYearStr), Number(startMonthStr) - 1, 1);
+        const endDate = new Date(Number(endYearStr), Number(endMonthStr) - 1, 1);
+
+        while (cursor <= endDate) {
+          chronologicalKeys.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`);
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+
+      if (!chronologicalKeys.length) {
+        chronologicalKeys.push(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+      }
+
+      const seenChronologicalKeys = new Set(chronologicalKeys);
+      while (chronologicalKeys.length < 6) {
+        const referenceKey = chronologicalKeys[0];
         const [yearStr, monthStr] = referenceKey.split('-');
         const seed = new Date(Number(yearStr), Number(monthStr) - 1, 1);
         seed.setMonth(seed.getMonth() - 1);
         const newKey = `${seed.getFullYear()}-${String(seed.getMonth() + 1).padStart(2, '0')}`;
-        if (!timelineKeys.includes(newKey)) {
-          timelineKeys.unshift(newKey);
+        if (!seenChronologicalKeys.has(newKey)) {
+          chronologicalKeys.unshift(newKey);
+          seenChronologicalKeys.add(newKey);
         } else {
           break;
         }
       }
 
-      const usageTrends: UsageTrendPoint[] = timelineKeys.slice(-6).map((key) => {
+      const usageTrends: UsageTrendPoint[] = chronologicalKeys.slice(-6).map((key) => {
         const analyticEntry = recentQuerySeries.find((item) => item.date === key);
         const bucket = monthlyQueryBuckets.get(key) ?? { total: 0, success: 0, sumExecution: 0 };
         const fileCount = monthlyFileBuckets.get(key) ?? 0;
