@@ -43,3 +43,46 @@
   background-size: 200% 200%;
   animation: gradient-pan 12s ease infinite;
 }
+
+/* Global scrollbar styling for light and dark modes */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f3f4f6; /* thumb track - light mode */
+}
+
+.dark * {
+  scrollbar-color: #4b5563 #374151; /* thumb track - dark mode */
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #f3f4f6; /* light mode */
+  border-radius: 10px;
+}
+
+.dark *::-webkit-scrollbar-track {
+  background: #374151; /* dark mode */
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #d1d5db; /* light mode */
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background: #4b5563; /* dark mode */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af; /* light mode hover */
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* dark mode hover */
+}

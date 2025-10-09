@@ -1219,7 +1219,7 @@ const OverviewPage: React.FC = () => {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-6">
         <ChartCard
           title="File Type Distribution"
           icon={PieChart}
@@ -1368,7 +1368,7 @@ const OverviewPage: React.FC = () => {
               View All →
             </button>
           </div>
-          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-track]:dark:bg-gray-700 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:dark:bg-gray-600 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400 [&::-webkit-scrollbar-thumb]:hover:dark:bg-gray-500">
             {overviewData.recentActivities.map((activity) => (
               <ActivityItem key={activity.id} activity={activity} />
             ))}
