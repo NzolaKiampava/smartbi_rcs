@@ -17,7 +17,8 @@ import {
   Download,
   Eye,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Calendar
 } from 'lucide-react';
 import { graphqlService, FileUploadInput, AnalysisReport } from '../../services/graphqlService';
 import AnalysisResults from '../Analysis/AnalysisResults';
@@ -35,10 +36,57 @@ interface UploadedFile {
   processingTime?: number; // Tempo de processamento em caso de erro
 }
 
+interface SavedAnalysis {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  analysisDate: string;
+  analysisResult: AnalysisReport;
+}
+
+const STORAGE_KEY = 'smartbi_analysis_history';
+
+// Helper functions for localStorage
+const saveAnalysisToStorage = (analysis: SavedAnalysis) => {
+  try {
+    const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as SavedAnalysis[];
+    const updated = [analysis, ...existing].slice(0, 50); // Keep only last 50
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.error('Failed to save analysis to localStorage:', error);
+  }
+};
+
+const loadAnalysisHistory = (): SavedAnalysis[] => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as SavedAnalysis[];
+  } catch (error) {
+    console.error('Failed to load analysis history:', error);
+    return [];
+  }
+};
+
+const deleteAnalysisFromStorage = (id: string) => {
+  try {
+    const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as SavedAnalysis[];
+    const updated = existing.filter(item => item.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.error('Failed to delete analysis from localStorage:', error);
+  }
+};
+
 const FileUploadPage: React.FC = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<AnalysisReport | null>(null);
+  const [analysisHistory, setAnalysisHistory] = useState<SavedAnalysis[]>([]);
+
+  // Load analysis history on component mount
+  React.useEffect(() => {
+    setAnalysisHistory(loadAnalysisHistory());
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -131,6 +179,18 @@ const FileUploadPage: React.FC = () => {
           }
         };
         
+        // Save analysis to localStorage
+        const savedAnalysis: SavedAnalysis = {
+          id: newFile.id,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          analysisDate: new Date().toISOString(),
+          analysisResult: updatedAnalysisResult
+        };
+        saveAnalysisToStorage(savedAnalysis);
+        setAnalysisHistory(loadAnalysisHistory());
+        
         // Mark as completed with analysis result
         setFiles(prev => prev.map(f => 
           f.id === newFile.id 
@@ -169,6 +229,15 @@ const FileUploadPage: React.FC = () => {
     const selectedFiles = Array.from(e.target.files || []);
     selectedFiles.forEach(file => processFile(file));
   }, [processFile]);
+
+  const handleDeleteHistory = useCallback((id: string) => {
+    deleteAnalysisFromStorage(id);
+    setAnalysisHistory(loadAnalysisHistory());
+  }, []);
+
+  const handleViewHistoryAnalysis = useCallback((analysis: SavedAnalysis) => {
+    setSelectedAnalysis(analysis.analysisResult);
+  }, []);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -589,7 +658,99 @@ const FileUploadPage: React.FC = () => {
         )}
       </div>
 
+      {/* Analysis History Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
+        <div className="flex items-center justify-between mb-6">
+          <SectionHeader 
+            icon={Clock} 
+            title="Histórico de Análises" 
+            subtitle="Análises guardadas localmente no seu navegador" 
+          />
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {analysisHistory.length} análise{analysisHistory.length !== 1 ? 's' : ''} guardada{analysisHistory.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+
+        {analysisHistory.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl flex items-center justify-center">
+                <Clock size={40} className="text-blue-500 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-gray-900 dark:text-white font-semibold text-lg">
+                  Nenhuma Análise Guardada
+                </p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mt-2 max-w-md mx-auto">
+                  As análises de ficheiros serão automaticamente guardadas aqui após o processamento.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {analysisHistory.map((analysis) => (
+              <div 
+                key={analysis.id}
+                className="group bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 p-4 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                      <FileText size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                        {analysis.fileName}
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatFileSize(analysis.fileSize)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-3 space-y-1">
+                  <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                    <Calendar size={12} className="mr-1" />
+                    <span>{new Date(analysis.analysisDate).toLocaleDateString('pt-PT')}</span>
+                  </div>
+                  <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                    <Clock size={12} className="mr-1" />
+                    <span>{new Date(analysis.analysisDate).toLocaleTimeString('pt-PT')}</span>
+                  </div>
+                  <div className="flex items-center text-xs text-gray-600 dark:text-gray-400">
+                    <Brain size={12} className="mr-1" />
+                    <span>{analysis.analysisResult.insights?.length || 0} insights</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleViewHistoryAnalysis(analysis)}
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <Eye size={14} />
+                    <span>Ver Análise</span>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteHistory(analysis.id)}
+                    className="px-3 py-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+                    title="Eliminar análise"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Analysis Results Modal */}
+```
       {selectedAnalysis && (
         <AnalysisResults 
           analysis={selectedAnalysis}
