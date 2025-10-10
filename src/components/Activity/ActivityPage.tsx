@@ -3,11 +3,7 @@ import {
   Activity, 
   User, 
   Clock, 
-  LogOut, 
-  LogIn, 
   FileText, 
-  Edit, 
-  Trash2, 
   Search,
   Filter,
   Download,
@@ -15,12 +11,10 @@ import {
   Calendar,
   TrendingUp,
   Sparkles,
-  
   Database,
   Shield,
   AlertTriangle,
   CheckCircle,
-  // Info, (unused)
   Settings,
   Eye,
   MoreVertical,
@@ -61,176 +55,6 @@ interface RecentActivity {
   module: string;
   duration?: number;
 }
-
-// Enhanced mock data with more realistic information
-const defaultUserLogs: ActivityLog[] = [
-  {
-    id: 1,
-    user: 'João Silva',
-    action: 'Login',
-    description: 'Usuário fez login na plataforma via SSO',
-    timestamp: '2025-01-19 09:15',
-    icon: LogIn,
-    color: 'bg-green-500',
-    category: 'auth',
-    severity: 'low',
-    device: 'Desktop',
-    location: 'Luanda, Angola',
-    ipAddress: '192.168.1.100'
-  },
-  {
-    id: 2,
-    user: 'Maria Santos',
-    action: 'Failed Login',
-    description: 'Tentativa de login falhada - credenciais inválidas',
-    timestamp: '2025-01-19 09:12',
-    icon: AlertTriangle,
-    color: 'bg-red-500',
-    category: 'auth',
-    severity: 'high',
-    device: 'Mobile',
-    location: 'Benguela, Angola',
-    ipAddress: '192.168.1.105'
-  },
-  {
-    id: 3,
-    user: 'Carlos Eduardo',
-    action: 'Login',
-    description: 'Usuário fez login na plataforma',
-    timestamp: '2025-01-19 08:45',
-    icon: LogIn,
-    color: 'bg-green-500',
-    category: 'auth',
-    severity: 'low',
-    device: 'Tablet',
-    location: 'Huambo, Angola',
-    ipAddress: '192.168.1.102'
-  },
-  {
-    id: 4,
-    user: 'Ana Paula',
-    action: 'Logout',
-    description: 'Usuário saiu da plataforma',
-    timestamp: '2025-01-19 08:30',
-    icon: LogOut,
-    color: 'bg-orange-500',
-    category: 'auth',
-    severity: 'low',
-    device: 'Desktop',
-    location: 'Lobito, Angola',
-    ipAddress: '192.168.1.103'
-  }
-];
-
-const defaultRecentActivities: RecentActivity[] = [
-  {
-    id: 1,
-    user: 'Maria Souza',
-    activity: 'Visualizou Relatório',
-    details: 'Relatório de vendas Q4 2024 acessado',
-    timestamp: '2025-01-19 09:20',
-    icon: FileText,
-    color: 'bg-blue-500',
-    category: 'view',
-    domainCategory: 'data',
-    module: 'Reports',
-    duration: 45
-  },
-  {
-    id: 2,
-    user: 'Carlos Lima',
-    activity: 'Editou Dashboard',
-    details: 'Dashboard de performance atualizado',
-    timestamp: '2025-01-19 09:18',
-    icon: Edit,
-    color: 'bg-yellow-500',
-    category: 'edit',
-    domainCategory: 'data',
-    module: 'Analytics',
-    duration: 120
-  },
-  {
-    id: 3,
-    user: 'Ana Paula',
-    activity: 'Criou Conexão',
-    details: 'Nova conexão PostgreSQL configurada',
-    timestamp: '2025-01-19 09:15',
-    icon: Database,
-    color: 'bg-purple-500',
-    category: 'create',
-    domainCategory: 'system',
-    module: 'Database',
-    duration: 180
-  },
-  {
-    id: 4,
-    user: 'Pedro Santos',
-    activity: 'Exportou Dados',
-    details: 'Relatório financeiro exportado em Excel',
-    timestamp: '2025-01-19 09:10',
-    icon: Download,
-    color: 'bg-green-500',
-    category: 'view',
-    domainCategory: 'data',
-    module: 'Reports',
-    duration: 30
-  },
-  {
-    id: 5,
-    user: 'Sofia Costa',
-    activity: 'Removeu Usuário',
-    details: 'Usuário "teste@example.com" removido do sistema',
-    timestamp: '2025-01-19 09:05',
-    icon: Trash2,
-    color: 'bg-red-500',
-    category: 'delete',
-    domainCategory: 'user',
-    module: 'Users',
-    duration: 15
-  }
-];
-
-const defaultHistoryActivities: RecentActivity[] = [
-  {
-    id: 1,
-    user: 'Carlos Lima',
-    activity: 'Configurou Alertas',
-    details: 'Alertas de performance configurados',
-    timestamp: '2025-01-18 16:10',
-    icon: Settings,
-    color: 'bg-indigo-500',
-    category: 'edit',
-    domainCategory: 'system',
-    module: 'Performance',
-    duration: 90
-  },
-  {
-    id: 2,
-    user: 'Maria Souza',
-    activity: 'Criou Usuário',
-    details: 'Novo usuário "admin@company.com" cadastrado',
-    timestamp: '2025-01-18 14:45',
-    icon: User,
-    color: 'bg-green-500',
-    category: 'create',
-    domainCategory: 'user',
-    module: 'Users',
-    duration: 60
-  },
-  {
-    id: 3,
-    user: 'João Silva',
-    activity: 'Atualizou Permissões',
-    details: 'Permissões de acesso atualizadas para equipe de vendas',
-    timestamp: '2025-01-18 11:30',
-    icon: Shield,
-    color: 'bg-blue-500',
-    category: 'edit',
-    domainCategory: 'user',
-    module: 'Security',
-    duration: 45
-  }
-];
 
 type UnifiedSource = 'query' | 'file';
 type UnifiedStatus = 'success' | 'error' | 'warning';
@@ -387,9 +211,9 @@ const toRecentActivity = (activity: UnifiedActivity, index: number): RecentActiv
 });
 
 const ActivityPage: React.FC = () => {
-  const [userLogsData, setUserLogsData] = useState<ActivityLog[]>(defaultUserLogs);
-  const [recentActivitiesData, setRecentActivitiesData] = useState<RecentActivity[]>(defaultRecentActivities);
-  const [historyActivitiesData, setHistoryActivitiesData] = useState<RecentActivity[]>(defaultHistoryActivities);
+  const [userLogsData, setUserLogsData] = useState<ActivityLog[]>([]);
+  const [recentActivitiesData, setRecentActivitiesData] = useState<RecentActivity[]>([]);
+  const [historyActivitiesData, setHistoryActivitiesData] = useState<RecentActivity[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
   const [isUsingRealData, setIsUsingRealData] = useState(false);
@@ -402,6 +226,12 @@ const ActivityPage: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('today');
+  
+  // Pagination states
+  const [logsCurrentPage, setLogsCurrentPage] = useState(1);
+  const [recentCurrentPage, setRecentCurrentPage] = useState(1);
+  const logsPerPage = 10;
+  const recentPerPage = 6;
 
   const fetchActivities = useCallback(async (options?: { manual?: boolean }) => {
     if (options?.manual) {
@@ -447,10 +277,20 @@ const ActivityPage: React.FC = () => {
         .filter((activity) => !!activity.timestamp)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      // Always set real data state, even if empty
-      setUserLogsData(unifiedActivities.slice(0, 30).map(toActivityLog));
-      setRecentActivitiesData(unifiedActivities.slice(0, 18).map(toRecentActivity));
-      setHistoryActivitiesData(unifiedActivities.slice(18, 48).map(toRecentActivity));
+      // Show all system activities in the logs table
+      // This includes AI queries, file uploads, and any future auth events
+      const activityLogs = unifiedActivities
+        .slice(0, 30)
+        .map(toActivityLog);
+
+      // Recent activities: most recent items (up to 18)
+      // Historical activities: older items (from position 6 onwards, up to 48 total)
+      const recentCount = Math.min(6, unifiedActivities.length);
+      const historicalStart = recentCount;
+      
+      setUserLogsData(activityLogs);
+      setRecentActivitiesData(unifiedActivities.slice(0, recentCount).map(toRecentActivity));
+      setHistoryActivitiesData(unifiedActivities.slice(historicalStart, 48).map(toRecentActivity));
       setIsUsingRealData(true);
       setLastUpdateTime(new Date());
     } catch (error) {
@@ -489,6 +329,12 @@ const ActivityPage: React.FC = () => {
   const handleRefresh = useCallback(async () => {
     await fetchActivities({ manual: true });
   }, [fetchActivities]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setLogsCurrentPage(1);
+    setRecentCurrentPage(1);
+  }, [search, categoryFilter, severityFilter, dateStart, dateEnd, selectedTimeRange]);
 
   // Enhanced filtering function
   type Filterable = {
@@ -540,6 +386,18 @@ const ActivityPage: React.FC = () => {
   const filteredHistoryActivities = historyActivitiesData.filter(act =>
     filterFn(act, ['user', 'activity', 'details', 'timestamp', 'category', 'domainCategory', 'module'])
   );
+
+  // Pagination logic for logs
+  const totalLogsPages = Math.ceil(filteredUserLogs.length / logsPerPage);
+  const logsIndexOfLastItem = logsCurrentPage * logsPerPage;
+  const logsIndexOfFirstItem = logsIndexOfLastItem - logsPerPage;
+  const currentLogsItems = filteredUserLogs.slice(logsIndexOfFirstItem, logsIndexOfLastItem);
+
+  // Pagination logic for recent activities
+  const totalRecentPages = Math.ceil(filteredRecentActivities.length / recentPerPage);
+  const recentIndexOfLastItem = recentCurrentPage * recentPerPage;
+  const recentIndexOfFirstItem = recentIndexOfLastItem - recentPerPage;
+  const currentRecentItems = filteredRecentActivities.slice(recentIndexOfFirstItem, recentIndexOfLastItem);
 
   const getDeviceIcon = (device?: string) => {
     switch (device?.toLowerCase()) {
@@ -907,11 +765,11 @@ const ActivityPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Authentication Logs */}
+      {/* Activity Logs */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-200">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
-            <SectionHeader icon={Shield} title="Authentication Logs" subtitle="User login and logout activities" />
+            <SectionHeader icon={Shield} title="Activity Logs" subtitle="System operations and user activities" />
             {isUsingRealData && (
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
@@ -921,9 +779,9 @@ const ActivityPage: React.FC = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
               <CheckCircle size={14} className="mr-1" />
-              {filteredUserLogs.filter(log => log.action === 'Login').length} successful logins
+              {filteredUserLogs.length} activities
             </span>
           </div>
         </div>
@@ -940,7 +798,7 @@ const ActivityPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredUserLogs.length === 0 ? (
+              {currentLogsItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-16">
                     <div className="flex flex-col items-center space-y-3">
@@ -959,7 +817,7 @@ const ActivityPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredUserLogs.map((log) => (
+                currentLogsItems.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
@@ -1021,6 +879,46 @@ const ActivityPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls for Logs */}
+        {filteredUserLogs.length > logsPerPage && (
+          <div className="flex items-center justify-between mt-4 px-2">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Showing {logsIndexOfFirstItem + 1} to {Math.min(logsIndexOfLastItem, filteredUserLogs.length)} of {filteredUserLogs.length} logs
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setLogsCurrentPage(Math.max(1, logsCurrentPage - 1))}
+                disabled={logsCurrentPage === 1}
+                className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalLogsPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setLogsCurrentPage(page)}
+                    className={`px-3 py-1 rounded-lg ${
+                      page === logsCurrentPage
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    } transition-colors`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setLogsCurrentPage(Math.min(totalLogsPages, logsCurrentPage + 1))}
+                disabled={logsCurrentPage === totalLogsPages}
+                className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Recent Activities */}
@@ -1065,7 +963,7 @@ const ActivityPage: React.FC = () => {
               </div>
             </div>
           ) : (
-            filteredRecentActivities.map((activity) => (
+            currentRecentItems.map((activity) => (
               <div key={activity.id} className="group p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
@@ -1125,6 +1023,46 @@ const ActivityPage: React.FC = () => {
             ))
           )}
         </div>
+        
+        {/* Pagination Controls for Recent Activities */}
+        {filteredRecentActivities.length > recentPerPage && (
+          <div className="flex items-center justify-between mt-6 px-2">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Showing {recentIndexOfFirstItem + 1} to {Math.min(recentIndexOfLastItem, filteredRecentActivities.length)} of {filteredRecentActivities.length} activities
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setRecentCurrentPage(Math.max(1, recentCurrentPage - 1))}
+                disabled={recentCurrentPage === 1}
+                className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalRecentPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setRecentCurrentPage(page)}
+                    className={`px-3 py-1 rounded-lg ${
+                      page === recentCurrentPage
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    } transition-colors`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setRecentCurrentPage(Math.min(totalRecentPages, recentCurrentPage + 1))}
+                disabled={recentCurrentPage === totalRecentPages}
+                className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Historical Activities */}
