@@ -21,7 +21,10 @@ import {
   Globe,
   Smartphone,
   Monitor,
-  Tablet
+  Tablet,
+  X,
+  Zap,
+  Share2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import SectionHeader from '../Common/SectionHeader';
@@ -232,6 +235,9 @@ const ActivityPage: React.FC = () => {
   const [recentCurrentPage, setRecentCurrentPage] = useState(1);
   const logsPerPage = 10;
   const recentPerPage = 6;
+  
+  // Modal state
+  const [selectedActivity, setSelectedActivity] = useState<RecentActivity | null>(null);
 
   const fetchActivities = useCallback(async (options?: { manual?: boolean }) => {
     if (options?.manual) {
@@ -1003,6 +1009,7 @@ const ActivityPage: React.FC = () => {
                   <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                     <button
                       type="button"
+                      onClick={() => setSelectedActivity(activity)}
                       className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                       aria-label="View activity details"
                       title="View details"
@@ -1142,6 +1149,167 @@ const ActivityPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Activity Details Modal */}
+      {selectedActivity && (
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 max-w-4xl w-full max-h-[90vh] overflow-hidden transition-all duration-300">
+            
+            {/* Professional Header */}
+            <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white p-8 relative overflow-hidden">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-600/20"></div>
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_30%,rgba(59,130,246,0.3),transparent_50%)]"></div>
+              </div>
+              
+              <div className="relative z-10">
+                {/* Header Top Row */}
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-16 h-16 ${selectedActivity.color} rounded-2xl flex items-center justify-center shadow-lg`}>
+                      <selectedActivity.icon size={32} className="text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-3xl font-bold text-white mb-1">{selectedActivity.activity}</h1>
+                      <div className="flex items-center space-x-4 text-blue-100">
+                        <span className="flex items-center space-x-2">
+                          <User size={16} />
+                          <span>{selectedActivity.user}</span>
+                        </span>
+                        <span className="flex items-center space-x-2">
+                          <Clock size={16} />
+                          <span>{selectedActivity.timestamp}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => setSelectedActivity(null)}
+                      className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all duration-200 group"
+                      title="Close details"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* KPI Header Cards */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  {/* Category */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                        <Filter size={20} className="text-blue-400" />
+                      </div>
+                    </div>
+                    <div className="text-lg font-bold text-white mb-1 capitalize">{selectedActivity.category}</div>
+                    <div className="text-sm text-blue-100">Category</div>
+                  </div>
+
+                  {/* Module */}
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                        <Settings size={20} className="text-purple-400" />
+                      </div>
+                    </div>
+                    <div className="text-lg font-bold text-white mb-1">{selectedActivity.module}</div>
+                    <div className="text-sm text-blue-100">Module</div>
+                  </div>
+
+                  {/* Duration */}
+                  {selectedActivity.duration && (
+                    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
+                          <Zap size={20} className="text-green-400" />
+                        </div>
+                      </div>
+                      <div className="text-2xl font-bold text-white mb-1">{selectedActivity.duration}s</div>
+                      <div className="text-sm text-blue-100">Duration</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 overflow-y-auto max-h-[calc(90vh-300px)]">
+              {/* Details Section */}
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <FileText size={20} className="text-white" />
+                  </div>
+                  <span>Activity Details</span>
+                </h2>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-800 rounded-2xl p-6 border border-blue-200 dark:border-gray-600">
+                  <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed">
+                    {selectedActivity.details}
+                  </p>
+                </div>
+              </div>
+
+              {/* Metadata Section */}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+                    <Activity size={20} className="text-white" />
+                  </div>
+                  <span>Metadata</span>
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Domain Category</div>
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white capitalize">{selectedActivity.domainCategory}</div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Activity ID</div>
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white">#{selectedActivity.id}</div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Performed By</div>
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white">{selectedActivity.user}</div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Timestamp</div>
+                    <div className="text-lg font-semibold text-gray-900 dark:text-white">{selectedActivity.timestamp}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-750">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <button
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Download size={16} />
+                    <span>Export Details</span>
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Share2 size={16} />
+                    <span>Share</span>
+                  </button>
+                </div>
+                <button
+                  onClick={() => setSelectedActivity(null)}
+                  className="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
