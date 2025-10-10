@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Activity, 
   User, 
@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Calendar,
   TrendingUp,
+  Sparkles,
   
   Database,
   Shield,
@@ -28,8 +29,9 @@ import {
   Monitor,
   Tablet
 } from 'lucide-react';
-// format import removed because not referenced in this file after header changes
+import { format } from 'date-fns';
 import SectionHeader from '../Common/SectionHeader';
+import { graphqlService, type AIQueryResult, type FileUpload } from '../../services/graphqlService';
 
 interface ActivityLog {
   id: number;
@@ -37,7 +39,7 @@ interface ActivityLog {
   action: string;
   description: string;
   timestamp: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<unknown>;
   color: string;
   category: 'auth' | 'data' | 'system' | 'user';
   severity: 'low' | 'medium' | 'high';
@@ -52,15 +54,16 @@ interface RecentActivity {
   activity: string;
   details: string;
   timestamp: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<unknown>;
   color: string;
   category: 'view' | 'edit' | 'delete' | 'create';
+  domainCategory?: ActivityLog['category'];
   module: string;
   duration?: number;
 }
 
 // Enhanced mock data with more realistic information
-const userLogs: ActivityLog[] = [
+const defaultUserLogs: ActivityLog[] = [
   {
     id: 1,
     user: 'João Silva',
@@ -119,7 +122,7 @@ const userLogs: ActivityLog[] = [
   }
 ];
 
-const recentActivities: RecentActivity[] = [
+const defaultRecentActivities: RecentActivity[] = [
   {
     id: 1,
     user: 'Maria Souza',
@@ -129,6 +132,7 @@ const recentActivities: RecentActivity[] = [
     icon: FileText,
     color: 'bg-blue-500',
     category: 'view',
+    domainCategory: 'data',
     module: 'Reports',
     duration: 45
   },
@@ -141,6 +145,7 @@ const recentActivities: RecentActivity[] = [
     icon: Edit,
     color: 'bg-yellow-500',
     category: 'edit',
+    domainCategory: 'data',
     module: 'Analytics',
     duration: 120
   },
@@ -153,6 +158,7 @@ const recentActivities: RecentActivity[] = [
     icon: Database,
     color: 'bg-purple-500',
     category: 'create',
+    domainCategory: 'system',
     module: 'Database',
     duration: 180
   },
@@ -165,6 +171,7 @@ const recentActivities: RecentActivity[] = [
     icon: Download,
     color: 'bg-green-500',
     category: 'view',
+    domainCategory: 'data',
     module: 'Reports',
     duration: 30
   },
@@ -177,12 +184,13 @@ const recentActivities: RecentActivity[] = [
     icon: Trash2,
     color: 'bg-red-500',
     category: 'delete',
+    domainCategory: 'user',
     module: 'Users',
     duration: 15
   }
 ];
 
-const historyActivities: RecentActivity[] = [
+const defaultHistoryActivities: RecentActivity[] = [
   {
     id: 1,
     user: 'Carlos Lima',
@@ -192,6 +200,7 @@ const historyActivities: RecentActivity[] = [
     icon: Settings,
     color: 'bg-indigo-500',
     category: 'edit',
+    domainCategory: 'system',
     module: 'Performance',
     duration: 90
   },
@@ -204,6 +213,7 @@ const historyActivities: RecentActivity[] = [
     icon: User,
     color: 'bg-green-500',
     category: 'create',
+    domainCategory: 'user',
     module: 'Users',
     duration: 60
   },
@@ -216,12 +226,174 @@ const historyActivities: RecentActivity[] = [
     icon: Shield,
     color: 'bg-blue-500',
     category: 'edit',
+    domainCategory: 'user',
     module: 'Security',
     duration: 45
   }
 ];
 
+type UnifiedSource = 'query' | 'file';
+type UnifiedStatus = 'success' | 'error' | 'warning';
+
+interface UnifiedActivity {
+  id: string;
+  timestamp: string;
+  source: UnifiedSource;
+  status: UnifiedStatus;
+  user: string;
+  title: string;
+  description: string;
+  module: string;
+  actionCategory: RecentActivity['category'];
+  severity: ActivityLog['severity'];
+  category: ActivityLog['category'];
+  icon: React.ComponentType<unknown>;
+  color: string;
+  device?: string;
+  location?: string;
+  ipAddress?: string;
+  durationSeconds?: number;
+}
+
+const RANGE_IN_DAYS: Record<string, number> = {
+  today: 1,
+  week: 7,
+  month: 30,
+  quarter: 120
+};
+
+const getRangeStart = (rangeKey: string): Date => {
+  const days = RANGE_IN_DAYS[rangeKey] ?? 7;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - (days - 1));
+  return start;
+};
+
+const SUCCESS_STATUS_HINTS = ['SUCCESS', 'COMPLETED', 'DONE', 'OK'];
+const FAILURE_STATUS_HINTS = ['FAIL', 'ERROR', 'TIMEOUT'];
+
+const statusFromBackend = (status?: string | null): UnifiedStatus => {
+  if (!status) return 'warning';
+  const upper = status.toUpperCase();
+  if (FAILURE_STATUS_HINTS.some((hint) => upper.includes(hint))) return 'error';
+  if (SUCCESS_STATUS_HINTS.some((hint) => upper.includes(hint))) return 'success';
+  return 'warning';
+};
+
+const severityFromStatus = (status: UnifiedStatus): ActivityLog['severity'] => {
+  if (status === 'error') return 'high';
+  if (status === 'warning') return 'medium';
+  return 'low';
+};
+
+const colorFromSource = (source: UnifiedSource, status: UnifiedStatus): string => {
+  if (status === 'error') return 'bg-red-500';
+  if (status === 'warning') return 'bg-yellow-500';
+  return source === 'file' ? 'bg-emerald-500' : 'bg-blue-500';
+};
+
+const deviceFromSource = (source: UnifiedSource): string => (source === 'file' ? 'Uploader' : 'API Gateway');
+
+const locationFromSource = (source: UnifiedSource): string => (source === 'file' ? 'Object Storage' : 'Analytics Engine');
+
+const formatTimestamp = (value?: string | null): string => {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return format(parsed, 'yyyy-MM-dd HH:mm');
+};
+
+const lastDigits = (value: string): string => {
+  if (!value) return '000000';
+  return value.replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase().padStart(6, '0');
+};
+
+const mapQueryToUnifiedActivity = (query: AIQueryResult): UnifiedActivity => {
+  const status = statusFromBackend(query.status);
+  const durationSeconds = query.executionTime ? Math.round(query.executionTime / 1000) : undefined;
+  return {
+    id: `query-${query.id}`,
+    timestamp: query.createdAt,
+    source: 'query',
+    status,
+    user: 'AI Query Service',
+    title: status === 'error' ? 'AI Query Failed' : 'AI Query Executed',
+    description: query.naturalQuery || query.generatedQuery || 'Consulta processada',
+    module: 'AI Analytics',
+    actionCategory: status === 'error' ? 'delete' : 'view',
+    severity: severityFromStatus(status),
+    category: 'data',
+    icon: Sparkles,
+    color: colorFromSource('query', status),
+    device: deviceFromSource('query'),
+    location: locationFromSource('query'),
+    ipAddress: `QRY-${lastDigits(query.id)}`,
+    durationSeconds
+  };
+};
+
+const mapFileToUnifiedActivity = (file: FileUpload): UnifiedActivity => {
+  const status = statusFromBackend(file.analysisReport?.status ?? 'COMPLETED');
+  const durationMs = file.analysisReport?.executionTime;
+  return {
+    id: `file-${file.id}`,
+    timestamp: file.uploadedAt,
+    source: 'file',
+    status,
+    user: (file.metadata as { uploadedBy?: string } | undefined)?.uploadedBy || 'Upload Service',
+    title: status === 'error' ? 'File Analysis Failed' : 'File Uploaded',
+    description: file.originalName || file.filename,
+    module: 'File Processing',
+    actionCategory: 'create',
+    severity: severityFromStatus(status),
+    category: 'system',
+    icon: FileText,
+    color: colorFromSource('file', status),
+    device: deviceFromSource('file'),
+    location: locationFromSource('file'),
+    ipAddress: `FILE-${lastDigits(file.id)}`,
+    durationSeconds: durationMs ? Math.round(durationMs / 1000) : undefined
+  };
+};
+
+const toActivityLog = (activity: UnifiedActivity, index: number): ActivityLog => ({
+  id: index + 1,
+  user: activity.user,
+  action: activity.title,
+  description: activity.description,
+  timestamp: formatTimestamp(activity.timestamp),
+  icon: activity.status === 'error' ? AlertTriangle : activity.status === 'warning' ? Clock : CheckCircle,
+  color: activity.color,
+  category: activity.category,
+  severity: activity.severity,
+  device: activity.device,
+  location: activity.location,
+  ipAddress: activity.ipAddress
+});
+
+const toRecentActivity = (activity: UnifiedActivity, index: number): RecentActivity => ({
+  id: index + 1,
+  user: activity.user,
+  activity: activity.title,
+  details: activity.description,
+  timestamp: formatTimestamp(activity.timestamp),
+  icon: activity.icon,
+  color: activity.color,
+  category: activity.actionCategory,
+  domainCategory: activity.category,
+  module: activity.module,
+  duration: activity.durationSeconds
+});
+
 const ActivityPage: React.FC = () => {
+  const [userLogsData, setUserLogsData] = useState<ActivityLog[]>(defaultUserLogs);
+  const [recentActivitiesData, setRecentActivitiesData] = useState<RecentActivity[]>(defaultRecentActivities);
+  const [historyActivitiesData, setHistoryActivitiesData] = useState<RecentActivity[]>(defaultHistoryActivities);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
+  const [isUsingRealData, setIsUsingRealData] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
   const [search, setSearch] = useState('');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -231,6 +403,71 @@ const ActivityPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('today');
 
+  const fetchActivities = useCallback(async (options?: { manual?: boolean }) => {
+    if (options?.manual) {
+      setIsRefreshing(true);
+    }
+    setActivityLoading(true);
+    setActivityError(null);
+
+    try {
+      const rangeStart = getRangeStart(selectedTimeRange);
+
+      const [queries, files] = await Promise.all([
+        graphqlService
+          .getQueryHistory()
+          .catch((error) => {
+            console.error('Failed to load query history for activity page:', error);
+            return [] as AIQueryResult[];
+          }),
+        graphqlService
+          .listFileUploads(200)
+          .catch((error) => {
+            console.error('Failed to load file uploads for activity page:', error);
+            return [] as FileUpload[];
+          })
+      ]);
+
+      const relevantQueries = queries.filter((query) => {
+        if (!query.createdAt) return false;
+        const createdAt = new Date(query.createdAt);
+        return !Number.isNaN(createdAt.getTime()) && createdAt >= rangeStart;
+      });
+
+      const relevantFiles = files.filter((file) => {
+        if (!file.uploadedAt) return false;
+        const uploadedAt = new Date(file.uploadedAt);
+        return !Number.isNaN(uploadedAt.getTime()) && uploadedAt >= rangeStart;
+      });
+
+      const unifiedActivities = [
+        ...relevantQueries.map(mapQueryToUnifiedActivity),
+        ...relevantFiles.map(mapFileToUnifiedActivity)
+      ]
+        .filter((activity) => !!activity.timestamp)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      // Always set real data state, even if empty
+      setUserLogsData(unifiedActivities.slice(0, 30).map(toActivityLog));
+      setRecentActivitiesData(unifiedActivities.slice(0, 18).map(toRecentActivity));
+      setHistoryActivitiesData(unifiedActivities.slice(18, 48).map(toRecentActivity));
+      setIsUsingRealData(true);
+      setLastUpdateTime(new Date());
+    } catch (error) {
+      console.error('Unexpected failure while loading activity feed:', error);
+      setActivityError(error instanceof Error ? error.message : 'Não foi possível carregar as atividades.');
+      setUserLogsData([]);
+      setRecentActivitiesData([]);
+      setHistoryActivitiesData([]);
+      setIsUsingRealData(false);
+    } finally {
+      setActivityLoading(false);
+      if (options?.manual) {
+        setIsRefreshing(false);
+      }
+    }
+  }, [selectedTimeRange]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString());
@@ -238,27 +475,53 @@ const ActivityPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
-  };
+  useEffect(() => {
+    fetchActivities();
+    
+    // Auto-refresh activities every 30 seconds to show real-time data
+    const refreshInterval = setInterval(() => {
+      fetchActivities();
+    }, 30000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [fetchActivities]);
+
+  const handleRefresh = useCallback(async () => {
+    await fetchActivities({ manual: true });
+  }, [fetchActivities]);
 
   // Enhanced filtering function
-  const filterFn = (item: any, fields: string[]) => {
+  type Filterable = {
+    timestamp?: string | null;
+    category?: string | null;
+    severity?: string | null;
+    domainCategory?: ActivityLog['category'];
+  } & Record<string, unknown>;
+
+  const CATEGORY_FILTER_OPTIONS: readonly ActivityLog['category'][] = ['auth', 'data', 'system', 'user'];
+
+  const filterFn = <T extends Filterable>(item: T, fields: string[]) => {
     const s = search.toLowerCase();
-    const matchText = fields.some(f => (item[f] || '').toLowerCase().includes(s));
+    const matchText = fields.some((field) => {
+      const value = item[field as keyof T];
+      return typeof value === 'string' && value.toLowerCase().includes(s);
+    });
     
     // Date filter
     if (dateStart || dateEnd) {
-      const itemDate = item.timestamp.split(' ')[0];
-      if (dateStart && itemDate < dateStart) return false;
-      if (dateEnd && itemDate > dateEnd) return false;
+      const timestamp = typeof item.timestamp === 'string' ? item.timestamp : undefined;
+      const itemDate = timestamp ? timestamp.split(' ')[0] : undefined;
+      if (dateStart && (!itemDate || itemDate < dateStart)) return false;
+      if (dateEnd && (!itemDate || itemDate > dateEnd)) return false;
     }
     
     // Category filter
-    if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
+    if (categoryFilter !== 'all') {
+      const categoryValue = (item as { domainCategory?: ActivityLog['category']; category?: string }).domainCategory ?? item.category;
+      if (typeof categoryValue !== 'string') return false;
+      if (!CATEGORY_FILTER_OPTIONS.includes(categoryValue as ActivityLog['category'])) return false;
+      if (categoryValue !== categoryFilter) return false;
+    }
     
     // Severity filter (for logs)
     if (severityFilter !== 'all' && item.severity !== severityFilter) return false;
@@ -266,16 +529,16 @@ const ActivityPage: React.FC = () => {
     return matchText;
   };
 
-  const filteredUserLogs = userLogs.filter(log =>
+  const filteredUserLogs = userLogsData.filter(log =>
     filterFn(log, ['user', 'action', 'description', 'timestamp'])
   );
 
-  const filteredRecentActivities = recentActivities.filter(act =>
-    filterFn(act, ['user', 'activity', 'details', 'timestamp'])
+  const filteredRecentActivities = recentActivitiesData.filter(act =>
+    filterFn(act, ['user', 'activity', 'details', 'timestamp', 'category', 'domainCategory', 'module'])
   );
 
-  const filteredHistoryActivities = historyActivities.filter(act =>
-    filterFn(act, ['user', 'activity', 'details', 'timestamp'])
+  const filteredHistoryActivities = historyActivitiesData.filter(act =>
+    filterFn(act, ['user', 'activity', 'details', 'timestamp', 'category', 'domainCategory', 'module'])
   );
 
   const getDeviceIcon = (device?: string) => {
@@ -311,10 +574,11 @@ const ActivityPage: React.FC = () => {
   };
 
   // Calculate statistics
-  const totalActivities = userLogs.length + recentActivities.length + historyActivities.length;
-  const authEvents = userLogs.length;
-  const dataEvents = recentActivities.filter(a => a.category === 'view' || a.category === 'edit').length;
-  const systemEvents = recentActivities.filter(a => a.category === 'create' || a.category === 'delete').length;
+  const aggregatedActivities = [...recentActivitiesData, ...historyActivitiesData];
+  const totalActivities = userLogsData.length + aggregatedActivities.length;
+  const authEvents = userLogsData.length;
+  const dataEvents = aggregatedActivities.filter(a => a.domainCategory === 'data').length;
+  const systemEvents = aggregatedActivities.filter(a => a.domainCategory === 'system').length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
@@ -335,8 +599,22 @@ const ActivityPage: React.FC = () => {
                   <Activity size={32} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-4xl font-bold text-white mb-2">System Activity Monitor</h1>
-                  <p className="text-lg text-indigo-100">Real-time tracking of user actions and system events</p>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h1 className="text-4xl font-bold text-white">System Activity Monitor</h1>
+                    {isUsingRealData && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-500 text-white shadow-lg animate-pulse">
+                        <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-lg text-indigo-100">
+                    {isUsingRealData 
+                      ? totalActivities > 0 
+                        ? 'Monitoramento em tempo real de ações e eventos do sistema'
+                        : 'Sistema pronto - Aguardando primeiras atividades'
+                      : 'Erro ao carregar dados do sistema'}
+                  </p>
                 </div>
               </div>
               
@@ -418,6 +696,66 @@ const ActivityPage: React.FC = () => {
         </div>
       </div>
 
+      {activityError && (
+        <div className="mb-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl">
+          {activityError}
+        </div>
+      )}
+
+      {activityLoading && !activityError && (
+        <div className="mb-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-200 px-4 py-3 rounded-xl flex items-center space-x-3">
+          <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+          <span>A carregar atividades do sistema...</span>
+        </div>
+      )}
+
+      {!activityLoading && !activityError && isUsingRealData && totalActivities === 0 && (
+        <div className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 border border-blue-200 dark:border-gray-700 rounded-2xl p-8 text-center shadow-sm">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Activity size={40} className="text-white" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Nenhuma Atividade Registrada
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                O sistema está pronto e a monitorizar. As atividades aparecerão aqui assim que os utilizadores começarem a interagir com a plataforma.
+              </p>
+            </div>
+            <div className="flex items-center space-x-6 pt-4">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <Database size={24} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Execute Consultas AI</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <FileText size={24} className="text-purple-600 dark:text-purple-400" />
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Faça Upload de Ficheiros</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-2">
+                  <User size={24} className="text-green-600 dark:text-green-400" />
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">Ações de Utilizadores</p>
+              </div>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={handleRefresh}
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                <RefreshCw size={18} className="mr-2" />
+                Atualizar Agora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Enhanced Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-200">
         <div className="flex items-center justify-between mb-6">
@@ -430,9 +768,11 @@ const ActivityPage: React.FC = () => {
           
           <div className="flex items-center space-x-2">
             <select
+              id="activity-time-range"
               value={selectedTimeRange}
               onChange={(e) => setSelectedTimeRange(e.target.value)}
               className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
+              aria-label="Filter activities by time range"
             >
               <option value="today">Today</option>
               <option value="week">This Week</option>
@@ -444,13 +784,14 @@ const ActivityPage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
           <div className="lg:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="activity-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Search Activities
             </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
               <input
                 type="text"
+                id="activity-search"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 placeholder="Search by user, action, or description..."
                 value={search}
@@ -460,10 +801,11 @@ const ActivityPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="activity-category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Category
             </label>
             <select
+              id="activity-category"
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
               className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -477,10 +819,11 @@ const ActivityPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="activity-severity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Severity
             </label>
             <select
+              id="activity-severity"
               value={severityFilter}
               onChange={e => setSeverityFilter(e.target.value)}
               className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -493,11 +836,12 @@ const ActivityPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="activity-start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Start Date
             </label>
             <input
               type="date"
+              id="activity-start-date"
               className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               value={dateStart}
               onChange={e => setDateStart(e.target.value)}
@@ -505,11 +849,12 @@ const ActivityPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label htmlFor="activity-end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               End Date
             </label>
             <input
               type="date"
+              id="activity-end-date"
               className="w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               value={dateEnd}
               onChange={e => setDateEnd(e.target.value)}
@@ -541,8 +886,22 @@ const ActivityPage: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>Live monitoring active</span>
+              {isUsingRealData ? (
+                <>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>Dados reais do sistema</span>
+                  {lastUpdateTime && (
+                    <span className="text-xs">
+                      (atualizado {lastUpdateTime.toLocaleTimeString()})
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span>Dados de exemplo</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -551,7 +910,15 @@ const ActivityPage: React.FC = () => {
       {/* Authentication Logs */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-200">
         <div className="flex items-center justify-between mb-6">
-          <SectionHeader icon={Shield} title="Authentication Logs" subtitle="User login and logout activities" />
+          <div className="flex items-center space-x-3">
+            <SectionHeader icon={Shield} title="Authentication Logs" subtitle="User login and logout activities" />
+            {isUsingRealData && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
+                Real-time
+              </span>
+            )}
+          </div>
           
           <div className="flex items-center space-x-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
@@ -575,9 +942,20 @@ const ActivityPage: React.FC = () => {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredUserLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-400 dark:text-gray-500">
-                    <Activity size={24} className="mx-auto mb-2 opacity-50" />
-                    <p>No authentication logs found matching your filters.</p>
+                  <td colSpan={5} className="text-center py-16">
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
+                        <Shield size={32} className="text-gray-400 dark:text-gray-500" />
+                      </div>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-semibold text-lg">
+                          Nenhum Log de Autenticação
+                        </p>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                          Os eventos de login e logout aparecerão aqui quando os utilizadores acederem ao sistema.
+                        </p>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -654,16 +1032,37 @@ const ActivityPage: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Activities</h3>
-              <p className="text-gray-600 dark:text-gray-400">Latest user actions and system operations</p>
+              <p className="text-gray-600 dark:text-gray-400">
+                {totalActivities > 0
+                  ? 'Últimas ações de usuários e operações do sistema' 
+                  : 'Aguardando as primeiras atividades do sistema'}
+              </p>
             </div>
+            {isUsingRealData && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 animate-pulse"></div>
+                Live
+              </span>
+            )}
           </div>
         </div>
 
         <div className="grid gap-4">
           {filteredRecentActivities.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 dark:text-gray-500">
-              <FileText size={24} className="mx-auto mb-2 opacity-50" />
-              <p>No recent activities found matching your filters.</p>
+            <div className="text-center py-16">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl flex items-center justify-center">
+                  <Activity size={40} className="text-blue-500 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-gray-900 dark:text-white font-semibold text-lg">
+                    Nenhuma Atividade Recente
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-2 max-w-md mx-auto">
+                    As atividades mais recentes do sistema aparecerão aqui. Comece executando consultas, fazendo uploads ou gerindo utilizadores.
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
             filteredRecentActivities.map((activity) => (
@@ -704,10 +1103,20 @@ const ActivityPage: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                    <button className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
+                    <button
+                      type="button"
+                      className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      aria-label="View activity details"
+                      title="View details"
+                    >
                       <Eye size={16} />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <button
+                      type="button"
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      aria-label="More activity options"
+                      title="More options"
+                    >
                       <MoreVertical size={16} />
                     </button>
                   </div>
@@ -727,16 +1136,31 @@ const ActivityPage: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Historical Activities</h3>
-              <p className="text-gray-600 dark:text-gray-400">Previous days activities and system events</p>
+              <p className="text-gray-600 dark:text-gray-400">
+                {totalActivities > 0 
+                  ? 'Atividades anteriores e eventos do sistema' 
+                  : 'O histórico será criado conforme o uso do sistema'}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="space-y-4">
           {filteredHistoryActivities.length === 0 ? (
-            <div className="text-center py-8 text-gray-400 dark:text-gray-500">
-              <Calendar size={24} className="mx-auto mb-2 opacity-50" />
-              <p>No historical activities found matching your filters.</p>
+            <div className="text-center py-16">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl flex items-center justify-center">
+                  <Calendar size={40} className="text-purple-500 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-gray-900 dark:text-white font-semibold text-lg">
+                    Sem Histórico de Atividades
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-2 max-w-md mx-auto">
+                    O histórico de atividades anteriores aparecerá aqui à medida que o sistema for utilizado ao longo do tempo.
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
             filteredHistoryActivities.map((activity) => (
