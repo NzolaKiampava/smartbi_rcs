@@ -659,7 +659,7 @@ const FileUploadPage: React.FC = () => {
       </div>
 
       {/* Analysis History Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200 mt-8">
         <div className="flex items-center justify-between mb-6">
           <SectionHeader 
             icon={Clock} 
@@ -698,14 +698,17 @@ const FileUploadPage: React.FC = () => {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
                       <FileText size={24} className="text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                      <h4 
+                        className="font-semibold text-gray-900 dark:text-white text-sm break-words line-clamp-2"
+                        title={analysis.fileName}
+                      >
                         {analysis.fileName}
                       </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {formatFileSize(analysis.fileSize)}
                       </p>
                     </div>
