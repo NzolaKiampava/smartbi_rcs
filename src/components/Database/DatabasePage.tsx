@@ -45,7 +45,7 @@ const DatabasePage: React.FC = () => {
   const [connectionMode, setConnectionMode] = useState<'database' | 'api'>('database');
   const [formData, setFormData] = useState({
     name: '',
-    type: 'postgresql',
+    type: 'supabase',
     host: '',
     port: '',
     database: '',
@@ -59,6 +59,10 @@ const DatabasePage: React.FC = () => {
     headers: ''
   });
   const { showSuccess, showError } = useNotification();
+
+  // Available database types for testing
+  const availableDatabaseTypes = ['supabase', 'firebase'];
+  const isDatabaseTypeAvailable = (type: string) => availableDatabaseTypes.includes(type.toLowerCase());
 
   // Load database connections from API
   const loadDatabases = async () => {
@@ -734,17 +738,17 @@ const DatabasePage: React.FC = () => {
                 >
                   {connectionMode === 'database' ? (
                     <>
-                      <option value="postgresql">PostgreSQL</option>
-                      <option value="mysql">MySQL</option>
-                      <option value="mongodb">MongoDB</option>
-                      <option value="oracle">Oracle</option>
-                      <option value="sqlserver">SQL Server</option>
-                      <option value="redis">Redis</option>
-                      <option value="supabase">Supabase</option>
-                      <option value="elasticsearch">Elasticsearch</option>
-                      <option value="snowflake">Snowflake</option>
-                      <option value="sqlite">SQLite</option>
-                      <option value="firebase">Firebase</option>
+                      <option value="supabase">✓ Supabase</option>
+                      <option value="firebase">✓ Firebase</option>
+                      <option value="postgresql">⏰ PostgreSQL</option>
+                      <option value="mysql">⏰ MySQL</option>
+                      <option value="mongodb">⏰ MongoDB</option>
+                      <option value="oracle">⏰ Oracle</option>
+                      <option value="sqlserver">⏰ SQL Server</option>
+                      <option value="redis">⏰ Redis</option>
+                      <option value="elasticsearch">⏰ Elasticsearch</option>
+                      <option value="snowflake">⏰ Snowflake</option>
+                      <option value="sqlite">⏰ SQLite</option>
                     </>
                   ) : (
                     <>
@@ -756,6 +760,19 @@ const DatabasePage: React.FC = () => {
                     </>
                   )}
                 </select>
+                {connectionMode === 'database' && (
+                  <div className="mt-2 flex items-start space-x-2 text-xs">
+                    <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
+                      <CheckCircle size={14} />
+                      <span className="font-medium">Disponível</span>
+                    </div>
+                    <span className="text-gray-400 dark:text-gray-500">|</span>
+                    <div className="flex items-center space-x-1 text-amber-600 dark:text-amber-400">
+                      
+                      <span className="font-medium">⏰ Em breve</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Connection Name */}
@@ -771,6 +788,24 @@ const DatabasePage: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                 />
               </div>
+
+              {/* Warning for unavailable database types */}
+              {connectionMode === 'database' && !isDatabaseTypeAvailable(formData.type) && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                        Tipo em Desenvolvimento
+                      </h4>
+                      <p className="text-sm text-amber-700 dark:text-amber-400">
+                        <strong>{formData.type.charAt(0).toUpperCase() + formData.type.slice(1)}</strong> está em desenvolvimento e ainda não está disponível para testes. 
+                        Por favor, selecione <strong>Supabase</strong> ou <strong>Firebase</strong> para criar conexões funcionais.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Database specific fields */}
               {connectionMode === 'database' && (
@@ -1025,7 +1060,7 @@ const DatabasePage: React.FC = () => {
                     setShowAddModal(false);
                     setFormData({
                       name: '',
-                      type: connectionMode === 'database' ? 'postgresql' : 'rest',
+                      type: connectionMode === 'database' ? 'supabase' : 'rest',
                       host: '',
                       port: '',
                       database: '',
@@ -1105,7 +1140,7 @@ const DatabasePage: React.FC = () => {
                       setShowAddModal(false);
                       setFormData({
                         name: '',
-                        type: connectionMode === 'database' ? 'postgresql' : 'rest',
+                        type: connectionMode === 'database' ? 'supabase' : 'rest',
                         host: '',
                         port: '',
                         database: '',
@@ -1129,6 +1164,7 @@ const DatabasePage: React.FC = () => {
                     isCreating ||
                     !formData.name || 
                     (connectionMode === 'database' && !formData.host) ||
+                    (connectionMode === 'database' && !isDatabaseTypeAvailable(formData.type)) ||
                     (connectionMode === 'api' && !formData.baseUrl)
                   }
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
