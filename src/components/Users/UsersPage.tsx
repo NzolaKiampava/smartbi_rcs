@@ -27,7 +27,8 @@ import {
   UserPlus,
   Table
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isYesterday, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 // SectionHeader removed: using inline header markup to match Performance header
 import ImportExportControls from './ImportExportControls';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -67,6 +68,64 @@ interface DeleteConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
 }
+
+// Helper function to format last login time in a friendly way
+const formatLastLogin = (lastLogin: string | number | null | undefined): string => {
+  if (!lastLogin) return 'Nunca';
+  
+  try {
+    let date: Date;
+    
+    // Handle different input types
+    if (typeof lastLogin === 'number') {
+      // Timestamp in milliseconds
+      date = new Date(lastLogin);
+    } else if (typeof lastLogin === 'string') {
+      // Try to parse as number first (in case it's a string timestamp like "1760182526868")
+      const numericValue = Number(lastLogin);
+      if (!isNaN(numericValue) && numericValue > 1000000000000) {
+        // Looks like a millisecond timestamp
+        date = new Date(numericValue);
+      } else {
+        // Parse as ISO string
+        date = parseISO(lastLogin);
+      }
+    } else {
+      // Fallback: try to create a Date object from unknown format
+      date = new Date(lastLogin);
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Nunca';
+    }
+    
+    // Check if it's today
+    if (isToday(date)) {
+      return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
+    }
+    
+    // Check if it's yesterday
+    if (isYesterday(date)) {
+      return 'Ontem às ' + format(date, 'HH:mm');
+    }
+    
+    // For older dates, show the full date
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays < 7) {
+      // Less than a week ago
+      return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
+    } else {
+      // More than a week ago, show full date
+      return format(date, 'dd/MM/yyyy HH:mm');
+    }
+  } catch (error) {
+    console.error('Error formatting lastLogin:', error);
+    return 'Nunca';
+  }
+};
 
 const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState<Partial<User>>({
@@ -489,13 +548,11 @@ const UsersPage: React.FC = () => {
     }
 
     try {
-      console.log('🔄 UsersPage: Carregando usuários...', { isSuperAdmin, companyId: fallbackCompanyId });
       const result = await graphqlService.getUsers({
         companyId: isSuperAdmin ? undefined : fallbackCompanyId,
         pagination: { limit: 100 },
       });
 
-      console.log('✅ UsersPage: Usuários carregados:', result.users.length);
       const normalizedUsers = (result.users ?? []).map(mapBackendUserToUi);
       setUsers(normalizedUsers);
 
@@ -1158,12 +1215,7 @@ const UsersPage: React.FC = () => {
 
                       {/* Last Login Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {(() => {
-                          if (!user.lastLogin) return 'Never';
-                          const date = new Date(user.lastLogin);
-                          if (isNaN(date.getTime())) return 'Never';
-                          return format(date, 'dd/MM/yyyy HH:mm');
-                        })()}
+                        {formatLastLogin(user.lastLogin)}
                       </td>
 
                       {/* Actions Column */}
