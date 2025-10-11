@@ -24,7 +24,8 @@ import {
   Clock,
   Grid3X3,
   List,
-  UserPlus
+  UserPlus,
+  Table
 } from 'lucide-react';
 import { format } from 'date-fns';
 // SectionHeader removed: using inline header markup to match Performance header
@@ -350,7 +351,7 @@ const UsersPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | User['role']>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | User['status']>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -922,6 +923,17 @@ const UsersPage: React.FC = () => {
               >
                 <List size={16} />
               </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  viewMode === 'table' 
+                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100'
+                }`}
+                title="Table View"
+              >
+                <Table size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -1019,7 +1031,7 @@ const UsersPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Users Grid/List */}
+      {/* Users Grid/List/Table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-400">
@@ -1028,11 +1040,178 @@ const UsersPage: React.FC = () => {
           </div>
         </div>
       ) : filteredUsers.length > 0 ? (
-        <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-          {filteredUsers.map((user) => (
-            <UserCard key={user.id} user={user} />
-          ))}
-        </div>
+        viewMode === 'table' ? (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      User
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Role
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Department
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Last Login
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredUsers.map((user) => (
+                    <tr 
+                      key={user.id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors"
+                    >
+                      {/* User Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-semibold flex-shrink-0">
+                            {user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-900 dark:text-white truncate">
+                              {user.name}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-1">
+                              <span className="truncate">{user.email}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Contact Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                            <Mail size={14} className="mr-2 flex-shrink-0 text-gray-400" />
+                            <span className="truncate max-w-[200px]">{user.email}</span>
+                          </div>
+                          {user.phone && (
+                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                              <Phone size={14} className="mr-2 flex-shrink-0 text-gray-400" />
+                              <span>{user.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Role Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            user.role === 'admin' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                            user.role === 'manager' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                            user.role === 'analyst' ? 'bg-green-100 dark:bg-green-900/30' :
+                            'bg-gray-100 dark:bg-gray-900/30'
+                          }`}>
+                            {user.role === 'admin' ? <Crown size={16} className="text-purple-600 dark:text-purple-400" /> :
+                             user.role === 'manager' ? <Shield size={16} className="text-blue-600 dark:text-blue-400" /> :
+                             user.role === 'analyst' ? <TrendingUp size={16} className="text-green-600 dark:text-green-400" /> :
+                             <Eye size={16} className="text-gray-600 dark:text-gray-400" />}
+                          </div>
+                          <span className={`text-sm font-medium ${
+                            user.role === 'admin' ? 'text-purple-700 dark:text-purple-300' :
+                            user.role === 'manager' ? 'text-blue-700 dark:text-blue-300' :
+                            user.role === 'analyst' ? 'text-green-700 dark:text-green-300' :
+                            'text-gray-700 dark:text-gray-300'
+                          }`}>
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Department Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {user.department}
+                        </span>
+                      </td>
+
+                      {/* Status Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          user.status === 'active' 
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                            : user.status === 'inactive'
+                            ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                        }`}>
+                          {user.status === 'active' ? <UserCheck size={12} className="mr-1" /> :
+                           user.status === 'inactive' ? <UserX size={12} className="mr-1" /> :
+                           <Clock size={12} className="mr-1" />}
+                          {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                        </span>
+                      </td>
+
+                      {/* Last Login Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        {(() => {
+                          if (!user.lastLogin) return 'Never';
+                          const date = new Date(user.lastLogin);
+                          if (isNaN(date.getTime())) return 'Never';
+                          return format(date, 'dd/MM/yyyy HH:mm');
+                        })()}
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => {
+                              setEditingUser(user);
+                              setShowEditModal(true);
+                            }}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                            title="Edit user"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user)}
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                            title="Delete user"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer with Info */}
+            <div className="bg-gray-50 dark:bg-gray-900/50 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                <span>Showing {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}</span>
+                <span className="flex items-center space-x-2">
+                  <Activity size={14} />
+                  <span>{filteredUsers.filter(u => u.status === 'active').length} active</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
+            {filteredUsers.map((user) => (
+              <UserCard key={user.id} user={user} />
+            ))}
+          </div>
+        )
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-12 text-center">
           <Users size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
