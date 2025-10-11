@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { graphqlService } from '../../services/graphqlService';
 // Months list for filters
@@ -64,7 +64,12 @@ const AnalyticsPage: React.FC = () => {
     totalFiles: number;
     totalQueries: number;
     totalConnections: number;
-    recentQueries: Array<{ date: string; count: number; avgExecutionTime: number }>;
+    usersTrend: { change: number; trend: 'up' | 'down' };
+    filesTrend: { change: number; trend: 'up' | 'down' };
+    queriesTrend: { change: number; trend: 'up' | 'down' };
+    connectionsTrend: { change: number; trend: 'up' | 'down' };
+    recentQueries: Array<{ date: string; count: number; avgExecutionTime: number; successCount: number; failureCount: number; successRate: number }>;
+    monthlyFileUploads: Array<{ date: string; uploads: number; completed: number; pending: number; failed: number }>;
     filesByType: Array<{ type: string; count: number }>;
     queriesByStatus: Array<{ status: string; count: number }>;
   } | null>(null);
@@ -85,14 +90,6 @@ const AnalyticsPage: React.FC = () => {
 
     loadAnalytics();
   }, [authUser]);
-
-  // Calculate previous month values for trend (mock calculation)
-  const calculateTrend = (_current: number): { change: number; trend: 'up' | 'down' } => {
-    // Mock: assume 10-20% growth
-    const change = Math.random() * 10 + 5;
-    const trend = Math.random() > 0.3 ? 'up' : 'down';
-    return { change: parseFloat(change.toFixed(1)), trend };
-  };
 
   // Build KPIs from backend data
   const analyticsData = useMemo(() => {
@@ -145,27 +142,39 @@ const AnalyticsPage: React.FC = () => {
             description: 'active connections'
           }
         ],
-        revenueData: [],
+        monthlySummary: [],
         channelData: [],
         performanceData: [],
         geographicData: []
       };
     }
 
-    const usersTrend = calculateTrend(backendStats.totalUsers);
-    const filesTrend = calculateTrend(backendStats.totalFiles);
-    const queriesTrend = calculateTrend(backendStats.totalQueries);
-    const connectionsTrend = calculateTrend(backendStats.totalConnections);
+    // Use trends from backend
+    const usersTrend = backendStats.usersTrend;
+    const filesTrend = backendStats.filesTrend;
+    const queriesTrend = backendStats.queriesTrend;
+    const connectionsTrend = backendStats.connectionsTrend;
 
-    // Map recentQueries to revenue chart format (queries as "revenue")
-    const revenueData = backendStats.recentQueries.map(q => {
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const fileUploadsByDate = new Map(backendStats.monthlyFileUploads.map(entry => [entry.date, entry]));
+
+    const monthlySummary = backendStats.recentQueries.map(q => {
       const date = new Date(q.date + '-01');
-      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const monthLabel = monthNames[date.getMonth()];
+      const uploadsInfo = fileUploadsByDate.get(q.date) ?? { uploads: 0, completed: 0, pending: 0, failed: 0 };
+
       return {
-        month: monthNames[date.getMonth()],
-        revenue: q.count, // Use query count as "revenue"
-        orders: Math.floor(q.avgExecutionTime), // Use avg exec time as "orders" (ms)
-        users: backendStats.totalUsers // Keep total users
+        month: monthLabel,
+        isoDate: q.date,
+        totalQueries: q.count,
+        avgExecutionTime: q.avgExecutionTime,
+        successRate: q.successRate,
+        successCount: q.successCount,
+        failureCount: q.failureCount,
+        filesUploaded: uploadsInfo.uploads,
+        completedAnalyses: uploadsInfo.completed,
+        pendingAnalyses: uploadsInfo.pending,
+        failedAnalyses: uploadsInfo.failed
       };
     });
 
@@ -231,7 +240,7 @@ const AnalyticsPage: React.FC = () => {
           description: 'active connections'
         }
       ],
-      revenueData,
+      monthlySummary,
       channelData,
       performanceData,
       geographicData: [] // Not available from backend, keep empty
@@ -261,8 +270,8 @@ const AnalyticsPage: React.FC = () => {
   };
   
   // Filtrar dados
-  const filteredRevenueData = useMemo(() => {
-    let data = analyticsData.revenueData;
+  const filteredMonthlyData = useMemo(() => {
+    let data = analyticsData.monthlySummary;
     if (filterPeriod.start && filterPeriod.end) {
       const startIdx = monthsList.indexOf(filterPeriod.start);
       const endIdx = monthsList.indexOf(filterPeriod.end);
@@ -271,18 +280,29 @@ const AnalyticsPage: React.FC = () => {
       }
     }
     if (filterRevenueMin) {
-      data = data.filter(row => row.revenue >= Number(filterRevenueMin));
+      data = data.filter(row => row.totalQueries >= Number(filterRevenueMin));
     }
     if (filterRevenueMax) {
-      data = data.filter(row => row.revenue <= Number(filterRevenueMax));
+      data = data.filter(row => row.totalQueries <= Number(filterRevenueMax));
     }
   // Category, Segment, Status: examples for future expansion
     return data;
-  }, [analyticsData.revenueData, filterPeriod, filterRevenueMin, filterRevenueMax]);
+  }, [analyticsData.monthlySummary, filterPeriod, filterRevenueMin, filterRevenueMax]);
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
   const [isRealTime, setIsRealTime] = useState(true);
   // Removido selectedMetrics não utilizado
   const [refreshing, setRefreshing] = useState(false);
+
+  const formatUsageTooltip = useCallback((value: number | string, name: string) => {
+    if (name === 'Analysis Success Rate') {
+      const numericValue = typeof value === 'number' ? value : Number(value);
+      if (Number.isFinite(numericValue)) {
+        return [`${numericValue.toFixed(1)}%`, name];
+      }
+      return [`${value}%`, name];
+    }
+    return [value, name];
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -342,7 +362,6 @@ const AnalyticsPage: React.FC = () => {
     includeRevenue: true,
     includeChannels: true,
     includePerformance: true,
-    includeGeo: true,
   });
   // Estado para menu de compartilhamento
   const [shareMenu, setShareMenu] = useState<{ open: boolean; anchor: HTMLElement | null; data: any[]; title: string } | null>(null);
@@ -351,7 +370,12 @@ const AnalyticsPage: React.FC = () => {
   // Estado mock para configurações
   const [chartType, setChartType] = useState<'bar' | 'line' | 'area'>('bar');
   const [chartColor, setChartColor] = useState<string>('#3B82F6');
-  const [showMetric, setShowMetric] = useState<'revenue' | 'orders' | 'users'>('revenue');
+  const [showMetric, setShowMetric] = useState<'totalQueries' | 'avgExecutionTime' | 'successRate'>('totalQueries');
+  const metricLabelMap: Record<'totalQueries' | 'avgExecutionTime' | 'successRate', string> = {
+    totalQueries: 'Total Queries',
+    avgExecutionTime: 'Avg Execution Time (ms)',
+    successRate: 'Success Rate (%)'
+  };
   const [showLegend, setShowLegend] = useState<boolean>(true);
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [showValues, setShowValues] = useState<boolean>(false);
@@ -441,9 +465,9 @@ const AnalyticsPage: React.FC = () => {
 
     const rowsForKpi = (k: any) => {
       // return some representative data for export based on KPI id
-      if (k.id === 'revenue') return analyticsData.revenueData;
-      if (k.id === 'users') return analyticsData.revenueData.map(r => ({ month: r.month, users: r.users }));
-      if (k.id === 'orders') return analyticsData.revenueData.map(r => ({ month: r.month, orders: r.orders }));
+  if (k.id === 'revenue') return analyticsData.monthlySummary;
+  if (k.id === 'users') return analyticsData.monthlySummary.map(r => ({ month: r.month, users: r.totalQueries }));
+  if (k.id === 'orders') return analyticsData.monthlySummary.map(r => ({ month: r.month, orders: r.avgExecutionTime }));
       return [];
     };
 
@@ -542,16 +566,15 @@ const AnalyticsPage: React.FC = () => {
   // Map common chart/table titles to the data they should export
   function getDataForTitle(title: string, fallback: any[] = []) {
     switch ((title || '').toLowerCase()) {
-      case 'revenue trend analysis':
+      case 'ai query trend':
       case 'monthly data breakdown':
-      case 'user growth & engagement':
-        return filteredRevenueData;
+      case 'monthly usage breakdown':
+      case 'platform usage & engagement':
+        return filteredMonthlyData;
       case 'traffic sources distribution':
         return analyticsData.channelData;
       case 'system performance metrics':
         return analyticsData.performanceData;
-      case 'geographic distribution':
-        return analyticsData.geographicData;
       default:
         return fallback;
     }
@@ -564,16 +587,13 @@ const AnalyticsPage: React.FC = () => {
       sections.push({ title: 'KPIs', rows: analyticsData.kpis.map(k => ({ title: k.title, value: k.value, change: k.change })) });
     }
     if (exportOptions.includeRevenue) {
-      sections.push({ title: 'Revenue Trend', rows: filteredRevenueData.map(r => ({ month: r.month, revenue: r.revenue, orders: r.orders, users: r.users })) });
+      sections.push({ title: 'Query Trend', rows: filteredMonthlyData.map(r => ({ month: r.month, totalQueries: r.totalQueries, avgExecutionTime: r.avgExecutionTime, successRate: r.successRate, filesUploaded: r.filesUploaded })) });
     }
     if (exportOptions.includeChannels) {
       sections.push({ title: 'Traffic Channels', rows: analyticsData.channelData.map(c => ({ channel: c.channel, value: c.value })) });
     }
     if (exportOptions.includePerformance) {
       sections.push({ title: 'Performance Metrics', rows: analyticsData.performanceData.map(p => ({ metric: p.metric, score: p.score, target: p.target })) });
-    }
-    if (exportOptions.includeGeo) {
-      sections.push({ title: 'Geographic Distribution', rows: analyticsData.geographicData.map(g => ({ country: g.country, users: g.users, percentage: g.percentage })) });
     }
     return sections;
   }
@@ -850,7 +870,7 @@ const AnalyticsPage: React.FC = () => {
                   </div>
 
                   <div className="mb-4 w-full">
-                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Revenue Range</label>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Query Volume Range</label>
                     <div className="flex space-x-2">
                       <input type="number" placeholder="Min" value={filterRevenueMin} onChange={e => setFilterRevenueMin(e.target.value)} className="w-1/2 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
                       <input type="number" placeholder="Max" value={filterRevenueMax} onChange={e => setFilterRevenueMax(e.target.value)} className="w-1/2 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
@@ -887,9 +907,9 @@ const AnalyticsPage: React.FC = () => {
                   <div className="mb-3">
                     <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Displayed Metric</label>
                     <select value={showMetric} onChange={e => setShowMetric(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                      <option value="revenue">Revenue</option>
-                      <option value="orders">Orders</option>
-                      <option value="users">Users</option>
+                      <option value="totalQueries">Total Queries</option>
+                      <option value="avgExecutionTime">Avg Execution Time</option>
+                      <option value="successRate">Success Rate</option>
                     </select>
                   </div>
 
@@ -964,9 +984,9 @@ const AnalyticsPage: React.FC = () => {
             <div className="mt-4">
               <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Displayed Metric</label>
               <select value={showMetric} onChange={e => setShowMetric(e.target.value as any)} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                <option value="revenue">Revenue</option>
-                <option value="orders">Orders</option>
-                <option value="users">Users</option>
+                <option value="totalQueries">Total Queries</option>
+                <option value="avgExecutionTime">Avg Execution Time</option>
+                <option value="successRate">Success Rate</option>
               </select>
             </div>
           </div>
@@ -1087,7 +1107,7 @@ const AnalyticsPage: React.FC = () => {
                       </label>
                       <label className="inline-flex items-center space-x-2">
                         <input type="checkbox" checked={exportOptions.includeRevenue} onChange={() => setExportOptions(o => ({ ...o, includeRevenue: !o.includeRevenue }))} />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Revenue Trend</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Query Trend</span>
                       </label>
                       <label className="inline-flex items-center space-x-2">
                         <input type="checkbox" checked={exportOptions.includeChannels} onChange={() => setExportOptions(o => ({ ...o, includeChannels: !o.includeChannels }))} />
@@ -1096,10 +1116,6 @@ const AnalyticsPage: React.FC = () => {
                       <label className="inline-flex items-center space-x-2">
                         <input type="checkbox" checked={exportOptions.includePerformance} onChange={() => setExportOptions(o => ({ ...o, includePerformance: !o.includePerformance }))} />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Performance Metrics</span>
-                      </label>
-                      <label className="inline-flex items-center space-x-2">
-                        <input type="checkbox" checked={exportOptions.includeGeo} onChange={() => setExportOptions(o => ({ ...o, includeGeo: !o.includeGeo }))} />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Geographic Distribution</span>
                       </label>
                     </div>
                   </div>
@@ -1119,37 +1135,36 @@ const AnalyticsPage: React.FC = () => {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Revenue Trend */}
-  <ChartCard title="Revenue Trend Analysis" dataForExport={filteredRevenueData} exportRef={revenueExportRef}>
+  {/* Query Trend */}
+  <ChartCard title="AI Query Trend" dataForExport={filteredMonthlyData} exportRef={revenueExportRef}>
     <div ref={revenueExportRef} className="w-full h-full">
       <ResponsiveContainer width="100%" height="100%">
       {chartType === 'bar' ? (
-        <ComposedChart data={filteredRevenueData}>
+  <ComposedChart data={filteredMonthlyData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
           <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
           <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} />
           <Legend />
-          <Bar yAxisId="left" dataKey={showMetric} fill={chartColor} name={showMetric.charAt(0).toUpperCase() + showMetric.slice(1)} radius={[4, 4, 0, 0]} />
-          <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={3} name="Orders" dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }} />
+          <Bar yAxisId="left" dataKey={showMetric} fill={chartColor} name={metricLabelMap[showMetric]} radius={[4, 4, 0, 0]} />
         </ComposedChart>
       ) : chartType === 'line' ? (
-        <ComposedChart data={filteredRevenueData}>
+  <ComposedChart data={filteredMonthlyData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
           <YAxis stroke="#6b7280" fontSize={12} />
           <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} />
           <Legend />
-          <Line type="monotone" dataKey={showMetric} stroke={chartColor} strokeWidth={3} name={showMetric.charAt(0).toUpperCase() + showMetric.slice(1)} dot={{ fill: chartColor, strokeWidth: 2, r: 4 }} />
+          <Line type="monotone" dataKey={showMetric} stroke={chartColor} strokeWidth={3} name={metricLabelMap[showMetric]} dot={{ fill: chartColor, strokeWidth: 2, r: 4 }} />
         </ComposedChart>
       ) : (
-        <AreaChart data={filteredRevenueData}>
+  <AreaChart data={filteredMonthlyData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
           <YAxis stroke="#6b7280" fontSize={12} />
           <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} />
           <Legend />
-          <Area type="monotone" dataKey={showMetric} stroke={chartColor} fill={chartColor + '33'} strokeWidth={2} name={showMetric.charAt(0).toUpperCase() + showMetric.slice(1)} />
+          <Area type="monotone" dataKey={showMetric} stroke={chartColor} fill={chartColor + '33'} strokeWidth={2} name={metricLabelMap[showMetric]} />
         </AreaChart>
       )}
       </ResponsiveContainer>
@@ -1157,33 +1172,43 @@ const AnalyticsPage: React.FC = () => {
   </ChartCard>
 
         {/* User Growth */}
-  <ChartCard title="User Growth & Engagement" dataForExport={filteredRevenueData}>
+  <ChartCard title="Platform Usage & Engagement" dataForExport={filteredMonthlyData}>
     <ResponsiveContainer width="100%" height="100%">
       {chartType === 'area' ? (
-        <AreaChart data={filteredRevenueData}>
+        <ComposedChart data={filteredMonthlyData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-          <YAxis stroke="#6b7280" fontSize={12} />
-          <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} />
-          <Area type="monotone" dataKey={showMetric} stroke={chartColor} fill={chartColor + '33'} strokeWidth={2} name={showMetric.charAt(0).toUpperCase() + showMetric.slice(1)} />
-        </AreaChart>
-      ) : chartType === 'line' ? (
-        <ComposedChart data={filteredRevenueData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-          <YAxis stroke="#6b7280" fontSize={12} />
-          <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} />
+          <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
+          <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" fontSize={12} domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+          <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} formatter={formatUsageTooltip} />
           <Legend />
-          <Line type="monotone" dataKey={showMetric} stroke={chartColor} strokeWidth={3} name={showMetric.charAt(0).toUpperCase() + showMetric.slice(1)} dot={{ fill: chartColor, strokeWidth: 2, r: 4 }} />
+          <Area yAxisId="left" type="monotone" dataKey="filesUploaded" stroke={chartColor} fill={chartColor + '33'} strokeWidth={2} name="Files Uploaded" />
+          <Bar yAxisId="left" dataKey="completedAnalyses" fill="#10B981" name="Completed Analyses" radius={[4,4,0,0]} />
+          <Line yAxisId="right" type="monotone" dataKey="successRate" stroke="#F59E0B" strokeWidth={3} name="Analysis Success Rate" dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }} />
+        </ComposedChart>
+      ) : chartType === 'line' ? (
+        <ComposedChart data={filteredMonthlyData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
+          <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
+          <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" fontSize={12} domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+          <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} formatter={formatUsageTooltip} />
+          <Legend />
+          <Line yAxisId="left" type="monotone" dataKey="filesUploaded" stroke={chartColor} strokeWidth={3} name="Files Uploaded" dot={{ fill: chartColor, strokeWidth: 2, r: 4 }} />
+          <Line yAxisId="left" type="monotone" dataKey="completedAnalyses" stroke="#10B981" strokeWidth={3} name="Completed Analyses" dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }} />
+          <Line yAxisId="right" type="monotone" dataKey="successRate" stroke="#F59E0B" strokeWidth={3} strokeDasharray="5 5" name="Analysis Success Rate" dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }} />
         </ComposedChart>
       ) : (
-        <ComposedChart data={filteredRevenueData}>
+        <ComposedChart data={filteredMonthlyData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="month" stroke="#6b7280" fontSize={12} />
-          <YAxis stroke="#6b7280" fontSize={12} />
-          <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} />
+          <YAxis yAxisId="left" stroke="#6b7280" fontSize={12} />
+          <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" fontSize={12} domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+          <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} formatter={formatUsageTooltip} />
           <Legend />
-          <Bar dataKey={showMetric} fill={chartColor} name={showMetric.charAt(0).toUpperCase() + showMetric.slice(1)} radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="left" dataKey="filesUploaded" fill={chartColor} name="Files Uploaded" radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="left" dataKey="completedAnalyses" fill="#10B981" name="Completed Analyses" radius={[4, 4, 0, 0]} />
+          <Line yAxisId="right" type="monotone" dataKey="successRate" stroke="#F59E0B" strokeWidth={3} strokeDasharray="5 5" name="Analysis Success Rate" dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }} />
         </ComposedChart>
       )}
     </ResponsiveContainer>
@@ -1231,54 +1256,19 @@ const AnalyticsPage: React.FC = () => {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Geographic Distribution */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Geographic Distribution</h3>
-            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Globe size={16} />
-            </button>
-          </div>
-          <div className="space-y-4">
-            {analyticsData.geographicData.map((country, index) => (
-              <div key={country.country} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{country.country}</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full" 
-                      style={{ 
-                        width: `${country.percentage}%`, 
-                        backgroundColor: COLORS[index % COLORS.length] 
-                      }}
-                    ></div>
-                  </div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400 w-12 text-right">
-                    {country.percentage}%
-                  </span>
-                  <span className="text-sm text-gray-500 dark:text-gray-500 w-16 text-right">
-                    {country.users.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Removed Geographic Distribution - No backend data available */}
       </div>
 
       {/* Tabela Detalhada com Exportação */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-8 overflow-x-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Monthly Data Breakdown</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Monthly Usage Breakdown</h3>
           <button
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
             onClick={() => {
               const csvRows = [
-                ['Month', 'Revenue', 'Orders', 'Users'],
-                ...analyticsData.revenueData.map(row => [row.month, row.revenue, row.orders, row.users])
+                ['Month', 'Total Queries', 'Avg Exec (ms)', 'Success Rate (%)', 'Files Uploaded'],
+                ...analyticsData.monthlySummary.map(row => [row.month, row.totalQueries, row.avgExecutionTime, row.successRate, row.filesUploaded])
               ];
               const csvContent = csvRows.map(e => e.join(',')).join('\n');
               const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -1297,18 +1287,20 @@ const AnalyticsPage: React.FC = () => {
           <thead>
             <tr>
               <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Month</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Revenue</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Orders</th>
-              <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Users</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Total Queries</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Avg Exec (ms)</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Success Rate (%)</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-700 dark:text-gray-300">Files Uploaded</th>
             </tr>
           </thead>
           <tbody>
-            {filteredRevenueData.map((row, idx) => (
+            {filteredMonthlyData.map((row, idx) => (
               <tr key={row.month} className={idx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/10' : ''}>
                 <td className="px-4 py-2 text-gray-900 dark:text-white">{row.month}</td>
-                <td className="px-4 py-2 text-green-700 dark:text-green-400 font-medium">${row.revenue.toLocaleString()}</td>
-                <td className="px-4 py-2 text-blue-700 dark:text-blue-400">{row.orders}</td>
-                <td className="px-4 py-2 text-purple-700 dark:text-purple-400">{row.users}</td>
+                <td className="px-4 py-2 text-blue-700 dark:text-blue-400 font-medium">{row.totalQueries.toLocaleString()}</td>
+                <td className="px-4 py-2 text-indigo-700 dark:text-indigo-300">{row.avgExecutionTime}</td>
+                <td className="px-4 py-2 text-green-700 dark:text-green-400">{row.successRate}%</td>
+                <td className="px-4 py-2 text-purple-700 dark:text-purple-400">{row.filesUploaded.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
