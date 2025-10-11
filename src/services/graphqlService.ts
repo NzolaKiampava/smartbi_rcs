@@ -1556,6 +1556,36 @@ class GraphQLService {
     }
   }
 
+  async createDatabaseConnection(input: {
+    name: string;
+    type: string;
+    config: {
+      host: string;
+      port?: number;
+      database?: string;
+      username?: string;
+      password?: string;
+    };
+    isDefault?: boolean;
+  }): Promise<Connection> {
+    const mutation = `
+      mutation CreateDatabaseConnection($input: DataConnectionInput!) {
+        createDataConnectionPublic(input: $input) {
+          id
+          name
+          type
+          status
+          isDefault
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+    const variables = { input };
+    const response = await this.makeRequest<{ createDataConnectionPublic: Connection }>(mutation, variables);
+    return response.createDataConnectionPublic;
+  }
+
   async createApiConnection(input: {
     name: string;
     type: string;

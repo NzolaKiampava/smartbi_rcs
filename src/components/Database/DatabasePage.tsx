@@ -39,6 +39,7 @@ const DatabasePage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [databases, setDatabases] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [connectionMode, setConnectionMode] = useState<'database' | 'api'>('database');
@@ -368,7 +369,7 @@ const DatabasePage: React.FC = () => {
         await loadDatabases();
         setDeleteModal({ open: false, connection: null, loading: false });
       } catch (err) {
-        const errorMsg = typeof err === 'object' && err !== null && 'message' in err ? (err as any).message : String(err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
         showError('Erro ao excluir conexão: ' + errorMsg);
         setDeleteModal((prev) => ({ ...prev, loading: false }));
       }
@@ -1039,12 +1040,14 @@ const DatabasePage: React.FC = () => {
                     setShowPassword(false);
                     setConnectionMode('database');
                   }}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  disabled={isCreating}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={async () => {
+                    setIsCreating(true);
                     try {
                       if (connectionMode === 'api') {
                         // Parse headers from textarea
@@ -1069,11 +1072,35 @@ const DatabasePage: React.FC = () => {
                           isDefault: false,
                         };
                         await graphqlService.createApiConnection(apiInput);
-                        // Removed create notification - user will see the new connection in the list
+                        showSuccess('Conexão API criada com sucesso!');
                         await loadDatabases();
                       } else {
-                        // Database connection logic (not implemented here)
-                        showSuccess('Database connection will be added soon!');
+                        // Database connection - map type to backend enum
+                        const typeMapping: Record<string, string> = {
+                          'postgresql': 'POSTGRESQL',
+                          'mysql': 'MYSQL',
+                          'supabase': 'SUPABASE',
+                          'firebase': 'FIREBASE',
+                        };
+                        
+                        const backendType = typeMapping[formData.type.toLowerCase()] || 'POSTGRESQL';
+                        
+                        const databaseInput = {
+                          name: formData.name,
+                          type: backendType,
+                          config: {
+                            host: formData.host,
+                            port: formData.port ? parseInt(formData.port) : undefined,
+                            database: formData.database || undefined,
+                            username: formData.username || undefined,
+                            password: formData.password || undefined,
+                          },
+                          isDefault: false,
+                        };
+                        
+                        await graphqlService.createDatabaseConnection(databaseInput);
+                        showSuccess('Conexão de base de dados criada com sucesso!');
+                        await loadDatabases();
                       }
                       setShowAddModal(false);
                       setFormData({
@@ -1092,19 +1119,31 @@ const DatabasePage: React.FC = () => {
                       });
                       setShowPassword(false);
                     } catch (err) {
-                      const errorMsg = typeof err === 'object' && err !== null && 'message' in err ? (err as any).message : String(err);
-                      showError('Erro ao criar conexão API: ' + errorMsg);
+                      const errorMsg = err instanceof Error ? err.message : String(err);
+                      showError('Erro ao criar conexão: ' + errorMsg);
+                    } finally {
+                      setIsCreating(false);
                     }
                   }}
                   disabled={
+                    isCreating ||
                     !formData.name || 
                     (connectionMode === 'database' && !formData.host) ||
                     (connectionMode === 'api' && !formData.baseUrl)
                   }
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  <Plus size={16} className="inline mr-2" />
-                  Add Connection
+                  {isCreating ? (
+                    <>
+                      <Loader size={16} className="inline mr-2 animate-spin" />
+                      Criando...
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={16} className="inline mr-2" />
+                      Add Connection
+                    </>
+                  )}
                 </button>
               </div>
             </div>
