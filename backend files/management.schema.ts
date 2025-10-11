@@ -21,6 +21,14 @@ export const managementTypeDefs = `#graphql
     emailVerified: Boolean
   }
 
+  input CreateUserInput {
+    email: String!
+    firstName: String!
+    lastName: String!
+    role: UserRole!
+    password: String!
+  }
+
   input UpdateCompanyInput {
     name: String
     domain: String
@@ -87,6 +95,7 @@ export const managementTypeDefs = `#graphql
 
   extend type Mutation {
     # User Management
+    createUser(input: CreateUserInput!): UserResponse!
     updateUser(id: ID!, input: UpdateUserInput!): UserResponse!
     deleteUser(id: ID!): UserResponse!
     updateUserSettings(input: UpdateUserSettingsInput!): UserResponse!

@@ -1010,6 +1010,77 @@ class GraphQLService {
     };
   }
 
+  async createUser(input: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    password: string;
+  }): Promise<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    companyId: string;
+    isActive: boolean;
+    emailVerified: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }> {
+    const mutation = `
+      mutation CreateUser($input: CreateUserInput!) {
+        createUser(input: $input) {
+          success
+          message
+          errors
+          data {
+            id
+            email
+            firstName
+            lastName
+            role
+            companyId
+            isActive
+            emailVerified
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const variables = { input };
+
+    const response = await this.makeRequest<{
+      createUser: {
+        success: boolean;
+        message?: string;
+        errors?: string[];
+        data?: {
+          id: string;
+          email: string;
+          firstName: string;
+          lastName: string;
+          role: string;
+          companyId: string;
+          isActive: boolean;
+          emailVerified: boolean;
+          createdAt: string;
+          updatedAt: string;
+        };
+      };
+    }>(mutation, variables);
+
+    if (!response.createUser.success || !response.createUser.data) {
+      const errorMessage = response.createUser.message || 'Failed to create user';
+      console.error('❌ GraphQL createUser mutation failed:', response.createUser.errors || errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    return response.createUser.data;
+  }
+
   // Fetch overview/dashboard data (KPIs, revenue series, categories, performance, recent activities, insights)
   // This endpoint may not exist on all backends; callers should handle errors and fall back to local mocks.
   async getOverview(): Promise<{

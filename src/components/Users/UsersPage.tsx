@@ -569,20 +569,66 @@ const UsersPage: React.FC = () => {
     setShowDeleteModal(true);
   };
 
-  const handleSaveUser = (userData: User) => {
+  const handleSaveUser = async (userData: User) => {
     const normalizedUser = ensureUserDefaults(userData);
 
-    if (editingUser) {
-      // Update existing user
-      setUsers(users.map(user => user.id === normalizedUser.id ? normalizedUser : user));
-      showSuccess(`User ${normalizedUser.name} updated successfully`);
-    } else {
-      // Add new user
-      setUsers([...users, normalizedUser]);
-      showSuccess(`User ${normalizedUser.name} created successfully`);
+    try {
+      if (editingUser) {
+        // Update existing user - TODO: implement backend update
+        setUsers(users.map(user => user.id === normalizedUser.id ? normalizedUser : user));
+        showSuccess(`User ${normalizedUser.name} updated successfully`);
+      } else {
+        // Create new user with default password
+        const DEFAULT_PASSWORD = 'Smartbi@123';
+        
+        // Map UI role to backend role enum
+        const mapUiRoleToBackend = (uiRole: User['role']): string => {
+          switch (uiRole) {
+            case 'admin':
+              return 'COMPANY_ADMIN';
+            case 'manager':
+              return 'MANAGER';
+            case 'analyst':
+              return 'ANALYST';
+            case 'viewer':
+              return 'VIEWER';
+            default:
+              return 'VIEWER';
+          }
+        };
+
+        const createdUser = await graphqlService.createUser({
+          email: normalizedUser.email,
+          firstName: normalizedUser.name.split(' ')[0] || normalizedUser.name,
+          lastName: normalizedUser.name.split(' ').slice(1).join(' ') || '',
+          role: mapUiRoleToBackend(normalizedUser.role),
+          password: DEFAULT_PASSWORD,
+        });
+
+        // Map backend user to UI format
+        const newUser = mapBackendUserToUi({
+          id: createdUser.id,
+          email: createdUser.email,
+          firstName: createdUser.firstName,
+          lastName: createdUser.lastName,
+          role: createdUser.role,
+          companyId: createdUser.companyId,
+          isActive: createdUser.isActive,
+          emailVerified: createdUser.emailVerified,
+          lastLoginAt: null,
+          createdAt: createdUser.createdAt,
+          updatedAt: createdUser.updatedAt,
+        });
+
+        setUsers([...users, newUser]);
+        showSuccess(`User ${normalizedUser.name} created successfully with password: ${DEFAULT_PASSWORD}`);
+      }
+      setShowEditModal(false);
+      setEditingUser(null);
+    } catch (error) {
+      console.error('❌ Failed to save user:', error);
+      showError(error instanceof Error ? error.message : 'Failed to save user');
     }
-    setShowEditModal(false);
-    setEditingUser(null);
   };
 
   const handleConfirmDelete = () => {

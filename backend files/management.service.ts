@@ -129,6 +129,47 @@ export class ManagementService {
   }
 
   // User Management
+  static async createUser(input: { email: string; firstName: string; lastName: string; role: UserRole; password: string; companyId: string }): Promise<User> {
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', input.email)
+      .single();
+
+    if (existingUser) {
+      throw new Error('User with this email already exists');
+    }
+
+    // Hash the password
+    const passwordHash = await PasswordService.hashPassword(input.password);
+
+    // Create the user
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        email: input.email,
+        first_name: input.firstName,
+        last_name: input.lastName,
+        role: input.role,
+        password_hash: passwordHash,
+        company_id: input.companyId,
+        is_active: true,
+        email_verified: false,
+      })
+      .select(`
+        *,
+        companies (*)
+      `)
+      .single();
+
+    if (error || !data) {
+      throw new Error(`Failed to create user: ${error?.message || 'Unknown error'}`);
+    }
+
+    return this.mapUserData(data);
+  }
+
   static async getUsers(pagination: PaginationInput = {}) {
     const { limit = 10, offset = 0, search } = pagination;
     
