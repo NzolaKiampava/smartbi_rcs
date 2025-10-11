@@ -35,9 +35,25 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/',
+        // Increase the maximum file size to cache (default is 2MB)
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3MB
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate vendor chunks to reduce main bundle size
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'recharts-vendor': ['recharts'],
+          'date-vendor': ['date-fns'],
+          'lucide-vendor': ['lucide-react'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000, // Increase warning limit to 1000 KB
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
