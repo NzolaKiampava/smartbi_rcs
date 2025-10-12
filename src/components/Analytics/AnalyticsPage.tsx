@@ -322,7 +322,21 @@ const AnalyticsPage: React.FC = () => {
     <div className={`${kpi.bgColor} rounded-2xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300 group relative`}>
       <div className="flex items-start justify-between mb-4">
         <div className={`w-12 h-12 bg-gradient-to-br ${kpi.color} rounded-xl flex items-center justify-center shadow-sm`}>
-          <kpi.icon size={24} className="text-white" />
+          {kpi.id === 'users' && (
+            <img src="/icons/users.webp" alt="Users" className="w-6 h-6 object-contain brightness-0 invert" />
+          )}
+          {kpi.id === 'files' && (
+            <img src="/icons/file.svg" alt="Files" className="w-6 h-6 object-contain brightness-0 invert" />
+          )}
+          {kpi.id === 'queries' && (
+            <img src="/icons/aiqueries.webp" alt="AI Queries" className="w-6 h-6 object-contain brightness-0 invert" />
+          )}
+          {kpi.id === 'connections' && (
+            <img src="/icons/dataconnection.webp" alt="Connections" className="w-6 h-6 object-contain brightness-0 invert" />
+          )}
+          {!['users', 'files', 'queries', 'connections'].includes(kpi.id) && (
+            <kpi.icon size={24} className="text-white" />
+          )}
         </div>
         <div className="flex items-center space-x-2 relative">
           <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
