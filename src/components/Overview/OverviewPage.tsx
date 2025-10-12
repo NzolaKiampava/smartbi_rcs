@@ -922,7 +922,7 @@ const OverviewPage: React.FC = () => {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                <BarChart3 size={24} className="text-white" />
+                <img src="/icons/analytics.webp" className="w-6 h-6 brightness-0 invert" />
               </div>
               <div>
                 <h2 className="text-3xl font-bold">Business Intelligence Overview</h2>
@@ -1150,7 +1150,7 @@ const OverviewPage: React.FC = () => {
 
         <ChartCard
           title="Performance & Latency"
-          icon={Users}
+          icon={() => <img src="/icons/latency.webp" className="w-6 h-6 brightness-0 invert" />}
           actionsContent={(
             <>
               <button
