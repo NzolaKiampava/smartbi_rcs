@@ -11,7 +11,6 @@ import {
   AlertCircle, 
   XCircle, 
   Clock,
-  Zap,
   Edit,
   Trash2,
   RefreshCw,
@@ -28,6 +27,85 @@ import {
 import { format } from 'date-fns';
 import { graphqlService, Connection } from '../../services/graphqlService';
 import { useNotification } from '../../contexts/NotificationContext';
+
+// Real Database Icons as SVG Components
+const DatabaseIcons = {
+  Supabase: () => (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+      <path d="M13.277 21.964c-.631.543-1.691.164-1.761-.63l-1.157-13.127c-.063-.713.534-1.314 1.247-1.254.393.033.737.254.937.6l7.349 12.73c.43.745-.143 1.681-1.003 1.637l-6.612-.956z" fill="#3ECF8E"/>
+      <path d="M10.723 2.036c.631-.543 1.691-.164 1.761.63l1.157 13.127c.063.713-.534 1.314-1.247 1.254-.393-.033-.737-.254-.937-.6L4.108 3.717c-.43-.745.143-1.681 1.003-1.637l6.612.956z" fill="url(#supabase-gradient)"/>
+      <defs>
+        <linearGradient id="supabase-gradient" x1="11.5" y1="2" x2="11.5" y2="17">
+          <stop offset="0%" stopColor="#3ECF8E"/>
+          <stop offset="100%" stopColor="#1B8A5A"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  ),
+  
+  Firebase: () => (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+      <path d="M3.89 15.672L6.255.956A.5.5 0 0 1 7.11.608l2.428 4.585z" fill="#FFA000"/>
+      <path d="M16.795 14.52l-2.498-4.64-2.532 4.64-7.889 4.428a.5.5 0 0 0 .44.808l9.684-5.236z" fill="#F57C00"/>
+      <path d="M14.297 9.88L11.869 5.193 9.44 9.88l4.857 8.568z" fill="#FFCA28"/>
+      <path d="M3.89 15.672l7.765 4.34 4.64-8.012L9.44.956a.5.5 0 0 0-.885 0z" fill="#FFA000" opacity="0.5"/>
+    </svg>
+  ),
+  
+  PostgreSQL: () => (
+    <img src="/icons/postgres.svg" alt="PostgreSQL" className="w-6 h-6 object-contain" />
+  ),
+  
+  MySQL: () => (
+    <img src="/icons/mysql.svg" alt="MySQL" className="w-6 h-6 object-contain" />
+  ),
+  
+  MongoDB: () => (
+    <img src="/icons/mongodb.svg" alt="MongoDB" className="w-6 h-6 object-contain" />
+  ),
+  
+  Redis: () => (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+      <path d="M12 2L2 7v10l10 5 10-5V7l-10-5zm7.5 13.5L12 18.75 4.5 15.5v-3.75L12 15l7.5-3.25v3.75zm0-5L12 13.75 4.5 10.5V6.75L12 10l7.5-3.25v3.75z" fill="#DC382D"/>
+      <path d="M12 10L4.5 6.75 12 3.5l7.5 3.25L12 10z" fill="#C6302B"/>
+      <path d="M12 15L4.5 11.75v3.75L12 18.75l7.5-3.25v-3.75L12 15z" fill="#A41E11"/>
+    </svg>
+  ),
+  
+  Oracle: () => (
+    <img src="/icons/oracle.svg" alt="Oracle" className="w-6 h-6 object-contain" />
+  ),
+  
+  SQLServer: () => (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+      <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12z" fill="#0078D4"/>
+      <path d="M12 6v12M8 10h8M8 14h8" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
+  
+  Elasticsearch: () => (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+      <path d="M2 8h20v2H2V8zm0 6h20v2H2v-2z" fill="#FEC514"/>
+      <path d="M2 12h8v2H2v-2zm14 0h6v2h-6v-2z" fill="#00BFB3"/>
+      <circle cx="14" cy="13" r="1.5" fill="#F04E98"/>
+    </svg>
+  ),
+  
+  Snowflake: () => (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+      <path d="M12 2l2.5 4.33L12 10.66 9.5 6.33 12 2zm0 20l-2.5-4.33L12 13.34l2.5 4.33L12 22zM2 12l4.33-2.5L10.66 12 6.33 14.5 2 12zm20 0l-4.33 2.5L13.34 12l4.33-2.5L22 12z" fill="#29B5E8"/>
+      <circle cx="12" cy="12" r="2" fill="#FFFFFF"/>
+    </svg>
+  ),
+  
+  SQLite: () => (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+      <path d="M4 4h16v16H4V4z" fill="#003B57"/>
+      <path d="M8 8h8v8H8V8z" fill="#FFFFFF" opacity="0.3"/>
+      <text x="12" y="14" fontSize="8" fill="#FFFFFF" textAnchor="middle" fontFamily="monospace" fontWeight="bold">db</text>
+    </svg>
+  ),
+};
 
 const DatabasePage: React.FC = () => {
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; connection: Connection | null; loading: boolean }>({ open: false, connection: null, loading: false });
@@ -118,66 +196,64 @@ const DatabasePage: React.FC = () => {
   };
 
   const getDatabaseIcon = (type: string) => {
-    const iconProps = { size: 24, className: "text-white" };
+    const iconSize = "w-10 h-10";
+    const iconClasses = "rounded-lg flex items-center justify-center p-2";
     
     switch (type.toLowerCase()) {
+      case 'supabase': 
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-emerald-400 to-emerald-600`}><DatabaseIcons.Supabase /></div>;
+      
+      case 'firebase': 
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-amber-400 to-orange-500`}><DatabaseIcons.Firebase /></div>;
+      
       case 'postgresql': 
       case 'postgres': 
-        return <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.PostgreSQL /></div>;
       
-      case 'supabase': 
-        return <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+      case 'mysql': 
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.MySQL /></div>;
       
       case 'mongodb': 
       case 'mongo': 
-        return <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.MongoDB /></div>;
+      
+      case 'redis': 
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-red-500 to-red-700`}><DatabaseIcons.Redis /></div>;
       
       case 'oracle': 
-        return <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.Oracle /></div>;
       
       case 'sqlserver': 
       case 'mssql': 
-        return <div className="w-10 h-10 bg-blue-800 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
-      
-      case 'redis': 
-        return <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center"><Zap {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-blue-600 to-blue-800`}><DatabaseIcons.SQLServer /></div>;
       
       case 'elasticsearch': 
       case 'elastic': 
-        return <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center"><Search {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-yellow-400 to-teal-500`}><DatabaseIcons.Elasticsearch /></div>;
       
       case 'snowflake': 
-        return <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
-      
-      case 'api_rest': 
-        return <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
-      
-      case 'firebase': 
-        return <div className="w-10 h-10 bg-yellow-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-cyan-400 to-blue-500`}><DatabaseIcons.Snowflake /></div>;
       
       case 'sqlite': 
-        return <div className="w-10 h-10 bg-slate-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-slate-500 to-slate-700`}><DatabaseIcons.SQLite /></div>;
       
       case 'cassandra': 
-        return <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-purple-500 to-purple-700`}><Database size={24} className="text-white" /></div>;
       
       case 'mariadb': 
-        return <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-blue-400 to-blue-600`}><Database size={24} className="text-white" /></div>;
       
       case 'dynamodb': 
-        return <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-orange-500 to-orange-700`}><Database size={24} className="text-white" /></div>;
       
       case 'bigquery': 
-        return <div className="w-10 h-10 bg-blue-400 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-blue-400 to-blue-600`}><Database size={24} className="text-white" /></div>;
       
-      case 'clickhouse': 
-        return <div className="w-10 h-10 bg-yellow-700 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
-      
-      case 'influxdb': 
-        return <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+      case 'api_rest': 
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-emerald-500 to-emerald-700`}><Globe size={24} className="text-white" /></div>;
       
       default: 
-        return <div className="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center"><Database {...iconProps} /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-gray-400 to-gray-600`}><Database size={24} className="text-white" /></div>;
     }
   };
 
@@ -729,37 +805,100 @@ const DatabasePage: React.FC = () => {
                   <Server size={16} className="inline mr-2" />
                   {connectionMode === 'database' ? 'Database Type' : 'API Type'}
                 </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  title={`Selecionar tipo de ${connectionMode === 'database' ? 'banco de dados' : 'API'}`}
-                  aria-label={`Tipo de ${connectionMode === 'database' ? 'banco de dados' : 'API'}`}
-                >
-                  {connectionMode === 'database' ? (
-                    <>
-                      <option value="supabase">✓ Supabase</option>
-                      <option value="firebase">✓ Firebase</option>
-                      <option value="postgresql">⏰ PostgreSQL</option>
-                      <option value="mysql">⏰ MySQL</option>
-                      <option value="mongodb">⏰ MongoDB</option>
-                      <option value="oracle">⏰ Oracle</option>
-                      <option value="sqlserver">⏰ SQL Server</option>
-                      <option value="redis">⏰ Redis</option>
-                      <option value="elasticsearch">⏰ Elasticsearch</option>
-                      <option value="snowflake">⏰ Snowflake</option>
-                      <option value="sqlite">⏰ SQLite</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="rest">REST API</option>
-                      <option value="graphql">GraphQL API</option>
-                      <option value="soap">SOAP API</option>
-                      <option value="webhook">Webhook</option>
-                      <option value="custom">Custom API</option>
-                    </>
-                  )}
-                </select>
+                
+                {/* Database Type Selection Grid */}
+                {connectionMode === 'database' ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { value: 'supabase', label: 'Supabase', available: true },
+                      { value: 'firebase', label: 'Firebase', available: true },
+                      { value: 'postgresql', label: 'PostgreSQL', available: false },
+                      { value: 'mysql', label: 'MySQL', available: false },
+                      { value: 'mongodb', label: 'MongoDB', available: false },
+                      { value: 'oracle', label: 'Oracle', available: false },
+                      { value: 'sqlserver', label: 'SQL Server', available: false },
+                      { value: 'redis', label: 'Redis', available: false },
+                      { value: 'elasticsearch', label: 'Elasticsearch', available: false },
+                    ].map((db) => (
+                      <button
+                        key={db.value}
+                        type="button"
+                        onClick={() => setFormData({...formData, type: db.value})}
+                        disabled={!db.available}
+                        className={`
+                          relative p-4 rounded-lg border-2 transition-all duration-200 text-left
+                          ${formData.type === db.value
+                            ? db.available
+                              ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                              : 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                          }
+                          ${db.available
+                            ? 'hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/10 hover:shadow-md cursor-pointer'
+                            : 'hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 cursor-not-allowed opacity-75'
+                          }
+                          ${!db.available && 'grayscale-[0.3]'}
+                        `}
+                        title={db.available ? `Selecionar ${db.label}` : `${db.label} - Em breve`}
+                      >
+                        {/* Selection Indicator */}
+                        {formData.type === db.value && (
+                          <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center ${
+                            db.available ? 'bg-green-500' : 'bg-amber-500'
+                          }`}>
+                            <CheckCircle size={14} className="text-white" />
+                          </div>
+                        )}
+                        
+                        {/* Database Icon */}
+                        <div className="mb-2">
+                          {getDatabaseIcon(db.value)}
+                        </div>
+                        
+                        {/* Database Name */}
+                        <div className="font-medium text-sm text-gray-900 dark:text-white mb-1">
+                          {db.label}
+                        </div>
+                        
+                        {/* Status Badge */}
+                        <div className={`inline-flex items-center space-x-1 text-xs font-medium ${
+                          db.available
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-amber-600 dark:text-amber-400'
+                        }`}>
+                          {db.available ? (
+                            <>
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                              <span>Disponível</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock size={12} />
+                              <span>Em breve</span>
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  // API Type Selection (keep as select for now)
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    title="Selecionar tipo de API"
+                    aria-label="Tipo de API"
+                  >
+                    <option value="rest">REST API</option>
+                    <option value="graphql">GraphQL API</option>
+                    <option value="soap">SOAP API</option>
+                    <option value="webhook">Webhook</option>
+                    <option value="custom">Custom API</option>
+                  </select>
+                )}
+                
+                {/* Legend - Only show for database mode */}
                 {connectionMode === 'database' && (
                   <div className="mt-2 flex items-start space-x-2 text-xs">
                     <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
