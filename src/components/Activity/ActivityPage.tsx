@@ -57,6 +57,8 @@ interface RecentActivity {
   domainCategory?: ActivityLog['category'];
   module: string;
   duration?: number;
+  fileType?: string;
+  mimetype?: string;
 }
 
 type UnifiedSource = 'query' | 'file';
@@ -80,6 +82,8 @@ interface UnifiedActivity {
   location?: string;
   ipAddress?: string;
   durationSeconds?: number;
+  fileType?: string;
+  mimetype?: string;
 }
 
 const RANGE_IN_DAYS: Record<string, number> = {
@@ -95,6 +99,24 @@ const getRangeStart = (rangeKey: string): Date => {
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - (days - 1));
   return start;
+};
+
+// Helper function to get file icon based on file type
+const getFileIconForActivity = (fileType?: string, mimetype?: string): string => {
+  const type = (fileType || mimetype || '').toLowerCase();
+  
+  if (type.includes('pdf') || type === 'application/pdf') {
+    return '/icons/pdf.webp';
+  } else if (type.includes('excel') || type.includes('spreadsheet') || 
+             type === 'application/vnd.ms-excel' || 
+             type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+             type.includes('xls')) {
+    return '/icons/excel.svg';
+  } else if (type.includes('csv') || type === 'text/csv') {
+    return '/icons/csv.webp';
+  } else {
+    return '/icons/unknowfile.svg';
+  }
 };
 
 const SUCCESS_STATUS_HINTS = ['SUCCESS', 'COMPLETED', 'DONE', 'OK'];
@@ -180,7 +202,9 @@ const mapFileToUnifiedActivity = (file: FileUpload): UnifiedActivity => {
     device: deviceFromSource('file'),
     location: locationFromSource('file'),
     ipAddress: `FILE-${lastDigits(file.id)}`,
-    durationSeconds: durationMs ? Math.round(durationMs / 1000) : undefined
+    durationSeconds: durationMs ? Math.round(durationMs / 1000) : undefined,
+    fileType: file.fileType,
+    mimetype: file.mimetype
   };
 };
 
@@ -210,7 +234,9 @@ const toRecentActivity = (activity: UnifiedActivity, index: number): RecentActiv
   category: activity.actionCategory,
   domainCategory: activity.category,
   module: activity.module,
-  duration: activity.durationSeconds
+  duration: activity.durationSeconds,
+  fileType: activity.fileType,
+  mimetype: activity.mimetype
 });
 
 const ActivityPage: React.FC = () => {
@@ -973,9 +999,19 @@ const ActivityPage: React.FC = () => {
               <div key={activity.id} className="group p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
-                    <div className={`p-3 rounded-xl ${activity.color} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      <activity.icon size={20} className="text-white" />
-                    </div>
+                    {activity.fileType || activity.mimetype ? (
+                      <div className="p-3 rounded-xl bg-white dark:bg-white shadow-lg group-hover:scale-110 transition-transform duration-300 flex items-center justify-center">
+                        <img 
+                          src={getFileIconForActivity(activity.fileType, activity.mimetype)} 
+                          alt={activity.fileType || 'file'}
+                          className="w-5 h-5 object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className={`p-3 rounded-xl ${activity.color} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                        <activity.icon size={20} className="text-white" />
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h4 className="font-semibold text-gray-900 dark:text-white text-lg">{activity.activity}</h4>
@@ -1110,9 +1146,19 @@ const ActivityPage: React.FC = () => {
           ) : (
             filteredHistoryActivities.map((activity) => (
               <div key={activity.id} className="flex items-center space-x-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600">
-                <div className={`p-3 rounded-lg ${activity.color} shadow-sm`}>
-                  <activity.icon size={18} className="text-white" />
-                </div>
+                {activity.fileType || activity.mimetype ? (
+                  <div className="p-3 rounded-lg bg-white dark:bg-white shadow-sm flex items-center justify-center">
+                    <img 
+                      src={getFileIconForActivity(activity.fileType, activity.mimetype)} 
+                      alt={activity.fileType || 'file'}
+                      className="w-[18px] h-[18px] object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className={`p-3 rounded-lg ${activity.color} shadow-sm`}>
+                    <activity.icon size={18} className="text-white" />
+                  </div>
+                )}
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-1">
                     <h4 className="font-medium text-gray-900 dark:text-white">{activity.activity}</h4>
@@ -1167,9 +1213,19 @@ const ActivityPage: React.FC = () => {
                 {/* Header Top Row */}
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center space-x-4">
-                    <div className={`w-16 h-16 ${selectedActivity.color} rounded-2xl flex items-center justify-center shadow-lg`}>
-                      <selectedActivity.icon size={32} className="text-white" />
-                    </div>
+                    {selectedActivity.fileType || selectedActivity.mimetype ? (
+                      <div className="w-16 h-16 bg-white dark:bg-white rounded-2xl flex items-center justify-center shadow-lg">
+                        <img 
+                          src={getFileIconForActivity(selectedActivity.fileType, selectedActivity.mimetype)} 
+                          alt={selectedActivity.fileType || 'file'}
+                          className="w-8 h-8 object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className={`w-16 h-16 ${selectedActivity.color} rounded-2xl flex items-center justify-center shadow-lg`}>
+                        <selectedActivity.icon size={32} className="text-white" />
+                      </div>
+                    )}
                     <div>
                       <h1 className="text-3xl font-bold text-white mb-1">{selectedActivity.activity}</h1>
                       <div className="flex items-center space-x-4 text-blue-100">
