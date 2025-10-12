@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  FileText, 
   Download, 
   Trash2,
   Search, 
@@ -110,21 +109,23 @@ const ReportsPage: React.FC = () => {
     const type = fileType.toUpperCase();
     switch (type) {
       case 'PDF':
-        return <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold text-sm">PDF</div>;
+        return <img src="/icons/pdf.webp" alt="PDF" className="w-12 h-12 object-contain" />;
       case 'EXCEL':
-        return <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">XLS</div>;
+      case 'XLSX':
+      case 'XLS':
+        return <img src="/icons/excel.svg" alt="Excel" className="w-12 h-12 object-contain" />;
       case 'CSV':
-        return <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">CSV</div>;
+        return <img src="/icons/csv.webp" alt="CSV" className="w-12 h-12 object-contain" />;
       case 'JSON':
-        return <div className="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">JSON</div>;
+        return <img src="/icons/unknowfile.svg" alt="JSON" className="w-12 h-12 object-contain" />;
       case 'SQL':
-        return <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">SQL</div>;
+        return <img src="/icons/unknowfile.svg" alt="SQL" className="w-12 h-12 object-contain" />;
       case 'XML':
-        return <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">XML</div>;
+        return <img src="/icons/unknowfile.svg" alt="XML" className="w-12 h-12 object-contain" />;
       case 'TXT':
-        return <div className="w-12 h-12 bg-gray-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">TXT</div>;
+        return <img src="/icons/unknowfile.svg" alt="TXT" className="w-12 h-12 object-contain" />;
       default:
-        return <div className="w-12 h-12 bg-gray-400 rounded-lg flex items-center justify-center text-white font-bold text-xs">FILE</div>;
+        return <img src="/icons/unknowfile.svg" alt="File" className="w-12 h-12 object-contain" />;
     }
   };
 
@@ -327,7 +328,7 @@ const ReportsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <FileText size={32} className="text-white" />
+              <img src="/icons/file.svg" alt="Files" className="w-8 h-8 object-contain brightness-0 invert" />
               <h1 className="text-2xl font-bold text-white">Reports & Documents</h1>
             </div>
             <p className="text-blue-100">Manage uploaded files from database</p>
