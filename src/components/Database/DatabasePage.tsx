@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import EditConnectionModal from './EditConnectionModal';
   import SectionHeader from '../Common/SectionHeader';
@@ -713,67 +714,99 @@ const DatabasePage: React.FC = () => {
       </div>
 
       {/* Add Database Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                  {connectionMode === 'database' ? (
-                    <Database size={20} className="text-blue-600 dark:text-blue-400" />
-                  ) : (
-                    <Globe size={20} className="text-blue-600 dark:text-blue-400" />
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Add {connectionMode === 'database' ? 'Database' : 'API'} Connection
-                  </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Connect to your {connectionMode === 'database' ? 'database' : 'API service'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Fechar modal"
-                aria-label="Fechar modal"
-              >
-                <X size={20} className="text-gray-400 dark:text-gray-500" />
-              </button>
-            </div>
+      <AnimatePresence>
+        {showAddModal && (
+          <motion.div
+            key="database-modal"
+            className="fixed inset-0 z-[999] flex items-center justify-center p-2 sm:p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAddModal(false)}
+            />
 
-            {/* Modal Body */}
-            <div className="p-6 space-y-6">
-              {/* Connection Mode Toggle */}
-              <div className="flex items-center justify-center">
-                <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <motion.div
+              key="database-modal-panel"
+              initial={{ opacity: 0, scale: 0.94, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 24 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+              className="relative w-full max-w-3xl max-h-[92vh] rounded-3xl border border-white/30 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 shadow-[0_28px_80px_-24px_rgba(15,23,42,0.65)] backdrop-blur-xl flex flex-col"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+            >
+              {/* Modal Header */}
+              <div className="relative flex-shrink-0 overflow-hidden bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-t-3xl">
+                {/* Subtle background decorations - fully contained */}
+                <div className="absolute top-2 right-4 h-20 w-20 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute bottom-2 left-4 h-24 w-24 rounded-full bg-indigo-400/10 blur-2xl" />
+
+                <div className="relative flex items-center justify-between gap-3 p-5 text-white">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center">
+                      {connectionMode === 'database' ? (
+                        <Database size={20} />
+                      ) : (
+                        <Globe size={20} />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-lg font-semibold truncate">
+                        Add {connectionMode === 'database' ? 'Database' : 'API'} Connection
+                      </h2>
+                      <p className="text-xs text-white/75 mt-0.5 truncate">
+                        Configure novas integrações
+                      </p>
+                    </div>
+                  </div>
+
                   <button
-                    onClick={() => setConnectionMode('database')}
-                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      connectionMode === 'database' 
-                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' 
-                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100'
-                    }`}
+                    onClick={() => setShowAddModal(false)}
+                    className="flex-shrink-0 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                    title="Fechar modal"
+                    aria-label="Fechar modal"
                   >
-                    <Database size={16} className="mr-2" />
-                    Database
-                  </button>
-                  <button
-                    onClick={() => setConnectionMode('api')}
-                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      connectionMode === 'api' 
-                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' 
-                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100'
-                    }`}
-                  >
-                    <Globe size={16} className="mr-2" />
-                    API
+                    <X size={18} />
                   </button>
                 </div>
               </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 bg-gradient-to-b from-white/75 via-white/85 to-white/95 dark:from-gray-900/60 dark:via-gray-900/70 dark:to-gray-900/80">
+                {/* Connection Mode Toggle */}
+                <div className="flex items-center justify-center">
+                  <div className="flex items-center rounded-full border border-white/70 dark:border-gray-700/70 bg-white/70 dark:bg-gray-800/70 backdrop-blur-md shadow-sm p-1">
+                    <button
+                      onClick={() => setConnectionMode('database')}
+                      className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
+                        connectionMode === 'database'
+                          ? 'bg-white text-blue-600 shadow-md'
+                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                      }`}
+                    >
+                      <Database size={16} className="mr-2" />
+                      Database
+                    </button>
+                    <button
+                      onClick={() => setConnectionMode('api')}
+                      className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 ${
+                        connectionMode === 'api'
+                          ? 'bg-white text-blue-600 shadow-md'
+                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                      }`}
+                    >
+                      <Globe size={16} className="mr-2" />
+                      API
+                    </button>
+                  </div>
+                </div>
               {/* Connection Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1164,7 +1197,7 @@ const DatabasePage: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+            <div className="flex items-center justify-between p-6 border-t border-white/70 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/60 backdrop-blur-sm">
               <div className="text-sm text-gray-500 dark:text-gray-400">
                 <span className="text-red-500">*</span> Required fields
               </div>
@@ -1174,7 +1207,7 @@ const DatabasePage: React.FC = () => {
                     setShowAddModal(false);
                     setFormData({
                       name: '',
-                      type: connectionMode === 'database' ? 'supabase' : 'rest',
+                      type: 'supabase',
                       host: '',
                       port: '',
                       database: '',
@@ -1190,7 +1223,7 @@ const DatabasePage: React.FC = () => {
                     setConnectionMode('database');
                   }}
                   disabled={isCreating}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-gray-800/70 border border-white/60 dark:border-gray-700/60 rounded-lg hover:bg-white/100 dark:hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -1254,7 +1287,7 @@ const DatabasePage: React.FC = () => {
                       setShowAddModal(false);
                       setFormData({
                         name: '',
-                        type: connectionMode === 'database' ? 'supabase' : 'rest',
+                        type: 'supabase',
                         host: '',
                         port: '',
                         database: '',
@@ -1281,7 +1314,7 @@ const DatabasePage: React.FC = () => {
                     (connectionMode === 'database' && !isDatabaseTypeAvailable(formData.type)) ||
                     (connectionMode === 'api' && !formData.baseUrl)
                   }
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-blue-600/30 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 transition-all disabled:bg-gray-400 disabled:hover:from-blue-600 disabled:hover:via-indigo-600 disabled:hover:to-purple-600 disabled:shadow-none disabled:cursor-not-allowed"
                 >
                   {isCreating ? (
                     <>
@@ -1297,9 +1330,10 @@ const DatabasePage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Edit Connection Modal */}
       <EditConnectionModal
