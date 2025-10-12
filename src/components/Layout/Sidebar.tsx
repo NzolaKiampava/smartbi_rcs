@@ -244,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, activeSe
 
               <div className="mt-3 inline-flex items-center px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full">
                 <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse" />
-                <span className="text-white text-xs font-medium">v2.1.0</span>
+                <span className="text-white text-xs font-medium">v1.0.0</span>
               </div>
             </div>
           </div>

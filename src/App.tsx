@@ -134,7 +134,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-gray-600">© {new Date().getFullYear()}. All rights reserved.</p>
             </div>
               <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-              <span>Version 2.1.0</span>
+              <span>Version 1.0.0</span>
               <span>•</span>
               <button className="hover:text-gray-700 dark:hover:text-gray-200 transition-colors">{t('footer.privacy')}</button>
               <span>•</span>
