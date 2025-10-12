@@ -31,25 +31,11 @@ import { useNotification } from '../../contexts/NotificationContext';
 // Real Database Icons as SVG Components
 const DatabaseIcons = {
   Supabase: () => (
-    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-      <path d="M13.277 21.964c-.631.543-1.691.164-1.761-.63l-1.157-13.127c-.063-.713.534-1.314 1.247-1.254.393.033.737.254.937.6l7.349 12.73c.43.745-.143 1.681-1.003 1.637l-6.612-.956z" fill="#3ECF8E"/>
-      <path d="M10.723 2.036c.631-.543 1.691-.164 1.761.63l1.157 13.127c.063.713-.534 1.314-1.247 1.254-.393-.033-.737-.254-.937-.6L4.108 3.717c-.43-.745.143-1.681 1.003-1.637l6.612.956z" fill="url(#supabase-gradient)"/>
-      <defs>
-        <linearGradient id="supabase-gradient" x1="11.5" y1="2" x2="11.5" y2="17">
-          <stop offset="0%" stopColor="#3ECF8E"/>
-          <stop offset="100%" stopColor="#1B8A5A"/>
-        </linearGradient>
-      </defs>
-    </svg>
+    <img src="/icons/supabase.svg" alt="Supabase" className="w-6 h-6 object-contain" />
   ),
   
   Firebase: () => (
-    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-      <path d="M3.89 15.672L6.255.956A.5.5 0 0 1 7.11.608l2.428 4.585z" fill="#FFA000"/>
-      <path d="M16.795 14.52l-2.498-4.64-2.532 4.64-7.889 4.428a.5.5 0 0 0 .44.808l9.684-5.236z" fill="#F57C00"/>
-      <path d="M14.297 9.88L11.869 5.193 9.44 9.88l4.857 8.568z" fill="#FFCA28"/>
-      <path d="M3.89 15.672l7.765 4.34 4.64-8.012L9.44.956a.5.5 0 0 0-.885 0z" fill="#FFA000" opacity="0.5"/>
-    </svg>
+    <img src="/icons/firebase.svg" alt="Firebase" className="w-6 h-6 object-contain" />
   ),
   
   PostgreSQL: () => (
@@ -65,11 +51,7 @@ const DatabaseIcons = {
   ),
   
   Redis: () => (
-    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-      <path d="M12 2L2 7v10l10 5 10-5V7l-10-5zm7.5 13.5L12 18.75 4.5 15.5v-3.75L12 15l7.5-3.25v3.75zm0-5L12 13.75 4.5 10.5V6.75L12 10l7.5-3.25v3.75z" fill="#DC382D"/>
-      <path d="M12 10L4.5 6.75 12 3.5l7.5 3.25L12 10z" fill="#C6302B"/>
-      <path d="M12 15L4.5 11.75v3.75L12 18.75l7.5-3.25v-3.75L12 15z" fill="#A41E11"/>
-    </svg>
+    <img src="/icons/redis.svg" alt="Redis" className="w-6 h-6 object-contain" />
   ),
   
   Oracle: () => (
@@ -77,18 +59,11 @@ const DatabaseIcons = {
   ),
   
   SQLServer: () => (
-    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-      <path d="M2 12C2 6.48 6.48 2 12 2s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12z" fill="#0078D4"/>
-      <path d="M12 6v12M8 10h8M8 14h8" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
+    <img src="/icons/sqlserver.svg" alt="SQL Server" className="w-6 h-6 object-contain" />
   ),
   
   Elasticsearch: () => (
-    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
-      <path d="M2 8h20v2H2V8zm0 6h20v2H2v-2z" fill="#FEC514"/>
-      <path d="M2 12h8v2H2v-2zm14 0h6v2h-6v-2z" fill="#00BFB3"/>
-      <circle cx="14" cy="13" r="1.5" fill="#F04E98"/>
-    </svg>
+    <img src="/icons/elasticsearch.svg" alt="Elasticsearch" className="w-6 h-6 object-contain" />
   ),
   
   Snowflake: () => (
@@ -201,10 +176,10 @@ const DatabasePage: React.FC = () => {
     
     switch (type.toLowerCase()) {
       case 'supabase': 
-        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-emerald-400 to-emerald-600`}><DatabaseIcons.Supabase /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.Supabase /></div>;
       
       case 'firebase': 
-        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-amber-400 to-orange-500`}><DatabaseIcons.Firebase /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.Firebase /></div>;
       
       case 'postgresql': 
       case 'postgres': 
@@ -218,18 +193,18 @@ const DatabasePage: React.FC = () => {
         return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.MongoDB /></div>;
       
       case 'redis': 
-        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-red-500 to-red-700`}><DatabaseIcons.Redis /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.Redis /></div>;
       
       case 'oracle': 
         return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.Oracle /></div>;
       
       case 'sqlserver': 
       case 'mssql': 
-        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-blue-600 to-blue-800`}><DatabaseIcons.SQLServer /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.SQLServer /></div>;
       
       case 'elasticsearch': 
       case 'elastic': 
-        return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-yellow-400 to-teal-500`}><DatabaseIcons.Elasticsearch /></div>;
+        return <div className={`${iconSize} ${iconClasses} bg-white dark:bg-white`}><DatabaseIcons.Elasticsearch /></div>;
       
       case 'snowflake': 
         return <div className={`${iconSize} ${iconClasses} bg-gradient-to-br from-cyan-400 to-blue-500`}><DatabaseIcons.Snowflake /></div>;
