@@ -77,6 +77,24 @@ const deleteAnalysisFromStorage = (id: string) => {
   }
 };
 
+// Helper function to get file icon based on file type
+const getFileIconForHistory = (fileType: string): string => {
+  const type = fileType.toLowerCase();
+  
+  if (type.includes('pdf') || type === 'application/pdf') {
+    return '/icons/pdf.webp';
+  } else if (type.includes('excel') || type.includes('spreadsheet') || 
+             type === 'application/vnd.ms-excel' || 
+             type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+             type.includes('xls')) {
+    return '/icons/excel.svg';
+  } else if (type.includes('csv') || type === 'text/csv') {
+    return '/icons/csv.webp';
+  } else {
+    return '/icons/unknowfile.svg';
+  }
+};
+
 const FileUploadPage: React.FC = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -698,8 +716,12 @@ const FileUploadPage: React.FC = () => {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                      <FileText size={24} className="text-white" />
+                    <div className="w-12 h-12 bg-white dark:bg-white rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                      <img 
+                        src={getFileIconForHistory(analysis.fileType)} 
+                        alt={analysis.fileType}
+                        className="w-8 h-8 object-contain"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 
