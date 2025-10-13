@@ -299,7 +299,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 </div>
                 */}
                  <img 
-                  src="https://www.pagar.me/static/Hero-a2b52ccd52f7983c155b32654bbdd12b.png"
+                  src="/img/smartbusiness.png"
                   alt="Business Intelligence Dashboard"
                   className="w-full h-auto object-cover"
                 />

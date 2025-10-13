@@ -968,7 +968,7 @@ const DatabasePage: React.FC = () => {
                         type="text"
                         value={formData.host}
                         onChange={(e) => setFormData({...formData, host: e.target.value})}
-                        placeholder="localhost or database.example.com"
+                        placeholder="https://yourprojectid.supabase.co"
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                       />
                     </div>
@@ -989,7 +989,7 @@ const DatabasePage: React.FC = () => {
                   {/* Database Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Database Name
+                      Database Name *
                     </label>
                     <input
                       type="text"
@@ -1017,7 +1017,7 @@ const DatabasePage: React.FC = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         <Key size={16} className="inline mr-2" />
-                        Password
+                        Password *
                       </label>
                       <div className="relative">
                         <input
