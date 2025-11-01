@@ -357,8 +357,7 @@ const ReportsPage: React.FC = () => {
             {recentFiles.map((file) => (
               <div 
                 key={file.id} 
-                className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
-                onClick={() => handleDownload(file)}
+                className="group relative flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-300 cursor-pointer hover:shadow-md"
               >
                 <div className="w-12 h-12 flex-shrink-0">
                   {getFileIcon(file.fileType)}
@@ -371,6 +370,19 @@ const ReportsPage: React.FC = () => {
                     {format(new Date(file.uploadedAt), 'MMM dd')} • {formatFileSize(file.size)}
                   </p>
                 </div>
+                
+                {/* Download button - appears on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(file);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out transform scale-90 group-hover:scale-100 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg shadow-lg hover:shadow-xl"
+                  title="Download file"
+                  aria-label={`Download ${file.originalName}`}
+                >
+                  <Download size={16} className="animate-in fade-in duration-200" />
+                </button>
               </div>
             ))}
           </div>
